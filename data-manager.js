@@ -1,0 +1,537 @@
+// ============================================================================
+// DATA MANAGER - Gestione Dati Unificata v1.0.0
+// ============================================================================
+// Modulo condiviso per gestire dati tra App Rilievo, Dashboard e Editor
+// Standardizza su formato `positions` (app rilievo), converte automaticamente
+// 
+// USO:
+//   DATA_MANAGER.updatePosition(project, posId, field, value)
+//   DATA_MANAGER.updateProduct(project, posId, productType, field, value)
+//   DATA_MANAGER.updateMisura(project, posId, field, value)
+//   DATA_MANAGER.getPositions(project) // ritorna sempre array positions
+//   DATA_MANAGER.setPositions(project, positions) // imposta positions
+// ============================================================================
+
+const DATA_MANAGER_VERSION = '1.0.0';
+
+(function() {
+    'use strict';
+    
+    console.log(`📦 Data Manager v${DATA_MANAGER_VERSION} - Caricamento...`);
+    
+    // ========================================================================
+    // HELPER: Accesso unificato alle posizioni
+    // ========================================================================
+    
+    /**
+     * Ottiene l'array posizioni da un progetto (supporta positions e posizioni)
+     * @param {Object} project - Oggetto progetto
+     * @returns {Array} - Array di posizioni (mai null)
+     */
+    function getPositions(project) {
+        if (!project) return [];
+        
+        // Priorità: positions (formato app rilievo) > posizioni (formato dashboard)
+        if (project.positions && Array.isArray(project.positions)) {
+            return project.positions;
+        }
+        if (project.posizioni && Array.isArray(project.posizioni)) {
+            return project.posizioni;
+        }
+        
+        return [];
+    }
+    
+    /**
+     * Imposta l'array posizioni su un progetto
+     * Aggiorna ENTRAMBI i campi per compatibilità
+     * @param {Object} project - Oggetto progetto
+     * @param {Array} positions - Array di posizioni
+     */
+    function setPositions(project, positions) {
+        if (!project) return;
+        
+        const arr = Array.isArray(positions) ? positions : [];
+        
+        // Imposta entrambi per compatibilità
+        project.positions = arr;
+        project.posizioni = arr;
+    }
+    
+    /**
+     * Trova una posizione per ID
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @returns {Object|null} - Posizione trovata o null
+     */
+    function findPosition(project, posId) {
+        const positions = getPositions(project);
+        return positions.find(p => p.id === posId) || null;
+    }
+    
+    /**
+     * Trova l'indice di una posizione
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @returns {number} - Indice (-1 se non trovata)
+     */
+    function findPositionIndex(project, posId) {
+        const positions = getPositions(project);
+        return positions.findIndex(p => p.id === posId);
+    }
+    
+    // ========================================================================
+    // FUNZIONI PRINCIPALI: Update dati
+    // ========================================================================
+    
+    /**
+     * Aggiorna un campo della posizione
+     * Estratta da app.js rilievo v5.75
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} field - Nome del campo da aggiornare
+     * @param {*} value - Nuovo valore
+     * @param {Object} options - Opzioni aggiuntive
+     * @returns {boolean} - true se aggiornato con successo
+     */
+    function updatePosition(project, posId, field, value, options = {}) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.updatePosition: Posizione ${posId} non trovata`);
+            return false;
+        }
+        
+        // Aggiorna il campo
+        pos[field] = value;
+        
+        // 🔄 v5.622: Sincronizza quantità prodotti quando cambia quantità posizione
+        if (field === 'quantita') {
+            const qta = value || '1';
+            // Aggiorna qta di tutti i prodotti associati
+            if (pos.infisso) pos.infisso.qta = qta;
+            if (pos.tapparella) {
+                pos.tapparella.qta = qta;
+                if (pos.tapparella.motore) pos.tapparella.motore.qta = qta;
+            }
+            if (pos.cassonetto) pos.cassonetto.qta = qta;
+            if (pos.persiana) pos.persiana.qta = qta;
+            if (pos.zanzariera) pos.zanzariera.qta = qta;
+            console.log('🔄 DATA_MANAGER: Quantità posizione → sincronizzata a tutti i prodotti:', qta);
+        }
+        
+        console.log(`✅ DATA_MANAGER.updatePosition: ${posId}.${field} = ${value}`);
+        
+        // Callback opzionale per salvataggio/render
+        if (options.onUpdate && typeof options.onUpdate === 'function') {
+            options.onUpdate(project, pos, field, value);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Aggiorna un campo di un prodotto nella posizione
+     * Estratta da app.js rilievo v5.75 - SEMPLIFICATA
+     * (La logica complessa di ricalcolo BRM resta nelle app)
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} productType - Tipo prodotto (infisso, persiana, tapparella, etc.)
+     * @param {string} field - Nome del campo
+     * @param {*} value - Nuovo valore
+     * @param {Object} options - Opzioni aggiuntive
+     * @returns {boolean} - true se aggiornato con successo
+     */
+    function updateProduct(project, posId, productType, field, value, options = {}) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.updateProduct: Posizione ${posId} non trovata`);
+            return false;
+        }
+        
+        // Verifica che il prodotto esista
+        if (!pos[productType]) {
+            console.warn(`⚠️ DATA_MANAGER.updateProduct: Prodotto ${productType} non esiste in posizione ${posId}`);
+            return false;
+        }
+        
+        // Aggiorna il campo
+        pos[productType][field] = value;
+        
+        // 🎨 v4.78: Se PVC/PVC, sincronizza coloreInt e coloreEst (solo per infisso)
+        if (productType === 'infisso') {
+            const inf = pos.infisso;
+            const isPvcPvc = inf.finituraInt === 'pvc' && inf.finituraEst === 'pvc';
+            
+            if (isPvcPvc) {
+                if (field === 'coloreInt') {
+                    inf.coloreEst = value;
+                    console.log('🎨 DATA_MANAGER: PVC/PVC → coloreEst sincronizzato');
+                } else if (field === 'coloreEst') {
+                    inf.coloreInt = value;
+                    console.log('🎨 DATA_MANAGER: PVC/PVC → coloreInt sincronizzato');
+                }
+            }
+            
+            // 🎯 AUTO-SELEZIONE tipoInfissoAssociato per INFISSO
+            if (field === 'tipo') {
+                let autoTipo = null;
+                if (value && value.includes('PF')) {
+                    autoTipo = 'PF';
+                } else if (value && (value.match(/F\d/) || value === 'FISSO' || value === 'HST')) {
+                    autoTipo = 'F';
+                }
+                if (autoTipo) {
+                    inf.tipoInfissoAssociato = autoTipo;
+                    console.log(`✅ DATA_MANAGER: Auto tipoInfissoAssociato: ${autoTipo}`);
+                }
+            }
+            
+            // 🔩 v5.53: AUTO-CALCOLO CERNIERE da ferramenta
+            if (field === 'ferramenta1') {
+                const ferr = value || '';
+                let cerniere = '';
+                if (['411', '409', '430', '453', '425', '475', '473', '471', 'B411'].includes(ferr)) {
+                    cerniere = 'a-vista';
+                } else if (['211', '209', '230', '232', '225', '275', 'B211'].includes(ferr)) {
+                    cerniere = 'a-scomparsa';
+                }
+                if (cerniere) {
+                    pos.infisso.cerniere = cerniere;
+                    console.log(`🔩 DATA_MANAGER: Cerniere auto: ${ferr} → ${cerniere}`);
+                }
+            }
+        }
+        
+        // 🎯 PERSIANE: Auto-selezione tipoInfissoAssociato
+        if (productType === 'persiana' && field === 'tipo') {
+            const per = pos.persiana;
+            let autoTipo = null;
+            if (value && value.includes('PF')) {
+                autoTipo = 'PF';
+            } else if (value && value.match(/F[A\d]/)) {
+                autoTipo = 'F';
+            }
+            if (autoTipo) {
+                per.tipoInfissoAssociato = autoTipo;
+                console.log(`✅ DATA_MANAGER: Auto tipoInfissoAssociato persiana: ${autoTipo}`);
+            }
+        }
+        
+        console.log(`✅ DATA_MANAGER.updateProduct: ${posId}.${productType}.${field} = ${value}`);
+        
+        // Callback opzionale
+        if (options.onUpdate && typeof options.onUpdate === 'function') {
+            options.onUpdate(project, pos, productType, field, value);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Aggiorna una misura della posizione
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} field - Nome del campo misura (LI, HI, LF, HF, etc.)
+     * @param {*} value - Nuovo valore
+     * @param {Object} options - Opzioni aggiuntive
+     * @returns {boolean} - true se aggiornato con successo
+     */
+    function updateMisura(project, posId, field, value, options = {}) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.updateMisura: Posizione ${posId} non trovata`);
+            return false;
+        }
+        
+        // Assicura che l'oggetto misure esista
+        if (!pos.misure) {
+            pos.misure = {};
+        }
+        
+        // Aggiorna la misura
+        pos.misure[field] = value;
+        
+        console.log(`✅ DATA_MANAGER.updateMisura: ${posId}.misure.${field} = ${value}`);
+        
+        // Callback opzionale (per ricalcolo BRM)
+        if (options.onUpdate && typeof options.onUpdate === 'function') {
+            options.onUpdate(project, pos, field, value);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Aggiorna una misura con validazione
+     * Rimuove eventuali override di validazione quando il valore cambia
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} field - Nome del campo misura
+     * @param {*} value - Nuovo valore
+     * @param {Object} options - Opzioni aggiuntive
+     * @returns {boolean} - true se aggiornato con successo
+     */
+    function updateMisuraWithValidation(project, posId, field, value, options = {}) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.updateMisuraWithValidation: Posizione ${posId} non trovata`);
+            return false;
+        }
+        
+        // 🛡️ Se l'utente modifica una misura con override, rimuovi l'override
+        if (pos.validationOverrides && pos.validationOverrides[field]) {
+            delete pos.validationOverrides[field];
+            
+            if (Object.keys(pos.validationOverrides).length === 0) {
+                delete pos.validationOverrides;
+            }
+        }
+        
+        // Aggiorna la misura
+        return updateMisura(project, posId, field, value, options);
+    }
+    
+    // ========================================================================
+    // FUNZIONI HELPER: Creazione prodotti
+    // ========================================================================
+    
+    /**
+     * Crea un prodotto vuoto nella posizione se non esiste
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} productType - Tipo prodotto
+     * @param {Object} defaults - Valori di default opzionali
+     * @returns {Object|null} - Prodotto creato o esistente
+     */
+    function createProduct(project, posId, productType, defaults = {}) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.createProduct: Posizione ${posId} non trovata`);
+            return null;
+        }
+        
+        // Se esiste già, ritorna quello esistente
+        if (pos[productType]) {
+            console.log(`ℹ️ DATA_MANAGER.createProduct: ${productType} già esiste in ${posId}`);
+            return pos[productType];
+        }
+        
+        // Template prodotti di base
+        const templates = {
+            infisso: {
+                id: `inf-${Date.now()}`,
+                qta: pos.quantita || '1',
+                tipo: '',
+                tipoInfissoAssociato: 'F',
+                codiceModello: '',
+                azienda: 'finstral',
+                telaio: '',
+                finituraInt: 'pvc',
+                finituraEst: 'pvc',
+                coloreInt: '',
+                coloreEst: '',
+                tipoAnta: '',
+                vetro: '',
+                allarme: '',
+                cerniere: '',
+                maniglia: '',
+                coloreManiglia: '',
+                tagliTelaio: '',
+                codTagliValues: [],
+                ferramenta1: '',
+                lato1: '',
+                esecuzione1: '',
+                BRM_L: 0,
+                BRM_H: 0,
+                note: ''
+            },
+            persiana: {
+                id: `pers-${Date.now()}`,
+                qta: pos.quantita || '1',
+                azienda: 'P. Persiane',
+                modello: '',
+                tipo: '',
+                apertura: '',
+                fissaggio: '',
+                colorePersiana: '',
+                coloreTelaio: '',
+                battuta: '',
+                tipoStecca: '',
+                asolato: '',
+                BRM_L: 0,
+                BRM_H: 0,
+                note: ''
+            },
+            tapparella: {
+                id: `tapp-${Date.now()}`,
+                qta: pos.quantita || '1',
+                serveTapparella: true,
+                serveMotore: false,
+                serveAccessori: false,
+                tapparellaEsistente: '',
+                azienda: 'Plasticino',
+                modello: '',
+                tipo: '',
+                colore: '',
+                guida: '',
+                coloreGuida: '',
+                motoreAzienda: 'Somfy',
+                motoreModello: '',
+                accessoriDaSostituire: {},
+                BRM_L: 0,
+                BRM_H: 0,
+                note: ''
+            },
+            zanzariera: {
+                id: `zanz-${Date.now()}`,
+                qta: pos.quantita || '1',
+                tipoInfissoAssociato: 'F',
+                azienda: 'Palagina',
+                linea: '',
+                modello: '',
+                fasciaColore: '',
+                coloreTelaio: '',
+                tipoRete: '',
+                colorePlastica: '',
+                BRM_L: 0,
+                BRM_H: 0,
+                note: ''
+            },
+            cassonetto: {
+                id: `cass-${Date.now()}`,
+                qta: pos.quantita || '1',
+                azienda: 'Finstral',
+                tipo: '',
+                materialeCass: '',
+                codiceCass: '',
+                gruppoColoreCass: '',
+                coloreCass: '',
+                codiceIsolamento: '',
+                coloreDaInfisso: true,
+                aSoffitto: false,
+                LS: '',
+                SRSX: '',
+                SRDX: '',
+                ZSX: '',
+                ZDX: '',
+                HCASS: '',
+                B: '',
+                C: '',
+                BSuperiore: '',
+                BRM_L: 0,
+                BRM_H: 0,
+                note: ''
+            }
+        };
+        
+        // Usa template se disponibile, altrimenti oggetto base
+        const template = templates[productType] || { id: `${productType}-${Date.now()}`, qta: '1' };
+        
+        // Merge con defaults
+        pos[productType] = { ...template, ...defaults };
+        
+        console.log(`✅ DATA_MANAGER.createProduct: Creato ${productType} in ${posId}`);
+        return pos[productType];
+    }
+    
+    /**
+     * Rimuove un prodotto dalla posizione
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {string} posId - ID della posizione
+     * @param {string} productType - Tipo prodotto
+     * @returns {boolean} - true se rimosso con successo
+     */
+    function removeProduct(project, posId, productType) {
+        const pos = findPosition(project, posId);
+        if (!pos) {
+            console.warn(`⚠️ DATA_MANAGER.removeProduct: Posizione ${posId} non trovata`);
+            return false;
+        }
+        
+        if (pos[productType]) {
+            delete pos[productType];
+            console.log(`✅ DATA_MANAGER.removeProduct: Rimosso ${productType} da ${posId}`);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // ========================================================================
+    // FUNZIONI HELPER: Conversione formati
+    // ========================================================================
+    
+    /**
+     * Normalizza un progetto per usare il formato `positions`
+     * Converte `posizioni` → `positions` se necessario
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @returns {Object} - Progetto normalizzato
+     */
+    function normalizeProject(project) {
+        if (!project) return project;
+        
+        // Se ha posizioni ma non positions, converti
+        if (project.posizioni && !project.positions) {
+            project.positions = project.posizioni;
+            console.log('🔄 DATA_MANAGER: Convertito posizioni → positions');
+        }
+        
+        // Se ha positions ma non posizioni, aggiungi alias per compatibilità dashboard
+        if (project.positions && !project.posizioni) {
+            project.posizioni = project.positions;
+        }
+        
+        return project;
+    }
+    
+    /**
+     * Clona profondo un oggetto
+     * @param {*} obj - Oggetto da clonare
+     * @returns {*} - Clone
+     */
+    function deepClone(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    }
+    
+    // ========================================================================
+    // ESPORTA MODULO
+    // ========================================================================
+    
+    const DATA_MANAGER = {
+        VERSION: DATA_MANAGER_VERSION,
+        
+        // Accesso posizioni
+        getPositions,
+        setPositions,
+        findPosition,
+        findPositionIndex,
+        
+        // Update dati
+        updatePosition,
+        updateProduct,
+        updateMisura,
+        updateMisuraWithValidation,
+        
+        // Gestione prodotti
+        createProduct,
+        removeProduct,
+        
+        // Helper
+        normalizeProject,
+        deepClone
+    };
+    
+    // Esponi globalmente
+    window.DATA_MANAGER = DATA_MANAGER;
+    
+    console.log(`✅ Data Manager v${DATA_MANAGER_VERSION} - Pronto!`);
+    console.log('   📌 Funzioni disponibili: DATA_MANAGER.updatePosition(), updateProduct(), updateMisura(), etc.');
+    
+})();
