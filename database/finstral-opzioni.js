@@ -187,6 +187,39 @@ const FINSTRAL_OPZIONI = {
         { codice: "378", nome: "Soglia a filo pavimento" },
     ],
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // VETRI - Listino EUR 2025/10
+    // Supplementi in €/m² (minimo fatturabile 0,4 m²)
+    // ═══════════════════════════════════════════════════════════════════════
+    vetri: [
+        // DOPPIO VETRO (Plus-Valor 2) - Ug 1.1
+        { codice: "2F48", nome: "Doppio Base 28mm", tipo: "doppio", variante: "base", supplemento: 0, ug: 1.1, note: "⭐ INCLUSO" },
+        { codice: "2248", nome: "Doppio + Sicurezza P2A", tipo: "doppio", variante: "sicurezza", classe: "P2A", supplemento: 45.7, ug: 1.1 },
+        { codice: "2348", nome: "Doppio + Sicurezza P4A", tipo: "doppio", variante: "sicurezza", classe: "P4A", supplemento: 68.8, ug: 1.1 },
+        { codice: "22F8", nome: "Doppio Sicurezza Maggiorata P2A", tipo: "doppio", variante: "sicurezza-magg", classe: "P2A", supplemento: 73.1, ug: 1.1, note: "Multiprotect+Bodysafe" },
+        { codice: "23F8", nome: "Doppio Sicurezza Maggiorata P4A", tipo: "doppio", variante: "sicurezza-magg", classe: "P4A", supplemento: 99.0, ug: 1.1 },
+        { codice: "48", nome: "Doppio Satinato", tipo: "doppio", variante: "satinato", supplemento: 54.7, vetroAdattabile: "A" },
+        { codice: "49", nome: "Doppio Satinato + Sicurezza P2A", tipo: "doppio", variante: "satinato", classe: "P2A", supplemento: 54.7, vetroAdattabile: "E" },
+        
+        // TRIPLO VETRO (Max-Valor 3) - Ug 0.5-0.7
+        { codice: "1F444", nome: "Triplo Base 40mm", tipo: "triplo", variante: "base", supplemento: 72.9, ug: 0.6 },
+        { codice: "1F449", nome: "Triplo Base 46mm (Ug 0.5)", tipo: "triplo", variante: "base", supplemento: 74.2, ug: 0.5, note: "⭐ Miglior isolamento" },
+        { codice: "12449", nome: "Triplo + Sicurezza P2A 46mm", tipo: "triplo", variante: "sicurezza", classe: "P2A", supplemento: 117, ug: 0.6 },
+        { codice: "13449", nome: "Triplo + Sicurezza P4A 46mm", tipo: "triplo", variante: "sicurezza", classe: "P4A", supplemento: 143, ug: 0.6 },
+        { codice: "124F4", nome: "Triplo Sicurezza Maggiorata P2A", tipo: "triplo", variante: "sicurezza-magg", classe: "P2A", supplemento: 147, ug: 0.7, note: "Multiprotect+Bodysafe" },
+        { codice: "134F4", nome: "Triplo Sicurezza Maggiorata P4A", tipo: "triplo", variante: "sicurezza-magg", classe: "P4A", supplemento: 170, ug: 0.8 },
+        { codice: "48T", nome: "Triplo Satinato Bodysafe", tipo: "triplo", variante: "satinato", supplemento: 83.4, vetroAdattabile: "T" },
+        { codice: "486T", nome: "Triplo Satinato Bodysafe 6mm", tipo: "triplo", variante: "satinato", supplemento: 88.0, vetroAdattabile: "U" },
+    ],
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TIPO APERTURA (F/PF) - Ereditato ai prodotti
+    // ═══════════════════════════════════════════════════════════════════════
+    tipoApertura: [
+        { codice: "F", nome: "🪟 F - Finestra" },
+        { codice: "PF", nome: "🚪 PF - Porta-finestra" },
+    ],
+
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -243,6 +276,39 @@ function normalizzaTipoAnta(tipoAnta) {
 }
 
 /**
+ * Ottiene vetri filtrati per tipo
+ * @param {string} tipo - "doppio", "triplo", o null per tutti
+ * @returns {Array} Array di vetri
+ */
+function getVetriPerTipo(tipo = null) {
+    if (!tipo) return FINSTRAL_OPZIONI.vetri;
+    return FINSTRAL_OPZIONI.vetri.filter(v => v.tipo === tipo);
+}
+
+/**
+ * Ottiene dati vetro da codice
+ * @param {string} codice - Codice vetro (es. "2F48", "48T")
+ * @returns {Object|null} Dati vetro o null
+ */
+function getVetro(codice) {
+    if (!codice) return null;
+    return FINSTRAL_OPZIONI.vetri.find(v => v.codice === codice);
+}
+
+/**
+ * Calcola supplemento vetro per superficie
+ * @param {string} codice - Codice vetro
+ * @param {number} superficieM2 - Superficie in m²
+ * @returns {number} Supplemento totale in €
+ */
+function calcolaSupplementoVetro(codice, superficieM2) {
+    const vetro = getVetro(codice);
+    if (!vetro) return 0;
+    const superficieEffettiva = Math.max(superficieM2, 0.4); // Minimo 0.4 m²
+    return vetro.supplemento * superficieEffettiva;
+}
+
+/**
  * Genera HTML per una <select> da un array di opzioni
  * @param {Array} opzioni - Array di opzioni
  * @param {string} valoreSel - Valore selezionato
@@ -288,6 +354,9 @@ if (typeof window !== 'undefined') {
     window.getGruppoColorePVC = getGruppoColorePVC;
     window.getGruppoColoreAlluminio = getGruppoColoreAlluminio;
     window.normalizzaTipoAnta = normalizzaTipoAnta;
+    window.getVetriPerTipo = getVetriPerTipo;
+    window.getVetro = getVetro;
+    window.calcolaSupplementoVetro = calcolaSupplementoVetro;
     window.generaOpzioniSelect = generaOpzioniSelect;
     window.generaSelectFinstral = generaSelectFinstral;
 }
@@ -299,6 +368,9 @@ if (typeof module !== 'undefined' && module.exports) {
         getGruppoColorePVC,
         getGruppoColoreAlluminio,
         normalizzaTipoAnta,
+        getVetriPerTipo,
+        getVetro,
+        calcolaSupplementoVetro,
         generaOpzioniSelect,
         generaSelectFinstral
     };
