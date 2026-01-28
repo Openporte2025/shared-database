@@ -1,5 +1,6 @@
 // ============================================================================
-// JSON-MANAGER v1.0.0 - Gestione Unificata Export/Import JSON
+// JSON-MANAGER v1.1.0 - Gestione Unificata Export/Import JSON
+// v1.1.0: Aggiunto supporto campi Odoo (odoo_id, odoo_customer) - PROTETTI
 // ============================================================================
 // 
 // ⚠️ MODULO CENTRALIZZATO - Usato da App Rilievo + Dashboard
@@ -15,7 +16,7 @@
 
 const JSON_MANAGER = {
     
-    version: '1.0.0',
+    version: '1.1.0',
     schemaVersion: '5.78',
     
     // =========================================================================
@@ -76,6 +77,12 @@ const JSON_MANAGER = {
             id: project.id,
             name: project.name || '',
             client: project.client || '',
+            
+            // === CAMPI ODOO (PROTETTI - mai sovrascrivere se esistenti) ===
+            odoo_id: project.odoo_id || null,
+            odoo_customer_id: project.odoo_customer_id || project.odoo_id || null,
+            odoo_customer: project.odoo_customer || null,
+            // === FINE CAMPI ODOO ===
             
             // Dati cliente
             clientData: this._normalizeClientData(project.clientData),
@@ -451,6 +458,12 @@ const JSON_MANAGER = {
             name: data.name || '',
             client: data.client || '',
             
+            // === CAMPI ODOO (PROTETTI - mai sovrascrivere se esistenti) ===
+            odoo_id: data.odoo_id || null,
+            odoo_customer_id: data.odoo_customer_id || data.odoo_id || null,
+            odoo_customer: data.odoo_customer || null,
+            // === FINE CAMPI ODOO ===
+            
             clientData: data.clientData || {},
             linkSchizzo: data.linkSchizzo || '',
             
@@ -556,6 +569,11 @@ const JSON_MANAGER = {
         
         if (!data.id) {
             errors.push('Campo "id" mancante');
+        }
+        
+        // Warning per campi Odoo mancanti
+        if (!data.odoo_id && !data.odoo_customer_id) {
+            warnings.push('Progetto non collegato a Odoo (odoo_id mancante)');
         }
         
         // Controlla posizioni
@@ -801,6 +819,74 @@ const JSON_MANAGER = {
     
     _generateId(prefix = 'prj') {
         return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    },
+    
+    // =========================================================================
+    // ODOO INTEGRATION HELPERS
+    // =========================================================================
+    
+    /**
+     * Lista dei campi Odoo protetti che non devono mai essere sovrascritti
+     */
+    ODOO_PROTECTED_FIELDS: ['odoo_id', 'odoo_customer_id', 'odoo_customer'],
+    
+    /**
+     * Merge progetto preservando SEMPRE i campi Odoo esistenti
+     * Usa questa funzione quando aggiorni un progetto per non perdere il link a Odoo
+     * 
+     * @param {Object} existingProject - Progetto esistente (con odoo_id)
+     * @param {Object} newData - Nuovi dati da applicare
+     * @returns {Object} Progetto merged con campi Odoo preservati
+     */
+    mergePreservingOdoo(existingProject, newData) {
+        // Estrai campi Odoo dal progetto esistente
+        const odooFields = {};
+        this.ODOO_PROTECTED_FIELDS.forEach(field => {
+            if (existingProject && existingProject[field]) {
+                odooFields[field] = existingProject[field];
+            }
+        });
+        
+        // Merge: newData vince, ma campi Odoo vengono preservati
+        return {
+            ...newData,
+            ...odooFields  // Odoo fields sempre in cima (prevalgono)
+        };
+    },
+    
+    /**
+     * Imposta dati Odoo su un progetto
+     * @param {Object} project - Progetto
+     * @param {number} odooId - ID cliente Odoo
+     * @param {Object} odooCustomer - Dati cliente Odoo opzionali
+     * @returns {Object} Progetto con dati Odoo
+     */
+    setOdooData(project, odooId, odooCustomer = null) {
+        return {
+            ...project,
+            odoo_id: odooId,
+            odoo_customer_id: odooId,
+            odoo_customer: odooCustomer
+        };
+    },
+    
+    /**
+     * Verifica se un progetto è collegato a Odoo
+     * @param {Object} project - Progetto
+     * @returns {boolean}
+     */
+    hasOdooLink(project) {
+        return !!(project && (project.odoo_id || project.odoo_customer_id));
+    },
+    
+    /**
+     * Estrae l'ID Odoo da un progetto
+     * @param {Object} project - Progetto
+     * @returns {number|null}
+     */
+    getOdooId(project) {
+        if (!project) return null;
+        return project.odoo_id || project.odoo_customer_id || null;
     },
     
     // =========================================================================
