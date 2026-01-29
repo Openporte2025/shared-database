@@ -1,13 +1,18 @@
 // ============================================================================
-// JSON-MANAGER v2.0.0
+// JSON-MANAGER v2.0.0 - Gestione Unificata Export/Import JSON
 // ============================================================================
 // 
-// Modulo unificato per App Rilievo + Dashboard + O.P.E.R.A.
+// Modulo centralizzato per: App Rilievo + Dashboard + App Posa + O.P.E.R.A.
 // 
-// v2.0.0 - Riorganizzazione completa:
-//   • Supporto Odoo (campi protetti)
-//   • Supporto Fattura Infissi Web (dati fiscali/ENEA)
-//   • Nuovi campi: installazione, vetroVecchio, zonaClimatica, etc.
+// STRUTTURA JSON:
+//   1. CLIENTE      - Anagrafica completa
+//   2. IMMOBILE     - Indirizzo lavori, zona climatica, detrazioni
+//   3. MURO         - Caratteristiche globali vano
+//   4. ESISTENTE    - Infissi/prodotti attuali (globale → override posizione)
+//   5. CONFIG       - Configurazione prodotti (globale → override posizione)
+//   6. POSIZIONI    - Array singoli vani
+//   7. ODOO         - Link CRM (campi protetti)
+//   8. METADATA     - Versioning, sync
 //
 // ============================================================================
 
@@ -16,56 +21,99 @@ const JSON_MANAGER = {
     version: '2.0.0',
     schemaVersion: '6.0',
 
-
     // =========================================================================
-    // 1. CONFIGURAZIONE
+    // 1. CONFIGURAZIONE CENTRALIZZATA
     // =========================================================================
     
     CONFIG: {
-        // Campi Odoo che non devono MAI essere sovrascritti
+        
+        // Campi Odoo protetti (mai sovrascrivere)
         ODOO_PROTECTED: ['odoo_id', 'odoo_customer_id', 'odoo_customer'],
         
         // Valori di default
         DEFAULTS: {
+            // Immobile
             zonaClimatica: 'E',
             tipoDetrazione: '50',
+            
+            // Posizione
             installazione: 'mazzetta',
-            piano: '1',
+            piano: '0',
             quantita: '1',
-            vetroVecchio: 'doppio',
-            materialeVecchio: 'legno'
+            
+            // Esistente
+            materialeInfisso: 'legno',
+            vetroEsistente: 'doppio',
+            materialePersiana: 'legno',
+            tipoTapparella: 'plastica'
         },
         
-        // Opzioni per i dropdown nelle app
+        // Opzioni dropdown (usate da tutte le app)
         OPZIONI: {
-            zonaClimatica: ['A', 'B', 'C', 'D', 'E', 'F'],
-            tipoDetrazione: ['nessuna', '50', '65', '110'],
-            installazione: ['mazzetta', 'filo muro interno', 'filo muro esterno'],
-            vetro: ['singolo', 'doppio', 'triplo'],
-            materiale: ['legno', 'pvc', 'alluminio', 'ferro', 'misto']
+            zonaClimatica: [
+                { codice: 'A', nome: 'A - Molto caldo' },
+                { codice: 'B', nome: 'B - Caldo' },
+                { codice: 'C', nome: 'C - Temperato caldo' },
+                { codice: 'D', nome: 'D - Temperato freddo' },
+                { codice: 'E', nome: 'E - Freddo' },
+                { codice: 'F', nome: 'F - Molto freddo' }
+            ],
+            tipoDetrazione: [
+                { codice: 'nessuna', nome: 'Nessuna detrazione' },
+                { codice: '50', nome: '50% - Ristrutturazione' },
+                { codice: '65', nome: '65% - Risparmio energetico' },
+                { codice: '110', nome: '110% - Superbonus' }
+            ],
+            tipoApertura: [
+                { codice: 'F', nome: '🪟 F - Finestra' },
+                { codice: 'PF', nome: '🚪 PF - Porta-finestra' }
+            ],
+            installazione: [
+                { codice: 'filo_muro', nome: '🧱 Filo Muro Interno' },
+                { codice: 'mazzetta', nome: '📐 In Mazzetta' }
+            ],
+            materialeEsistente: [
+                { codice: 'legno', nome: 'Legno' },
+                { codice: 'pvc', nome: 'PVC' },
+                { codice: 'alluminio', nome: 'Alluminio' },
+                { codice: 'ferro', nome: 'Ferro' },
+                { codice: 'legno_alluminio', nome: 'Legno/Alluminio' }
+            ],
+            vetroEsistente: [
+                { codice: 'singolo', nome: 'Singolo' },
+                { codice: 'doppio', nome: 'Doppio' },
+                { codice: 'triplo', nome: 'Triplo' }
+            ],
+            tipoMuro: [
+                { codice: 'muratura', nome: 'Muratura piena' },
+                { codice: 'forato', nome: 'Laterizio forato' },
+                { codice: 'cartongesso', nome: 'Cartongesso' },
+                { codice: 'cemento', nome: 'Cemento armato' },
+                { codice: 'pietra', nome: 'Pietra' }
+            ]
         },
         
         // Aziende di default per prodotto
         AZIENDE: {
-            infisso: 'finstral',
+            infisso: 'Finstral',
             persiana: 'P. Persiane',
             tapparella: 'Plasticino',
             zanzariera: 'Palagina',
             cassonetto: 'Finstral',
             blindata: 'Oikos',
-            portaInterna: 'FERREROLEGNO'
+            portoncino: 'Oikos',
+            portaInterna: 'FerreroLegno'
         }
     },
-
 
     // =========================================================================
     // 2. EXPORT PROGETTO
     // =========================================================================
     
     /**
-     * Esporta un progetto in formato JSON standard
+     * Esporta progetto in formato JSON standard
      * @param {Object} project - Progetto da esportare
-     * @param {Object} options - { source: 'app'|'dashboard'|'opera' }
+     * @param {Object} options - { source: 'app-rilievo'|'dashboard'|'posa' }
      * @returns {Object} JSON strutturato
      */
     exportProject(project, options = {}) {
@@ -75,8 +123,7 @@ const JSON_MANAGER = {
         const source = options.source || 'unknown';
         
         return {
-            
-            // --- SCHEMA ---
+            // === SCHEMA ===
             _schema: {
                 version: this.schemaVersion,
                 managerVersion: this.version,
@@ -84,108 +131,101 @@ const JSON_MANAGER = {
                 exportedFrom: source
             },
             
-            // --- IDENTIFICATIVI ---
+            // === IDENTIFICATIVI ===
             id: project.id,
             name: project.name || '',
-            client: project.client || '',
             
-            // --- ODOO (protetti) ---
-            odoo_id: project.odoo_id || null,
-            odoo_customer_id: project.odoo_customer_id || project.odoo_id || null,
-            odoo_customer: project.odoo_customer || null,
+            // === 1. CLIENTE ===
+            cliente: this._exportCliente(project.cliente || project.clientData),
             
-            // --- CLIENTE ---
-            clientData: this._exportClientData(project.clientData),
+            // === 2. IMMOBILE ===
+            immobile: this._exportImmobile(project.immobile, project.cliente || project.clientData),
             
-            // --- IMMOBILE E FISCALE ---
-            immobile: this._exportImmobile(project),
+            // === 3. MURO (globale) ===
+            muro: this._exportMuro(project.muro || project.caratteristicheMuro),
             
-            // --- CONFIGURAZIONI GLOBALI ---
+            // === 4. ESISTENTE (globale) ===
+            esistente: this._exportEsistenteGlobale(project.esistente || project.rilievoGlobaleInfissi),
+            
+            // === 5. CONFIG PRODOTTI (globale) ===
+            configProdotti: {
+                infissi: project.configInfissi || {},
+                persiane: project.configPersiane || {},
+                tapparelle: project.configTapparelle || {},
+                zanzariere: project.configZanzariere || {},
+                cassonetti: project.configCassonetti || {}
+            },
+            
+            // Prodotti abilitati
+            prodottiAbilitati: this._exportProdottiAbilitati(project.prodotti),
+            
+            // Link schizzo
             linkSchizzo: project.linkSchizzo || '',
-            prodotti: this._exportProdottiAbilitati(project.prodotti),
-            caratteristicheMuro: this._exportCaratteristicheMuro(project.caratteristicheMuro),
             
-            // --- CONFIG PRODOTTI ---
-            configInfissi: project.configInfissi || {},
-            configPersiane: project.configPersiane || {},
-            configTapparelle: project.configTapparelle || {},
-            configZanzariere: project.configZanzariere || {},
-            configCassonetti: project.configCassonetti || {},
+            // === 6. POSIZIONI ===
+            posizioni: (project.positions || project.posizioni || []).map(p => this._exportPosizione(p)),
             
-            // --- RILIEVI GLOBALI ---
-            rilievoGlobaleInfissi: project.rilievoGlobaleInfissi || {},
-            rilievoPersiane: project.rilievoPersiane || {},
-            rilievoTapparelle: project.rilievoTapparelle || {},
+            // === 7. ODOO ===
+            odoo: {
+                id: project.odoo_id || null,
+                customer_id: project.odoo_customer_id || project.odoo_id || null,
+                customer: project.odoo_customer || null
+            },
             
-            // --- BRM CONFIG ---
-            brmConfigInfissi: project.brmConfigInfissi || {},
-            brmConfigPersiane: project.brmConfigPersiane || {},
-            brmConfigTapparelle: project.brmConfigTapparelle || {},
-            brmConfigZanzariere: project.brmConfigZanzariere || {},
+            // === 8. METADATA ===
+            metadata: this._exportMetadata(project, source),
             
-            // --- POSIZIONI ---
-            positions: (project.positions || []).map(p => this._exportPosition(p)),
-            
-            // --- TOTALI ---
-            totali: this._calcolaTotali(project),
-            
-            // --- METADATA ---
-            metadata: this._exportMetadata(project, source)
+            // === TOTALI ===
+            totali: this._calcolaTotali(project)
         };
     },
-
 
     // =========================================================================
     // 3. EXPORT SEZIONI
     // =========================================================================
     
     /**
-     * Dati cliente (separati per Fattura Infissi Web)
+     * 1. CLIENTE - Anagrafica completa
      */
-    _exportClientData(cd) {
-        cd = cd || {};
+    _exportCliente(cl) {
+        cl = cl || {};
         return {
             // Anagrafica
-            nome: cd.nome || '',
-            cognome: cd.cognome || '',
-            ragioneSociale: cd.ragioneSociale || '',
-            codiceFiscale: cd.codiceFiscale || '',
-            partitaIva: cd.partitaIva || '',
+            nome: cl.nome || '',
+            cognome: cl.cognome || '',
+            ragioneSociale: cl.ragioneSociale || '',
+            codiceFiscale: cl.codiceFiscale || '',
+            partitaIva: cl.partitaIva || '',
             
             // Contatti
-            telefono: cd.telefono || '',
-            email: cd.email || '',
-            pec: cd.pec || '',
+            telefono: cl.telefono || '',
+            email: cl.email || '',
             
-            // Indirizzo (separato)
-            via: cd.via || cd.indirizzo || '',
-            cap: cd.cap || '',
-            comune: cd.comune || '',
-            provincia: cd.provincia || '',
-            
-            // Indirizzo completo (retrocompatibilità)
-            indirizzo: cd.indirizzo || this._buildIndirizzo(cd)
+            // Indirizzo residenza
+            indirizzo: cl.indirizzo || cl.via || '',
+            comune: cl.comune || '',
+            provincia: cl.provincia || '',
+            cap: cl.cap || ''
         };
     },
     
     /**
-     * Dati immobile per detrazioni fiscali
+     * 2. IMMOBILE - Dove si fa il lavoro
      */
-    _exportImmobile(project) {
-        const imm = project.immobile || {};
-        const cd = project.clientData || {};
+    _exportImmobile(imm, cliente) {
+        imm = imm || {};
+        cliente = cliente || {};
         
         return {
-            // Indirizzo lavori (può essere diverso da residenza)
-            via: imm.via || cd.via || '',
-            cap: imm.cap || cd.cap || '',
-            comune: imm.comune || cd.comune || '',
-            provincia: imm.provincia || cd.provincia || '',
+            // Indirizzo lavori (default = residenza cliente)
+            indirizzo: imm.indirizzo || imm.via || cliente.indirizzo || cliente.via || '',
+            comune: imm.comune || cliente.comune || '',
+            provincia: imm.provincia || cliente.provincia || '',
+            cap: imm.cap || cliente.cap || '',
             
-            // Dati fiscali
-            zonaClimatica: imm.zonaClimatica || project.zonaClimatica || this.CONFIG.DEFAULTS.zonaClimatica,
-            tipoDetrazione: imm.tipoDetrazione || project.tipoDetrazione || this.CONFIG.DEFAULTS.tipoDetrazione,
-            tipoIntervento: imm.tipoIntervento || 'manutenzione_ordinaria',
+            // Dati fiscali/ENEA
+            zonaClimatica: imm.zonaClimatica || this.CONFIG.DEFAULTS.zonaClimatica,
+            tipoDetrazione: imm.tipoDetrazione || this.CONFIG.DEFAULTS.tipoDetrazione,
             
             // Catasto (opzionale)
             catastoFoglio: imm.catastoFoglio || '',
@@ -195,41 +235,88 @@ const JSON_MANAGER = {
     },
     
     /**
-     * Singola posizione
+     * 3. MURO - Caratteristiche globali vano
      */
-    _exportPosition(pos) {
+    _exportMuro(muro) {
+        muro = muro || {};
+        return {
+            tipoMuro: muro.tipoMuro || '',
+            spessoreInt: muro.spessoreInt || muro.spessoreMuroInt || '',
+            spessoreEst: muro.spessoreEst || muro.spessoreMuroEst || '',
+            isolamento: muro.isolamento || '',
+            note: muro.note || ''
+        };
+    },
+    
+    /**
+     * 4. ESISTENTE - Prodotti attuali (globale, ereditato a posizioni)
+     */
+    _exportEsistenteGlobale(es) {
+        es = es || {};
+        return {
+            infisso: {
+                materiale: es.materialeInfisso || es.materiale || this.CONFIG.DEFAULTS.materialeInfisso,
+                vetro: es.vetroEsistente || es.vetro || this.CONFIG.DEFAULTS.vetroEsistente,
+                stato: es.statoInfisso || '',
+                togliere: es.togliere ?? true,
+                smaltimento: es.smaltimento ?? true
+            },
+            persiana: {
+                materiale: es.materialePersiana || this.CONFIG.DEFAULTS.materialePersiana,
+                stato: es.statoPersiana || '',
+                togliere: es.toglierePersiana ?? false,
+                smaltimento: es.smaltimentoPersiana ?? false
+            },
+            tapparella: {
+                tipo: es.tipoTapparella || this.CONFIG.DEFAULTS.tipoTapparella,
+                stato: es.statoTapparella || '',
+                togliere: es.togliereTapparella ?? false,
+                smaltimento: es.smaltimentoTapparella ?? false
+            },
+            cassonetto: {
+                tipo: es.tipoCassonetto || '',
+                stato: es.statoCassonetto || '',
+                togliere: es.togliereCassonetto ?? false,
+                smaltimento: es.smaltimentoCassonetto ?? false
+            },
+            // Coprifili
+            coprifiliInt: es.coprifiliInt ?? false,
+            coprifiliEst: es.coprifiliEst ?? false,
+            note: es.note || ''
+        };
+    },
+    
+    /**
+     * 6. POSIZIONE singola
+     */
+    _exportPosizione(pos) {
         return {
             // Identificativi
             id: pos.id,
-            name: pos.name || pos.nome || '',
+            nome: pos.name || pos.nome || '',
             
             // Localizzazione
             ambiente: pos.ambiente || '',
             piano: pos.piano || this.CONFIG.DEFAULTS.piano,
             
-            // Tipo e quantità
-            quantita: pos.quantita || this.CONFIG.DEFAULTS.quantita,
-            tipoposizione: pos.tipoposizione || null,  // finestra, portafinestra
-            tipoApertura: pos.tipoApertura || null,    // F, PF
+            // Tipo vano
+            tipoApertura: pos.tipoApertura || null,
+            installazione: pos.installazione || pos.posizioneTelaio || this.CONFIG.DEFAULTS.installazione,
             
-            // INSTALLAZIONE (filo muro / mazzetta)
-            installazione: pos.installazione || this.CONFIG.DEFAULTS.installazione,
+            // Quantità
+            quantita: pos.quantita || this.CONFIG.DEFAULTS.quantita,
             
             // Misure
             misure: this._exportMisure(pos.misure),
             misureNonServe: pos.misureNonServe || {},
             
-            // Caratteristiche muro (override)
-            overrideCaratteristiche: pos.overrideCaratteristiche || false,
-            caratteristicheMuroOverride: pos.caratteristicheMuroOverride || null,
+            // ESISTENTE (override del globale)
+            esistente: pos.esistente || pos.rilievo ? this._exportEsistentePosizione(pos.esistente || pos.rilievo) : null,
             
-            // RILIEVO (infisso esistente per ENEA)
-            rilievo: this._exportRilievo(pos.rilievo),
+            // MURO (override del globale)
+            muroOverride: pos.overrideCaratteristiche ? pos.caratteristicheMuroOverride : null,
             
-            // Prodotti assenti
-            prodottiAssenti: pos.prodottiAssenti || [],
-            
-            // Prodotti configurati
+            // PRODOTTI
             infisso: pos.infisso ? this._exportInfisso(pos.infisso) : null,
             persiana: pos.persiana ? this._exportPersiana(pos.persiana) : null,
             tapparella: pos.tapparella ? this._exportTapparella(pos.tapparella) : null,
@@ -237,8 +324,9 @@ const JSON_MANAGER = {
             cassonetto: pos.cassonetto ? this._exportCassonetto(pos.cassonetto) : null,
             ingresso: pos.ingresso || null,
             portaInterna: pos.portaInterna || null,
-            clickZip: pos.clickZip || null,
-            tendaBracci: pos.tendaBracci || null,
+            
+            // Prodotti assenti (esclusi deliberatamente)
+            prodottiAssenti: pos.prodottiAssenti || [],
             
             // Note e media
             note: pos.note || '',
@@ -248,38 +336,33 @@ const JSON_MANAGER = {
     },
     
     /**
-     * Rilievo infisso esistente (per ENEA)
+     * ESISTENTE a livello posizione (override del globale)
      */
-    _exportRilievo(ril) {
-        ril = ril || {};
+    _exportEsistentePosizione(es) {
+        if (!es) return null;
         return {
-            // Smontaggio
-            togliere: ril.togliere ?? false,
-            smaltimento: ril.smaltimento ?? false,
-            
-            // INFISSO VECCHIO (per ENEA)
-            materialeVecchio: ril.materialeVecchio || ril.materiale || this.CONFIG.DEFAULTS.materialeVecchio,
-            vetroVecchio: ril.vetroVecchio || this.CONFIG.DEFAULTS.vetroVecchio,
-            
-            // Coprifili
-            coprifiliInt: ril.coprifiliInt ?? false,
-            coprifiliEst: ril.coprifiliEst ?? false,
-            
-            // Note
-            note: ril.note || ''
+            infisso: {
+                materiale: es.materiale || es.materialeVecchio || null,
+                vetro: es.vetro || es.vetroVecchio || null,
+                togliere: es.togliere ?? null,
+                smaltimento: es.smaltimento ?? null
+            },
+            coprifiliInt: es.coprifiliInt ?? null,
+            coprifiliEst: es.coprifiliEst ?? null,
+            note: es.note || ''
         };
     },
     
     /**
-     * Misure posizione
+     * MISURE posizione
      */
     _exportMisure(mis) {
         mis = mis || {};
         return {
-            LVT: mis.LVT ?? '',      // Larghezza vetro/telaio
-            HVT: mis.HVT ?? '',      // Altezza vetro/telaio
-            LF: mis.LF ?? '',        // Larghezza foro
-            HF: mis.HF ?? '',        // Altezza foro
+            LVT: mis.LVT ?? '',
+            HVT: mis.HVT ?? '',
+            LF: mis.LF ?? '',
+            HF: mis.HF ?? '',
             TMV: mis.TMV ?? '',
             HMT: mis.HMT ?? '',
             L4: mis.L4 ?? '',
@@ -291,7 +374,6 @@ const JSON_MANAGER = {
             HPavimentoParapetto: mis.HPavimentoParapetto ?? ''
         };
     },
-
 
     // =========================================================================
     // 4. EXPORT PRODOTTI
@@ -454,13 +536,12 @@ const JSON_MANAGER = {
         };
     },
 
-
     // =========================================================================
     // 5. IMPORT PROGETTO
     // =========================================================================
     
     /**
-     * Importa un progetto da JSON
+     * Importa progetto da JSON
      */
     importProject(jsonData, options = {}) {
         const data = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -468,48 +549,52 @@ const JSON_MANAGER = {
         // Valida
         const validation = this.validateJSON(data);
         if (!validation.valid && !options.forceImport) {
-            throw new Error(`JSON non valido: ${validation.errors.join(', ')}`);
+            console.warn('⚠️ Import warnings:', validation.warnings);
         }
+        
+        // Supporta sia formato nuovo (cliente) che vecchio (clientData)
+        const cliente = data.cliente || data.clientData || {};
         
         return {
             // Identificativi
             id: data.id || this._generateId(),
             name: data.name || '',
-            client: data.client || '',
             
-            // Odoo (protetti)
-            odoo_id: data.odoo_id || null,
-            odoo_customer_id: data.odoo_customer_id || data.odoo_id || null,
-            odoo_customer: data.odoo_customer || null,
-            
-            // Cliente
-            clientData: data.clientData || {},
+            // Cliente (normalizzato)
+            cliente: cliente,
+            clientData: cliente, // Retrocompatibilità
             
             // Immobile
             immobile: data.immobile || {},
             
-            // Configurazioni
+            // Muro (normalizzato)
+            muro: data.muro || data.caratteristicheMuro || {},
+            caratteristicheMuro: data.muro || data.caratteristicheMuro || {},
+            
+            // Esistente (globale)
+            esistente: data.esistente || {},
+            rilievoGlobaleInfissi: data.esistente?.infisso || data.rilievoGlobaleInfissi || {},
+            
+            // Config prodotti
+            configInfissi: data.configProdotti?.infissi || data.configInfissi || {},
+            configPersiane: data.configProdotti?.persiane || data.configPersiane || {},
+            configTapparelle: data.configProdotti?.tapparelle || data.configTapparelle || {},
+            configZanzariere: data.configProdotti?.zanzariere || data.configZanzariere || {},
+            configCassonetti: data.configProdotti?.cassonetti || data.configCassonetti || {},
+            
+            // Prodotti abilitati
+            prodotti: data.prodottiAbilitati || data.prodotti || {},
+            
+            // Link
             linkSchizzo: data.linkSchizzo || '',
-            prodotti: data.prodotti || {},
-            caratteristicheMuro: data.caratteristicheMuro || {},
             
-            configInfissi: data.configInfissi || {},
-            configPersiane: data.configPersiane || {},
-            configTapparelle: data.configTapparelle || {},
-            configZanzariere: data.configZanzariere || {},
-            configCassonetti: data.configCassonetti || {},
+            // Posizioni (normalizzate)
+            positions: (data.posizioni || data.positions || []).map(p => this._importPosizione(p)),
             
-            rilievoGlobaleInfissi: data.rilievoGlobaleInfissi || {},
-            rilievoPersiane: data.rilievoPersiane || {},
-            rilievoTapparelle: data.rilievoTapparelle || {},
-            
-            brmConfigInfissi: data.brmConfigInfissi || {},
-            brmConfigPersiane: data.brmConfigPersiane || {},
-            brmConfigTapparelle: data.brmConfigTapparelle || {},
-            brmConfigZanzariere: data.brmConfigZanzariere || {},
-            
-            // Posizioni
-            positions: (data.positions || []).map(p => this._importPosition(p)),
+            // Odoo
+            odoo_id: data.odoo?.id || data.odoo_id || null,
+            odoo_customer_id: data.odoo?.customer_id || data.odoo_customer_id || null,
+            odoo_customer: data.odoo?.customer || data.odoo_customer || null,
             
             // Metadata
             metadata: {
@@ -520,24 +605,31 @@ const JSON_MANAGER = {
         };
     },
     
-    _importPosition(pos) {
+    _importPosizione(pos) {
         return {
             id: pos.id || this._generateId('pos'),
-            name: pos.name || pos.nome || '',
+            name: pos.nome || pos.name || '',
+            nome: pos.nome || pos.name || '',
             ambiente: pos.ambiente || '',
             piano: pos.piano || this.CONFIG.DEFAULTS.piano,
             quantita: pos.quantita || this.CONFIG.DEFAULTS.quantita,
-            tipoposizione: pos.tipoposizione || null,
+            
             tipoApertura: pos.tipoApertura || null,
             installazione: pos.installazione || this.CONFIG.DEFAULTS.installazione,
+            posizioneTelaio: pos.installazione || pos.posizioneTelaio || this.CONFIG.DEFAULTS.installazione,
             
             misure: pos.misure || {},
             misureNonServe: pos.misureNonServe || {},
-            overrideCaratteristiche: pos.overrideCaratteristiche || false,
-            caratteristicheMuroOverride: pos.caratteristicheMuroOverride || null,
-            rilievo: pos.rilievo || {},
-            prodottiAssenti: pos.prodottiAssenti || [],
             
+            // Esistente (override)
+            esistente: pos.esistente || null,
+            rilievo: pos.esistente ? this._importEsistentePosizione(pos.esistente) : (pos.rilievo || {}),
+            
+            // Muro override
+            overrideCaratteristiche: !!pos.muroOverride,
+            caratteristicheMuroOverride: pos.muroOverride || null,
+            
+            // Prodotti
             infisso: pos.infisso || null,
             persiana: pos.persiana || null,
             tapparella: pos.tapparella || null,
@@ -545,15 +637,29 @@ const JSON_MANAGER = {
             cassonetto: pos.cassonetto || null,
             ingresso: pos.ingresso || null,
             portaInterna: pos.portaInterna || null,
-            clickZip: pos.clickZip || null,
-            tendaBracci: pos.tendaBracci || null,
+            
+            prodottiAssenti: pos.prodottiAssenti || [],
             
             note: pos.note || '',
             foto: pos.foto || [],
             drawings: pos.drawings || []
         };
     },
-
+    
+    _importEsistentePosizione(es) {
+        if (!es) return {};
+        return {
+            materiale: es.infisso?.materiale || '',
+            materialeVecchio: es.infisso?.materiale || '',
+            vetro: es.infisso?.vetro || '',
+            vetroVecchio: es.infisso?.vetro || '',
+            togliere: es.infisso?.togliere ?? true,
+            smaltimento: es.infisso?.smaltimento ?? true,
+            coprifiliInt: es.coprifiliInt ?? false,
+            coprifiliEst: es.coprifiliEst ?? false,
+            note: es.note || ''
+        };
+    },
 
     // =========================================================================
     // 6. VALIDAZIONE
@@ -567,26 +673,34 @@ const JSON_MANAGER = {
             return { valid: false, errors: ['JSON vuoto'], warnings };
         }
         
-        // Errori
-        if (!data.id) errors.push('id mancante');
+        // Errori bloccanti
+        if (!data.id) errors.push('ID progetto mancante');
         
-        // Warning
-        if (!data.odoo_id) warnings.push('Non collegato a Odoo');
-        if (!data.immobile?.zonaClimatica) warnings.push('Zona climatica mancante');
-        if (!data.clientData?.codiceFiscale) warnings.push('Codice fiscale mancante');
+        // Warnings
+        const cliente = data.cliente || data.clientData || {};
+        if (!cliente.nome && !cliente.cognome && !cliente.ragioneSociale) {
+            warnings.push('Dati cliente mancanti');
+        }
+        if (!cliente.codiceFiscale && !cliente.partitaIva) {
+            warnings.push('Codice fiscale o P.IVA mancante');
+        }
+        
+        const immobile = data.immobile || {};
+        if (!immobile.zonaClimatica) {
+            warnings.push('Zona climatica mancante (necessaria per ENEA)');
+        }
         
         // Posizioni
-        (data.positions || []).forEach((pos, i) => {
+        const posizioni = data.posizioni || data.positions || [];
+        posizioni.forEach((pos, i) => {
             const n = i + 1;
-            if (!pos.ambiente) warnings.push(`Pos ${n}: ambiente mancante`);
-            if (!pos.piano) warnings.push(`Pos ${n}: piano mancante`);
-            if (!pos.installazione) warnings.push(`Pos ${n}: installazione mancante`);
-            if (!pos.rilievo?.vetroVecchio) warnings.push(`Pos ${n}: vetro vecchio mancante (ENEA)`);
+            if (!pos.ambiente) warnings.push(`Posizione ${n}: ambiente mancante`);
+            if (!pos.tipoApertura) warnings.push(`Posizione ${n}: tipo apertura (F/PF) mancante`);
+            if (!pos.installazione && !pos.posizioneTelaio) warnings.push(`Posizione ${n}: installazione mancante`);
         });
         
         return { valid: errors.length === 0, errors, warnings };
     },
-
 
     // =========================================================================
     // 7. ODOO HELPERS
@@ -629,9 +743,8 @@ const JSON_MANAGER = {
         return project?.odoo_id || project?.odoo_customer_id || null;
     },
 
-
     // =========================================================================
-    // 8. FATTURA INFISSI WEB HELPERS
+    // 8. FATTURA INFISSI / ENEA HELPERS
     // =========================================================================
     
     /**
@@ -639,24 +752,28 @@ const JSON_MANAGER = {
      */
     checkReadyForFatturaInfissi(project) {
         const missing = [];
-        const cd = project.clientData || {};
-        const imm = project.immobile || {};
+        const cliente = project.cliente || project.clientData || {};
+        const immobile = project.immobile || {};
         
         // Cliente
-        if (!cd.codiceFiscale && !cd.partitaIva) missing.push('Codice Fiscale o P.IVA');
-        if (!cd.cap) missing.push('CAP');
-        if (!cd.comune) missing.push('Comune');
+        if (!cliente.codiceFiscale && !cliente.partitaIva) missing.push('Codice Fiscale o P.IVA');
+        if (!cliente.cap) missing.push('CAP cliente');
+        if (!cliente.comune) missing.push('Comune cliente');
         
         // Immobile
-        if (!imm.zonaClimatica) missing.push('Zona climatica');
+        if (!immobile.zonaClimatica) missing.push('Zona climatica');
         
         // Posizioni
-        (project.positions || []).forEach((pos, i) => {
+        const posizioni = project.positions || project.posizioni || [];
+        posizioni.forEach((pos, i) => {
             const n = i + 1;
             if (!pos.piano) missing.push(`Pos ${n}: piano`);
-            if (!pos.installazione) missing.push(`Pos ${n}: installazione`);
-            if (!pos.rilievo?.vetroVecchio) missing.push(`Pos ${n}: vetro vecchio`);
-            if (!pos.rilievo?.materialeVecchio) missing.push(`Pos ${n}: materiale vecchio`);
+            if (!pos.installazione && !pos.posizioneTelaio) missing.push(`Pos ${n}: installazione`);
+            
+            const es = pos.esistente || pos.rilievo || {};
+            const infEs = es.infisso || es;
+            if (!infEs.vetro && !infEs.vetroVecchio) missing.push(`Pos ${n}: vetro esistente`);
+            if (!infEs.materiale && !infEs.materialeVecchio) missing.push(`Pos ${n}: materiale esistente`);
         });
         
         return {
@@ -666,25 +783,19 @@ const JSON_MANAGER = {
     },
     
     /**
-     * Determina materiale per ENEA (nuovo)
+     * Determina materiale per ENEA dal nuovo infisso
      */
     getMaterialeENEA(infisso) {
         if (!infisso) return '';
-        const i = (infisso.finituraInt || '').toLowerCase();
-        const e = (infisso.finituraEst || '').toLowerCase();
-        if (i === e) return i || 'misto';
+        const int = (infisso.finituraInt || '').toLowerCase();
+        const est = (infisso.finituraEst || '').toLowerCase();
+        if (int === est) return int || 'misto';
         return 'misto';
     },
-
 
     // =========================================================================
     // 9. UTILITY
     // =========================================================================
-    
-    _buildIndirizzo(cd) {
-        const parts = [cd.via, cd.cap, cd.comune, cd.provincia].filter(Boolean);
-        return parts.join(', ');
-    },
     
     _exportProdottiAbilitati(prod) {
         prod = prod || {};
@@ -700,18 +811,8 @@ const JSON_MANAGER = {
         };
     },
     
-    _exportCaratteristicheMuro(cm) {
-        cm = cm || {};
-        return {
-            spessoreMuroInt: cm.spessoreMuroInt ?? '',
-            spessoreMuroEst: cm.spessoreMuroEst ?? '',
-            tipoMuro: cm.tipoMuro ?? '',
-            isolamento: cm.isolamento ?? ''
-        };
-    },
-    
     _calcolaTotali(project) {
-        const pos = project.positions || [];
+        const pos = project.positions || project.posizioni || [];
         return {
             n_posizioni: pos.length,
             n_infissi: pos.filter(p => p.infisso).length,
@@ -737,7 +838,28 @@ const JSON_MANAGER = {
     _generateId(prefix = 'prj') {
         return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     },
-
+    
+    /**
+     * Genera HTML options per select da CONFIG.OPZIONI
+     */
+    generaOptions(tipoOpzione, valoreSelezionato = '') {
+        const opzioni = this.CONFIG.OPZIONI[tipoOpzione];
+        if (!opzioni) return '<option value="">Tipo non trovato</option>';
+        
+        return opzioni.map(opt => {
+            const selected = opt.codice === valoreSelezionato ? 'selected' : '';
+            return `<option value="${opt.codice}" ${selected}>${opt.nome}</option>`;
+        }).join('\n');
+    },
+    
+    /**
+     * Verifica se valore è valido per tipo opzione
+     */
+    isValidOption(tipoOpzione, valore) {
+        const opzioni = this.CONFIG.OPZIONI[tipoOpzione];
+        if (!opzioni || !valore) return false;
+        return opzioni.some(o => o.codice === valore);
+    },
 
     // =========================================================================
     // 10. DOWNLOAD / UPLOAD
@@ -747,7 +869,10 @@ const JSON_MANAGER = {
         const data = this.exportProject(project, options);
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const filename = options.filename || `progetto-${data.id}.json`;
+        
+        const cliente = data.cliente || {};
+        const nomeCliente = cliente.cognome || cliente.nome || cliente.ragioneSociale || 'Cliente';
+        const filename = options.filename || `PROGETTO-${nomeCliente}-${data.name || 'Progetto'}-${new Date().toISOString().split('T')[0]}.json`;
         
         const a = document.createElement('a');
         a.href = url;
