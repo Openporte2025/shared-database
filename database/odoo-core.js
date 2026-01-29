@@ -885,6 +885,189 @@ const ODOO_CORE = (function() {
     }
 
     // =========================================================================
+    // FUNZIONE UNIVERSALE - Carica e mostra progetto in QUALSIASI app
+    // =========================================================================
+
+    /**
+     * Carica progetto da Odoo e lo rende disponibile a qualsiasi app
+     * (Dashboard Ufficio, App Rilievo iPad, App Posa)
+     * 
+     * Triggera evento 'odoo-project-loaded' che ogni app può ascoltare
+     * 
+     * @param {number} projectId - ID progetto Odoo
+     * @returns {Object} progetto caricato
+     */
+    async function loadAndDisplay(projectId) {
+        console.log('🚀 ODOO_CORE.loadAndDisplay:', projectId);
+        
+        // 1. Carica da Odoo (con gestione cache/conflitti)
+        const result = await Progetti.get(projectId);
+        
+        if (!result.data) {
+            throw new Error('Progetto non trovato');
+        }
+        
+        // 2. Gestisci conflitto se presente
+        if (result.conflict) {
+            const choice = await Conflicts.showConflictDialog(
+                result.data,
+                result.localData
+            );
+            
+            if (choice === 'cancel') {
+                return null;
+            }
+            
+            await Conflicts.resolve(projectId, choice, result.localData, result.data);
+            return loadAndDisplay(projectId); // Ricarica
+        }
+        
+        // 3. Prepara progetto
+        const rilievo = result.data.rilievo || {};
+        const project = {
+            // Dati rilievo
+            ...rilievo,
+            // Assicura ID e nome
+            id: rilievo.id || result.data.name,
+            name: rilievo.name || result.data.name,
+            // Assicura array posizioni
+            positions: rilievo.positions || rilievo.posizioni || [],
+            posizioni: rilievo.posizioni || rilievo.positions || [],
+            // Riferimenti Odoo
+            odoo_project_id: result.data.id,
+            odoo_customer_id: result.data.partner_id,
+            odoo_customer_name: result.data.partner_name,
+            // Metadata
+            _source: 'odoo',
+            _loadedAt: new Date().toISOString(),
+            _serverWriteDate: result.data.write_date
+        };
+        
+        // 4. Salva in variabili globali (compatibilità con tutte le app)
+        window.currentProject = project;
+        window.progettoCorrente = project;
+        window._odooLoadedProject = project;
+        
+        // 5. Prova a caricare nella Dashboard (se esiste)
+        let displayed = false;
+        
+        // Metodo 1: PROJECT_MANAGER
+        if (typeof PROJECT_MANAGER !== 'undefined' && PROJECT_MANAGER.loadProject) {
+            try {
+                PROJECT_MANAGER.loadProject(project);
+                displayed = true;
+                console.log('✅ Caricato via PROJECT_MANAGER');
+            } catch (e) {
+                console.warn('⚠️ PROJECT_MANAGER.loadProject fallito:', e);
+            }
+        }
+        
+        // Metodo 2: Funzione globale updateDashboardWithGitHubProjects
+        if (!displayed && typeof window.updateDashboardWithGitHubProjects === 'function') {
+            try {
+                // Aggiungi temporaneamente a githubProjects
+                if (!window.githubProjects) window.githubProjects = [];
+                const existingIdx = window.githubProjects.findIndex(p => p.id === project.id);
+                if (existingIdx >= 0) {
+                    window.githubProjects[existingIdx] = project;
+                } else {
+                    window.githubProjects.unshift(project);
+                }
+                window.updateDashboardWithGitHubProjects(window.githubProjects);
+                displayed = true;
+                console.log('✅ Caricato via updateDashboardWithGitHubProjects');
+            } catch (e) {
+                console.warn('⚠️ updateDashboardWithGitHubProjects fallito:', e);
+            }
+        }
+        
+        // Metodo 3: Aggiorna campi form direttamente (fallback)
+        if (!displayed) {
+            try {
+                updateFormFields(project);
+                displayed = true;
+                console.log('✅ Caricato via updateFormFields');
+            } catch (e) {
+                console.warn('⚠️ updateFormFields fallito:', e);
+            }
+        }
+        
+        // 6. Triggera evento che le app possono ascoltare
+        window.dispatchEvent(new CustomEvent('odoo-project-loaded', {
+            detail: { 
+                project, 
+                source: result.source,
+                projectId: result.data.id 
+            }
+        }));
+        
+        // 7. Mostra notifica
+        showNotification(
+            result.source === 'cache' 
+                ? '📦 Progetto caricato da cache' 
+                : '✅ Progetto caricato da Odoo',
+            'success'
+        );
+        
+        console.log('✅ Progetto disponibile:', project.name || project.id);
+        
+        return project;
+    }
+
+    /**
+     * Aggiorna campi form con dati progetto (fallback)
+     */
+    function updateFormFields(project) {
+        const cliente = project.cliente || project.clientData || {};
+        
+        // Nome cliente
+        const nomeField = document.getElementById('pm-nome') || 
+                         document.getElementById('clienteNome') ||
+                         document.querySelector('[name="nome"]');
+        if (nomeField) nomeField.value = cliente.nome || project.name || '';
+        
+        // Telefono
+        const telField = document.getElementById('pm-telefono') ||
+                        document.getElementById('clienteTelefono');
+        if (telField) telField.value = cliente.telefono || '';
+        
+        // Email
+        const emailField = document.getElementById('pm-email') ||
+                          document.getElementById('clienteEmail');
+        if (emailField) emailField.value = cliente.email || '';
+        
+        // Indirizzo
+        const indField = document.getElementById('pm-indirizzo') ||
+                        document.getElementById('clienteIndirizzo');
+        if (indField) indField.value = cliente.indirizzo || '';
+    }
+
+    /**
+     * Notifica semplice
+     */
+    function showNotification(message, type = 'info') {
+        // Prova toast esistente
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+            return;
+        }
+        
+        // Crea notifica semplice
+        const colors = { success: '#10b981', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: ${colors[type] || colors.info}; color: white;
+            padding: 12px 24px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000; font-family: system-ui, sans-serif;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // =========================================================================
     // EXPORT PUBBLICO
     // =========================================================================
 
@@ -899,6 +1082,9 @@ const ODOO_CORE = (function() {
         // API Progetti
         progetti: Progetti,
         
+        // 🆕 Funzione universale
+        loadAndDisplay,
+        
         // Sync
         sync: Sync,
         
@@ -911,12 +1097,13 @@ const ODOO_CORE = (function() {
         // Utility
         odooCustomerToApp,
         appCustomerToOdoo,
+        showNotification,
         
         // Stato
         isOnline: () => _isOnline,
         
         // Versione
-        version: '1.0.0'
+        version: '1.1.0'
     };
 
 })();
