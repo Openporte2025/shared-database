@@ -948,48 +948,24 @@ const ODOO_CORE = (function() {
         window.progettoCorrente = project;
         window._odooLoadedProject = project;
         
-        // 5. Prova a caricare nella Dashboard (se esiste)
-        let displayed = false;
+        // 5. Carica nella Dashboard (metodo testato e funzionante)
+        const proj = {
+            ...rilievo,
+            id: result.data.name,
+            rawData: rilievo,
+            rilievo: rilievo
+        };
         
-        // Metodo 1: PROJECT_MANAGER
-        if (typeof PROJECT_MANAGER !== 'undefined' && PROJECT_MANAGER.loadProject) {
-            try {
-                PROJECT_MANAGER.loadProject(project);
-                displayed = true;
-                console.log('✅ Caricato via PROJECT_MANAGER');
-            } catch (e) {
-                console.warn('⚠️ PROJECT_MANAGER.loadProject fallito:', e);
-            }
+        if (!window.githubProjects) window.githubProjects = [];
+        window.githubProjects = [proj, ...window.githubProjects.filter(p => p.id !== proj.id)];
+        
+        if (typeof window.renderProjectsList === 'function') {
+            window.renderProjectsList();
         }
         
-        // Metodo 2: Funzione globale updateDashboardWithGitHubProjects
-        if (!displayed && typeof window.updateDashboardWithGitHubProjects === 'function') {
-            try {
-                // Aggiungi temporaneamente a githubProjects
-                if (!window.githubProjects) window.githubProjects = [];
-                const existingIdx = window.githubProjects.findIndex(p => p.id === project.id);
-                if (existingIdx >= 0) {
-                    window.githubProjects[existingIdx] = project;
-                } else {
-                    window.githubProjects.unshift(project);
-                }
-                window.updateDashboardWithGitHubProjects(window.githubProjects);
-                displayed = true;
-                console.log('✅ Caricato via updateDashboardWithGitHubProjects');
-            } catch (e) {
-                console.warn('⚠️ updateDashboardWithGitHubProjects fallito:', e);
-            }
-        }
-        
-        // Metodo 3: Aggiorna campi form direttamente (fallback)
-        if (!displayed) {
-            try {
-                updateFormFields(project);
-                displayed = true;
-                console.log('✅ Caricato via updateFormFields');
-            } catch (e) {
-                console.warn('⚠️ updateFormFields fallito:', e);
-            }
+        if (typeof window.loadGitHubProject === 'function') {
+            window.loadGitHubProject(proj.id);
+            console.log('✅ Caricato via loadGitHubProject');
         }
         
         // 6. Triggera evento che le app possono ascoltare
