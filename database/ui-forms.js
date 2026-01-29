@@ -1,5 +1,5 @@
 // ============================================================================
-// UI-FORMS v1.0.0 - Componenti UI Centralizzati
+// UI-FORMS v1.0.1 - Componenti UI Centralizzati
 // ============================================================================
 // 
 // Modulo condiviso per: App Rilievo + Dashboard + App Posa
@@ -7,11 +7,13 @@
 // Genera HTML per form comuni, leggendo opzioni da JSON_MANAGER.CONFIG
 // Una sola fonte → usata ovunque
 //
+// v1.0.1: FIX _renderSelettoreToggle passa 3 parametri invece di 4
+//
 // ============================================================================
 
 const UI_FORMS = {
 
-    version: '1.0.0',
+    version: '1.0.1',
 
     // =========================================================================
     // FORM DATI CLIENTE
@@ -301,9 +303,10 @@ const UI_FORMS = {
                 ? `bg-${colore}-600 text-white border-${colore}-600 shadow-lg` 
                 : `bg-white text-gray-600 border-gray-300 hover:border-${colore}-400 hover:bg-${colore}-50`;
             
+            // 🔧 FIX: Passa solo 3 parametri (projectId, posId, valore)
             return `
                 <button type="button" 
-                        onclick="${callback}('${projectId}', '${posId}', '${tipoOpzione}', '${opt.codice}')"
+                        onclick="${callback}('${projectId}', '${posId}', '${opt.codice}')"
                         class="px-4 py-2 text-sm font-bold rounded-lg transition-all border-2 ${classeAttivo}">
                     ${opt.nome}
                 </button>
