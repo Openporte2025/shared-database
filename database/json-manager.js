@@ -18,7 +18,7 @@
 
 const JSON_MANAGER = {
     
-    version: '2.0.0',
+    version: '2.1.0',  // 🆕 RIMOSSO pos.quantita
     schemaVersion: '6.0',
 
     // =========================================================================
@@ -39,7 +39,7 @@ const JSON_MANAGER = {
             // Posizione
             installazione: 'mazzetta',
             piano: '0',
-            quantita: '1',
+            // 🆕 v2.1.0: RIMOSSO quantita a livello posizione - usa solo prodotto.qta
             
             // Esistente
             materialeInfisso: 'legno',
@@ -303,8 +303,7 @@ const JSON_MANAGER = {
             tipoApertura: pos.tipoApertura || null,
             installazione: pos.installazione || pos.posizioneTelaio || this.CONFIG.DEFAULTS.installazione,
             
-            // Quantità
-            quantita: pos.quantita || this.CONFIG.DEFAULTS.quantita,
+            // 🆕 v2.1.0: RIMOSSO quantita a livello posizione - usa solo prodotto.qta
             
             // Misure
             misure: this._exportMisure(pos.misure),
@@ -612,7 +611,7 @@ const JSON_MANAGER = {
             nome: pos.nome || pos.name || '',
             ambiente: pos.ambiente || '',
             piano: pos.piano || this.CONFIG.DEFAULTS.piano,
-            quantita: pos.quantita || this.CONFIG.DEFAULTS.quantita,
+            // 🆕 v2.1.0: RIMOSSO quantita a livello posizione - usa solo prodotto.qta
             
             tipoApertura: pos.tipoApertura || null,
             installazione: pos.installazione || this.CONFIG.DEFAULTS.installazione,
