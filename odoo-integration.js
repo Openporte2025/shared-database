@@ -696,14 +696,7 @@
         // Se c'è odoo_project_id → carica direttamente il progetto
         if (params.odoo_project_id) {
             try {
-                const project = await loadProject(parseInt(params.odoo_project_id), 'odoo');
-                if (project && !project._redirected) {
-                    // Imposta come progetto corrente
-                    if (typeof window.setCurrentProject === 'function') {
-                        window.setCurrentProject(project);
-                    }
-                    showNotification(`✅ Progetto caricato da Odoo`, 'success');
-                }
+                await ODOO_CORE.loadAndDisplay(parseInt(params.odoo_project_id));
             } catch (error) {
                 showNotification('❌ Errore caricamento progetto: ' + error.message, 'error');
             }
@@ -736,18 +729,15 @@
             const result = await showProjectSelectionDialog(projects, customer);
             
             if (result.action === 'open' && result.project) {
-                if (result.source === 'odoo') {
-                    const project = await loadProject(result.project.id, 'odoo');
-                    if (project && !project._redirected && typeof window.setCurrentProject === 'function') {
-                        window.setCurrentProject(project);
-                    }
+                if (result.source === 'odoo' || !result.project._source) {
+                    // Usa funzione universale ODOO_CORE
+                    await ODOO_CORE.loadAndDisplay(result.project.id);
                 } else {
                     // GitHub
                     if (typeof window.loadGitHubProject === 'function') {
                         window.loadGitHubProject(result.project.id);
                     }
                 }
-                showNotification(`📂 Aperto progetto "${result.project.name || result.project.id}"`, 'success');
             } else if (result.action === 'new') {
                 openNewProjectModalAndFill(customer);
             }
