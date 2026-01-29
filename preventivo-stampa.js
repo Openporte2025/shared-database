@@ -457,6 +457,11 @@ function generaDocumentoPremium(tipo, cliente, doc, righe, totali) {
     
     html += '</div>'; // Fine summary-columns
     
+    // v1.1.0: Nota IVA esclusa ben visibile
+    if (ivaEsclusa) {
+        html += '<div style="margin-top:15px;padding:12px 15px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;text-align:center;font-weight:600;color:#92400e;">⚠️ Prezzi IVA esclusa</div>';
+    }
+    
     // TOTALE PREVENTIVO
     html += '<div class="summary-row total"><span>TOTALE ' + titoloDoc.toUpperCase() + '</span><span>' + totali.totaleFinale + '</span></div>';
     html += '</div></div>';
@@ -569,6 +574,7 @@ function generaHTMLDocumentoStampa(tipo, cliente, doc, righe, totali) {
         (totali.tipoIntervento !== 'nessuna' && totali.iva10 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 10%:</td><td style="text-align:right">' + totali.iva10 + '</td></tr>' : '') +
         (totali.tipoIntervento !== 'nessuna' && totali.iva22 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 22%:</td><td style="text-align:right">' + totali.iva22 + '</td></tr>' : '') +
         '<tr class="totale-finale"><td colspan="4" style="text-align:right;padding:12px">TOTALE:</td><td style="text-align:right;padding:12px">' + totali.totaleFinale + '</td></tr>' + accontoHtml + '</table>' +
+        (totali.tipoIntervento === 'nessuna' ? '<div style="margin:15px 0;padding:12px 15px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;text-align:center;font-weight:600;color:#92400e;">⚠️ Prezzi IVA esclusa</div>' : '') +
         (doc.note ? '<div style="margin-top:30px;padding:15px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px"><h4 style="color:#92400e;margin-bottom:8px">📝 Note</h4><p>' + doc.note + '</p></div>' : '') +
         '<div class="condizioni"><h4>' + (isPreventivo ? 'Condizioni di Offerta' : 'Condizioni Contrattuali') + '</h4><ul>' +
         (isPreventivo ? '<li><strong>Validità:</strong> 30 giorni</li><li>Prezzi per merce resa in cantiere, posa inclusa</li><li>Escluse opere murarie e ponteggi</li>' :
