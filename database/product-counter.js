@@ -7,7 +7,7 @@
 
 const PRODUCT_COUNTER = {
 
-    version: '1.0.0',
+    version: '1.1.0',  // 🆕 Aggiunto totaleMotori
 
     // =========================================================================
     // CONTEGGIO SINGOLO PRODOTTO
@@ -79,6 +79,7 @@ const PRODUCT_COUNTER = {
         let totaleTapparelle = 0;
         let totaleZanzariere = 0;
         let totaleCassonetti = 0;
+        let totaleMotori = 0;  // 🆕 v1.1.0: Motori separati
         
         let posizioniConInfissi = 0;
         let posizioniConPersiane = 0;
@@ -95,9 +96,23 @@ const PRODUCT_COUNTER = {
             // Somma quantità
             totaleInfissi += count.infissi;
             totalePersiane += count.persiane;
-            totaleTapparelle += count.tapparelle;
             totaleZanzariere += count.zanzariere;
             totaleCassonetti += count.cassonetti;
+            
+            // 🆕 v1.1.0: Separa tapparelle da motori
+            if (pos.tapparella) {
+                const qta = this.getQuantita(pos.tapparella);
+                if (qta > 0) {
+                    if (pos.tapparella.serveTapparella === true) {
+                        totaleTapparelle += qta;
+                    } else if (pos.tapparella.serveMotore === true) {
+                        totaleMotori += qta;
+                    } else {
+                        // Default: conta come tapparella
+                        totaleTapparelle += qta;
+                    }
+                }
+            }
             
             // Conta posizioni che hanno il prodotto
             if (count.infissi > 0) posizioniConInfissi++;
@@ -111,13 +126,14 @@ const PRODUCT_COUNTER = {
             if (pos.ambiente || pos.stanza) ambientiSet.add(pos.ambiente || pos.stanza);
         });
         
-        const totaleProdotti = totaleInfissi + totalePersiane + totaleTapparelle + totaleZanzariere + totaleCassonetti;
+        const totaleProdotti = totaleInfissi + totalePersiane + totaleTapparelle + totaleZanzariere + totaleCassonetti + totaleMotori;
         
         return {
             // Quantità totali (usa questi per preventivi!)
             totaleInfissi,
             totalePersiane,
             totaleTapparelle,
+            totaleMotori,  // 🆕 v1.1.0
             totaleZanzariere,
             totaleCassonetti,
             totaleProdotti,
