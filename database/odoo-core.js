@@ -948,7 +948,7 @@ const ODOO_CORE = (function() {
         window.progettoCorrente = project;
         window._odooLoadedProject = project;
         
-        // 5. Carica nella Dashboard (metodo testato e funzionante)
+        // 5. Carica nella Dashboard/App (metodo testato e funzionante)
         const proj = {
             ...rilievo,
             id: result.data.name,
@@ -956,16 +956,24 @@ const ODOO_CORE = (function() {
             rilievo: rilievo
         };
         
-        if (!window.githubProjects) window.githubProjects = [];
-        window.githubProjects = [proj, ...window.githubProjects.filter(p => p.id !== proj.id)];
-        
-        if (typeof window.renderProjectsList === 'function') {
-            window.renderProjectsList();
+        // Metodo 1: App Rilievo
+        if (typeof window.openProject === 'function') {
+            window.openProject(proj);
+            console.log('✅ Caricato via openProject (App Rilievo)');
         }
-        
-        if (typeof window.loadGitHubProject === 'function') {
-            window.loadGitHubProject(proj.id);
-            console.log('✅ Caricato via loadGitHubProject');
+        // Metodo 2: Dashboard Ufficio
+        else {
+            if (!window.githubProjects) window.githubProjects = [];
+            window.githubProjects = [proj, ...window.githubProjects.filter(p => p.id !== proj.id)];
+            
+            if (typeof window.renderProjectsList === 'function') {
+                window.renderProjectsList();
+            }
+            
+            if (typeof window.loadGitHubProject === 'function') {
+                window.loadGitHubProject(proj.id);
+                console.log('✅ Caricato via loadGitHubProject');
+            }
         }
         
         // 6. Triggera evento che le app possono ascoltare
