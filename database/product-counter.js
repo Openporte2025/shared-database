@@ -16,7 +16,7 @@ const PRODUCT_COUNTER = {
     /**
      * Ottiene quantità di un prodotto (usa DATA_ACCESSOR se disponibile)
      * @param {Object} prodotto - Oggetto prodotto (infisso, persiana, etc.)
-     * @returns {number} Quantità (default 1 se esiste, 0 se non esiste)
+     * @returns {number} Quantità (default 0 se non specificata)
      */
     getQuantita(prodotto) {
         if (!prodotto) return 0;
@@ -27,8 +27,13 @@ const PRODUCT_COUNTER = {
         }
         
         // Fallback: leggi da vari campi possibili
-        const qta = prodotto.quantita || prodotto.qta || prodotto.quantity || 1;
-        return parseInt(qta) || 1;
+        // IMPORTANTE: usa != null per distinguere 0 da undefined
+        if (prodotto.quantita != null) return parseInt(prodotto.quantita) || 0;
+        if (prodotto.qta != null) return parseInt(prodotto.qta) || 0;
+        if (prodotto.quantity != null) return parseInt(prodotto.quantity) || 0;
+        
+        // Se prodotto esiste ma nessuna quantità specificata, assume 1
+        return 1;
     },
 
     // =========================================================================
