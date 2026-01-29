@@ -1,6 +1,12 @@
 // ============================================================================
-// PREVENTIVO-STAMPA.js v1.0.0 - Modulo Stampa Preventivo Centralizzato
+// PREVENTIVO-STAMPA.js v1.1.0 - Modulo Stampa Preventivo Centralizzato
 // ============================================================================
+// 
+// CHANGELOG v1.1.0:
+// - FIX: Quando "IVA Esclusa" (tipoIntervento='nessuna'), la colonna/sezione IVA
+//   viene completamente nascosta invece di mostrare "Nessuna IVA applicata"
+// - Rimossa voce "I.V.A. esclusa" dal documento quando IVA è esclusa
+//
 // 
 // 🎯 SCOPO: Generazione documenti preventivo/conferma Premium e Semplice
 // 
@@ -16,7 +22,7 @@
 // ============================================================================
 
 const PREVENTIVO_STAMPA = {
-    version: '1.0.0',
+    version: '1.1.0',
     
     // Helper per ottenere quantità normalizzata
     getQuantita: function(prodotto) {
@@ -425,25 +431,29 @@ function generaDocumentoPremium(tipo, cliente, doc, righe, totali) {
     html += '<div class="summary-col-total"><span>Totale Imponibile</span><span>€ ' + imponibileNum.toFixed(2) + '</span></div>';
     html += '</div>'; // Fine colonna sinistra
     
-    // COLONNA DESTRA: IVA
-    html += '<div class="summary-col">';
-    html += '<div class="summary-col-header">IVA</div>';
+    // COLONNA DESTRA: IVA - v1.1.0: Nascosta completamente se IVA esclusa
+    var ivaEsclusa = totali.tipoIntervento === 'nessuna';
     
-    if (totali.iva10) {
-        html += '<div class="summary-col-row"><span>IVA 10% su ' + totali.imponibile10 + '</span><span>' + totali.iva10 + '</span></div>';
+    if (!ivaEsclusa) {
+        html += '<div class="summary-col">';
+        html += '<div class="summary-col-header">IVA</div>';
+        
+        if (totali.iva10) {
+            html += '<div class="summary-col-row"><span>IVA 10% su ' + totali.imponibile10 + '</span><span>' + totali.iva10 + '</span></div>';
+        }
+        if (totali.iva22) {
+            html += '<div class="summary-col-row"><span>IVA 22% su ' + totali.imponibile22 + '</span><span>' + totali.iva22 + '</span></div>';
+        }
+        
+        // Se non c'è IVA ma non è esclusa, mostra messaggio
+        if (!totali.iva10 && !totali.iva22) {
+            html += '<div class="summary-col-row" style="color:#6b7280;font-style:italic"><span>Nessuna IVA applicata</span><span>-</span></div>';
+        }
+        
+        // Totale IVA
+        html += '<div class="summary-col-total"><span>Totale IVA</span><span>€ ' + ivaTotaleNum.toFixed(2) + '</span></div>';
+        html += '</div>'; // Fine colonna destra
     }
-    if (totali.iva22) {
-        html += '<div class="summary-col-row"><span>IVA 22% su ' + totali.imponibile22 + '</span><span>' + totali.iva22 + '</span></div>';
-    }
-    
-    // Se non c'è IVA, mostra messaggio
-    if (!totali.iva10 && !totali.iva22) {
-        html += '<div class="summary-col-row" style="color:#6b7280;font-style:italic"><span>Nessuna IVA applicata</span><span>-</span></div>';
-    }
-    
-    // Totale IVA
-    html += '<div class="summary-col-total"><span>Totale IVA</span><span>€ ' + ivaTotaleNum.toFixed(2) + '</span></div>';
-    html += '</div>'; // Fine colonna destra
     
     html += '</div>'; // Fine summary-columns
     
@@ -551,13 +561,13 @@ function generaHTMLDocumentoStampa(tipo, cliente, doc, righe, totali) {
         (cliente.telefono ? 'Tel. ' + cliente.telefono : '') + (cliente.email ? ' - ' + cliente.email : '') +
         (cliente.cf ? '<br>C.F./P.IVA: ' + cliente.cf : '') + '</div></div>' +
         '<div class="oggetto"><div class="oggetto-label">Oggetto</div><div class="oggetto-testo">' + doc.oggetto + '</div>' +
-        (descIntervento ? '<div style="font-size:9pt;color:#6b7280;margin-top:5px">Tipo intervento: ' + descIntervento + '</div>' : '') + '</div>' +
+        (descIntervento && totali.tipoIntervento !== 'nessuna' ? '<div style="font-size:9pt;color:#6b7280;margin-top:5px">Tipo intervento: ' + descIntervento + '</div>' : '') + '</div>' +
         '<table><thead><tr><th style="width:5%;text-align:center">N.</th><th style="width:15%">Ambiente</th><th style="width:40%">Descrizione</th><th style="width:15%;text-align:center">Misure</th><th style="width:8%;text-align:center">Qtà</th><th style="width:17%;text-align:right">Importo</th></tr></thead><tbody>' + righeHtml + '</tbody></table>' +
         '<table class="totali-table"><tr><td colspan="4" style="text-align:right">Totale Materiali:</td><td style="text-align:right;font-weight:600">' + totali.materiali + '</td></tr>' +
         '<tr><td colspan="4" style="text-align:right">Posa e installazione:</td><td style="text-align:right">' + totali.lavori + '</td></tr>' +
         '<tr style="border-top:2px solid #d1d5db"><td colspan="4" style="text-align:right;font-weight:600">Imponibile:</td><td style="text-align:right;font-weight:600">' + totali.subtotale + '</td></tr>' +
-        (totali.iva10 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 10%:</td><td style="text-align:right">' + totali.iva10 + '</td></tr>' : '') +
-        (totali.iva22 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 22%:</td><td style="text-align:right">' + totali.iva22 + '</td></tr>' : '') +
+        (totali.tipoIntervento !== 'nessuna' && totali.iva10 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 10%:</td><td style="text-align:right">' + totali.iva10 + '</td></tr>' : '') +
+        (totali.tipoIntervento !== 'nessuna' && totali.iva22 ? '<tr><td colspan="4" style="text-align:right;font-size:9pt">IVA 22%:</td><td style="text-align:right">' + totali.iva22 + '</td></tr>' : '') +
         '<tr class="totale-finale"><td colspan="4" style="text-align:right;padding:12px">TOTALE:</td><td style="text-align:right;padding:12px">' + totali.totaleFinale + '</td></tr>' + accontoHtml + '</table>' +
         (doc.note ? '<div style="margin-top:30px;padding:15px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px"><h4 style="color:#92400e;margin-bottom:8px">📝 Note</h4><p>' + doc.note + '</p></div>' : '') +
         '<div class="condizioni"><h4>' + (isPreventivo ? 'Condizioni di Offerta' : 'Condizioni Contrattuali') + '</h4><ul>' +
