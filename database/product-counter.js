@@ -176,6 +176,23 @@ const PRODUCT_COUNTER = {
     countCassonetti(project) {
         return this.countProject(project).totaleCassonetti;
     },
+    
+    /**
+     * 🆕 Conta posizioni di un progetto (gestisce entrambi i nomi)
+     */
+    countPositions(project) {
+        if (!project) return 0;
+        const positions = project.positions || project.posizioni || [];
+        return positions.length;
+    },
+    
+    /**
+     * 🆕 Ottiene array posizioni (gestisce entrambi i nomi)
+     */
+    getPositions(project) {
+        if (!project) return [];
+        return project.positions || project.posizioni || [];
+    },
 
     // =========================================================================
     // HELPER
