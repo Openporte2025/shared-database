@@ -25,15 +25,17 @@ const ODOO_SEARCH = (function() {
     // =========================================================================
 
     const CONFIG = {
-        // Selettori sidebar per le varie app
+        // Selettori sidebar per le varie app (in ordine di priorità)
         sidebarSelectors: [
             '.sidebar-item.sidebar-expandable',  // Dashboard Ufficio - menu viola
+            '.main-nav-section',                  // App Rilievo iPad - menu laterale
+            '#mainSideMenu .main-nav-item',       // App Rilievo iPad - fallback
             '#sidebar',
             '.sidebar',
             '#projectsSidebar',
             '.projects-sidebar',
             '[data-sidebar]',
-            'aside',
+            'aside.main-menu',                    // App Rilievo aside
             'nav.sidebar'
         ],
         
@@ -410,12 +412,23 @@ const ODOO_SEARCH = (function() {
 
         const btn = createButton();
 
-        // Inserisci PRIMA dell'elemento sidebar trovato (nel suo parent)
+        // Dashboard Ufficio: .sidebar-item.sidebar-expandable
         if (sidebar.classList.contains('sidebar-item') || sidebar.classList.contains('sidebar-expandable')) {
             sidebar.parentElement.insertBefore(btn, sidebar);
             btn.style.margin = '8px 12px';
-        } else {
-            // Fallback: inserisci in cima
+        }
+        // App Rilievo: .main-nav-section
+        else if (sidebar.classList.contains('main-nav-section')) {
+            sidebar.insertBefore(btn, sidebar.firstChild);
+            btn.style.margin = '8px 16px';
+        }
+        // App Rilievo: .main-nav-item (fallback)
+        else if (sidebar.classList.contains('main-nav-item')) {
+            sidebar.parentElement.insertBefore(btn, sidebar);
+            btn.style.margin = '8px 16px';
+        }
+        // Fallback generico
+        else {
             sidebar.insertBefore(btn, sidebar.firstChild);
         }
 
