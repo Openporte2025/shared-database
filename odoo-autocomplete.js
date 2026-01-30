@@ -1,5 +1,5 @@
 // ============================================================================
-// ODOO-AUTOCOMPLETE.js v1.0.0
+// ODOO-AUTOCOMPLETE.js v1.1.0
 // Aggiunge autocomplete Odoo ai form esistenti
 // ============================================================================
 // 
@@ -17,7 +17,7 @@
 const ODOO_AUTOCOMPLETE = (function() {
     'use strict';
 
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
 
     // =========================================================================
     // CONFIGURAZIONE
@@ -254,19 +254,6 @@ const ODOO_AUTOCOMPLETE = (function() {
         const dropdown = document.createElement('div');
         dropdown.className = 'odoo-ac-dropdown';
         dropdown.id = 'odoo-ac-dropdown';
-        
-        // Stile iniziale (posizione sarà aggiornata)
-        dropdown.style.cssText = `
-            position: fixed !important;
-            max-height: 280px;
-            overflow-y: auto;
-            background: white;
-            border: 2px solid #714B67;
-            border-radius: 0 0 8px 8px;
-            z-index: 999999;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            visibility: hidden;
-        `;
 
         let html = '';
 
@@ -296,17 +283,37 @@ const ODOO_AUTOCOMPLETE = (function() {
         `;
 
         dropdown.innerHTML = html;
+        
+        // Calcola posizione usando offset chain
+        function getOffset(el) {
+            let top = 0, left = 0;
+            let width = el.offsetWidth;
+            let height = el.offsetHeight;
+            while (el) {
+                top += el.offsetTop;
+                left += el.offsetLeft;
+                el = el.offsetParent;
+            }
+            return { top, left, width, height };
+        }
+        
+        const pos = getOffset(input);
+        
+        dropdown.style.cssText = `
+            position: fixed;
+            top: ${pos.top + pos.height + 4}px;
+            left: ${pos.left}px;
+            width: ${pos.width}px;
+            background: white;
+            border: 2px solid #714B67;
+            border-radius: 0 0 8px 8px;
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 999999;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        `;
         document.body.appendChild(dropdown);
         _activeDropdown = dropdown;
-
-        // Calcola posizione DOPO inserimento nel DOM
-        requestAnimationFrame(() => {
-            const rect = input.getBoundingClientRect();
-            dropdown.style.top = (rect.bottom + 2) + 'px';
-            dropdown.style.left = rect.left + 'px';
-            dropdown.style.width = rect.width + 'px';
-            dropdown.style.visibility = 'visible';
-        });
 
         // Click handlers
         dropdown.querySelectorAll('.odoo-ac-item').forEach(item => {
@@ -432,11 +439,11 @@ const ODOO_AUTOCOMPLETE = (function() {
             }
         };
 
-        fillField('#pm-telefono, #opc-telefono, input[placeholder*="telefono" i]', customer.phone);
-        fillField('#pm-email, #opc-email, input[placeholder*="email" i]', customer.email);
+        fillField('#pmProjectPhone, #pm-telefono, #opc-telefono, input[placeholder*="telefono" i]', customer.phone);
+        fillField('#pmProjectEmail, #pm-email, #opc-email, input[placeholder*="email" i]', customer.email);
         
         const fullAddress = [customer.street, customer.zip, customer.city].filter(Boolean).join(', ');
-        fillField('#pm-indirizzo, #opc-indirizzo, input[placeholder*="indirizzo" i]', fullAddress);
+        fillField('#pmProjectAddress, #pm-indirizzo, #opc-indirizzo, input[placeholder*="indirizzo" i]', fullAddress);
     }
 
     // =========================================================================
@@ -548,7 +555,7 @@ const ODOO_AUTOCOMPLETE = (function() {
         const name = (input.name || '').toLowerCase();
         
         // ID specifici da attaccare
-        const targetIds = ['clientenome', 'pm-nome', 'pm-cliente', 'opc-cliente-nome'];
+        const targetIds = ['pmprojectclient', 'clientenome', 'pm-nome', 'pm-cliente', 'opc-cliente-nome'];
         if (targetIds.includes(id)) return true;
         
         // Campi da attaccare per keyword
@@ -573,6 +580,7 @@ const ODOO_AUTOCOMPLETE = (function() {
 
         // Attacca a campi esistenti
         const selectors = [
+            '#pmProjectClient',
             '#pm-nome',
             '#clienteNome',
             '#opc-cliente-nome', 
