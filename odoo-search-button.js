@@ -27,6 +27,7 @@ const ODOO_SEARCH = (function() {
     const CONFIG = {
         // Selettori sidebar per le varie app
         sidebarSelectors: [
+            '.sidebar-item.sidebar-expandable',  // Dashboard Ufficio - menu viola
             '#sidebar',
             '.sidebar',
             '#projectsSidebar',
@@ -36,8 +37,8 @@ const ODOO_SEARCH = (function() {
             'nav.sidebar'
         ],
         
-        // Posizione bottone: 'top' | 'bottom' | 'after-new'
-        buttonPosition: 'top',
+        // Posizione bottone: 'top' | 'bottom' | 'before-first'
+        buttonPosition: 'before-first',
         
         // Delay prima di tentare inserimento (ms)
         insertDelay: 1500,
@@ -409,15 +410,13 @@ const ODOO_SEARCH = (function() {
 
         const btn = createButton();
 
-        // Trova posizione ottimale
-        const newProjectBtn = sidebar.querySelector('#btn-new-project, [data-new-project], .btn-new-project');
-        
-        if (newProjectBtn && CONFIG.buttonPosition === 'after-new') {
-            newProjectBtn.parentNode.insertBefore(btn, newProjectBtn.nextSibling);
-        } else if (CONFIG.buttonPosition === 'top') {
-            sidebar.insertBefore(btn, sidebar.firstChild);
+        // Inserisci PRIMA dell'elemento sidebar trovato (nel suo parent)
+        if (sidebar.classList.contains('sidebar-item') || sidebar.classList.contains('sidebar-expandable')) {
+            sidebar.parentElement.insertBefore(btn, sidebar);
+            btn.style.margin = '8px 12px';
         } else {
-            sidebar.appendChild(btn);
+            // Fallback: inserisci in cima
+            sidebar.insertBefore(btn, sidebar.firstChild);
         }
 
         console.log('✅ Bottone Cerca Odoo inserito');
