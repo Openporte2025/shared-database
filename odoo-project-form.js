@@ -1,8 +1,12 @@
 // ============================================================================
-// ODOO-PROJECT-FORM.js v1.0.0
+// ODOO-PROJECT-FORM.js v1.1.0
 // Form unificato creazione/modifica progetti con autocomplete Odoo
 // ============================================================================
 // 
+// CHANGELOG v1.1.0:
+// - Fix: usa saveNewProjectToGitHub (nome corretto)
+// - Fix: usa loadProjectsFromGitHub (nome corretto)
+//
 // Usato da: Dashboard Ufficio, App Rilievo iPad, App Posa
 // 
 // API:
@@ -18,7 +22,7 @@
 const ODOO_PROJECT_FORM = (function() {
     'use strict';
 
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
 
     // =========================================================================
     // CONFIGURAZIONE
@@ -723,20 +727,21 @@ const ODOO_PROJECT_FORM = (function() {
             if (_onSaveCallback) {
                 await _onSaveCallback(data);
             } else {
-                // Salvataggio default su GitHub
-                if (typeof window.saveProjectToGitHub === 'function') {
-                    await window.saveProjectToGitHub(data);
+                // Salvataggio default su GitHub - FIX: nome corretto!
+                if (typeof window.saveNewProjectToGitHub === 'function') {
+                    console.log('📤 Chiamando saveNewProjectToGitHub...');
+                    await window.saveNewProjectToGitHub(data);
                 } else {
-                    console.warn('⚠️ saveProjectToGitHub non disponibile');
+                    throw new Error('saveNewProjectToGitHub non disponibile');
                 }
             }
 
             showNotification('✅ Progetto salvato!', 'success');
             close();
 
-            // Ricarica lista progetti
-            if (typeof window.loadGitHubProjects === 'function') {
-                setTimeout(() => window.loadGitHubProjects(), 500);
+            // Ricarica lista progetti - FIX: nome corretto!
+            if (typeof window.loadProjectsFromGitHub === 'function') {
+                setTimeout(() => window.loadProjectsFromGitHub(), 500);
             }
 
             return true;
@@ -865,5 +870,5 @@ const ODOO_PROJECT_FORM = (function() {
 
 if (typeof window !== 'undefined') {
     window.ODOO_PROJECT_FORM = ODOO_PROJECT_FORM;
-    console.log('📋 ODOO_PROJECT_FORM disponibile globalmente');
+    console.log('📋 ODOO_PROJECT_FORM v1.1.0 disponibile');
 }
