@@ -1,18 +1,25 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📱 INPUT NAVIGATION v1.2.0 - Navigazione Fluida Tastiera iPad
+// 📱 INPUT NAVIGATION v1.3.0 - Navigazione Fluida Tastiera iPad
 // ═══════════════════════════════════════════════════════════════════════════════
-// Gestisce Enter/Tab per passare al campo successivo senza chiudere tastiera
-// NOTA: Il tocco su altri campi è gestito nativamente dal browser
+// PROBLEMA: render() ricostruisce DOM → perde focus → tastiera chiude
+// SOLUZIONE: Intercetta render() e ripristina focus automaticamente
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const INPUT_NAVIGATION = {
-    VERSION: '1.2.0',
+    VERSION: '1.3.0',
     initialized: false,
+    activeInputId: null,
+    activeInputValue: null,
+    selectionStart: null,
+    selectionEnd: null,
     
     init() {
         if (this.initialized) return;
         
         console.log(`📱 INPUT_NAVIGATION v${this.VERSION} inizializzato`);
+        
+        // 🎯 MONKEY-PATCH: Intercetta render() per ripristinare focus
+        this.patchRenderFunction();
         
         // Applica attributi a tutti gli input esistenti
         this.applyToAllInputs();
@@ -23,7 +30,71 @@ const INPUT_NAVIGATION = {
         // Listener globale per Enter/Tab
         document.addEventListener('keydown', this.handleKeydown.bind(this), true);
         
+        // Track focus attivo
+        document.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+                this.activeInputId = e.target.id;
+                this.activeInputValue = e.target.value;
+            }
+        }, true);
+        
+        document.addEventListener('focusout', (e) => {
+            // Salva selezione prima di perdere focus
+            if (e.target.tagName === 'INPUT') {
+                this.selectionStart = e.target.selectionStart;
+                this.selectionEnd = e.target.selectionEnd;
+            }
+        }, true);
+        
         this.initialized = true;
+    },
+    
+    /**
+     * 🎯 Intercetta render() globale per ripristinare focus dopo ricostruzione DOM
+     */
+    patchRenderFunction() {
+        // Aspetta che render() sia definita
+        const checkAndPatch = () => {
+            if (typeof window.render === 'function' && !window.render._patched) {
+                const originalRender = window.render;
+                
+                window.render = (...args) => {
+                    // Salva stato focus PRIMA del render
+                    const activeEl = document.activeElement;
+                    const wasInput = activeEl && activeEl.tagName === 'INPUT';
+                    const inputId = wasInput ? activeEl.id : null;
+                    const inputValue = wasInput ? activeEl.value : null;
+                    const hadFocus = wasInput && activeEl.type === 'number';
+                    
+                    // Esegui render originale
+                    const result = originalRender.apply(this, args);
+                    
+                    // Ripristina focus DOPO il render (se era su un input numerico)
+                    if (hadFocus && inputId) {
+                        requestAnimationFrame(() => {
+                            const newInput = document.getElementById(inputId);
+                            if (newInput) {
+                                newInput.focus();
+                                // Metti cursore alla fine
+                                const len = newInput.value.length;
+                                newInput.setSelectionRange(len, len);
+                                console.log(`📱 Focus ripristinato su #${inputId}`);
+                            }
+                        });
+                    }
+                    
+                    return result;
+                };
+                
+                window.render._patched = true;
+                console.log('📱 render() patchata per preservare focus');
+            } else if (!window.render) {
+                // Riprova tra 100ms
+                setTimeout(checkAndPatch, 100);
+            }
+        };
+        
+        checkAndPatch();
     },
     
     /**
