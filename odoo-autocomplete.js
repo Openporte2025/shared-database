@@ -251,18 +251,13 @@ const ODOO_AUTOCOMPLETE = (function() {
     function showDropdown(input, customers, query) {
         hideDropdown();
 
-        const rect = input.getBoundingClientRect();
-        
         const dropdown = document.createElement('div');
         dropdown.className = 'odoo-ac-dropdown';
         dropdown.id = 'odoo-ac-dropdown';
         
-        // Usa position:fixed sul body per evitare overflow:hidden del modal
+        // Stile iniziale (posizione sarà aggiornata)
         dropdown.style.cssText = `
             position: fixed !important;
-            top: ${rect.bottom + 2}px;
-            left: ${rect.left}px;
-            width: ${rect.width}px;
             max-height: 280px;
             overflow-y: auto;
             background: white;
@@ -270,6 +265,7 @@ const ODOO_AUTOCOMPLETE = (function() {
             border-radius: 0 0 8px 8px;
             z-index: 999999;
             box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            visibility: hidden;
         `;
 
         let html = '';
@@ -302,6 +298,15 @@ const ODOO_AUTOCOMPLETE = (function() {
         dropdown.innerHTML = html;
         document.body.appendChild(dropdown);
         _activeDropdown = dropdown;
+
+        // Calcola posizione DOPO inserimento nel DOM
+        requestAnimationFrame(() => {
+            const rect = input.getBoundingClientRect();
+            dropdown.style.top = (rect.bottom + 2) + 'px';
+            dropdown.style.left = rect.left + 'px';
+            dropdown.style.width = rect.width + 'px';
+            dropdown.style.visibility = 'visible';
+        });
 
         // Click handlers
         dropdown.querySelectorAll('.odoo-ac-item').forEach(item => {
