@@ -251,15 +251,26 @@ const ODOO_AUTOCOMPLETE = (function() {
     function showDropdown(input, customers, query) {
         hideDropdown();
 
-        const wrapper = input.parentElement;
-        if (!wrapper.classList.contains('odoo-ac-input-wrap')) {
-            wrapper.style.position = 'relative';
-            wrapper.classList.add('odoo-ac-input-wrap');
-        }
-
+        const rect = input.getBoundingClientRect();
+        
         const dropdown = document.createElement('div');
         dropdown.className = 'odoo-ac-dropdown';
         dropdown.id = 'odoo-ac-dropdown';
+        
+        // Usa position:fixed sul body per evitare overflow:hidden del modal
+        dropdown.style.cssText = `
+            position: fixed !important;
+            top: ${rect.bottom + 2}px;
+            left: ${rect.left}px;
+            width: ${rect.width}px;
+            max-height: 280px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid #714B67;
+            border-radius: 0 0 8px 8px;
+            z-index: 999999;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        `;
 
         let html = '';
 
@@ -289,7 +300,7 @@ const ODOO_AUTOCOMPLETE = (function() {
         `;
 
         dropdown.innerHTML = html;
-        wrapper.appendChild(dropdown);
+        document.body.appendChild(dropdown);
         _activeDropdown = dropdown;
 
         // Click handlers
@@ -456,8 +467,9 @@ const ODOO_AUTOCOMPLETE = (function() {
         
         input.dataset.odooAc = 'true';
         
-        const wrapper = input.parentElement;
-        wrapper.style.position = 'relative';
+        // Indicazione visiva che autocomplete è attivo
+        input.style.borderColor = '#714B67';
+        input.setAttribute('placeholder', input.placeholder + ' (cerca in Odoo)');
 
         // Input handler
         const handleInput = debounce(async (e) => {
@@ -512,7 +524,7 @@ const ODOO_AUTOCOMPLETE = (function() {
                     
                     inputs.forEach(input => {
                         if (shouldAttach(input)) {
-                            setTimeout(() => attachToInput(input), 100);
+                            setTimeout(() => attachToInput(input), 300);
                         }
                     });
                 }
@@ -530,8 +542,12 @@ const ODOO_AUTOCOMPLETE = (function() {
         const id = (input.id || '').toLowerCase();
         const name = (input.name || '').toLowerCase();
         
-        // Campi da attaccare
-        const keywords = ['cliente', 'progetto', 'nome progetto', 'project', 'customer', 'cerca'];
+        // ID specifici da attaccare
+        const targetIds = ['clientenome', 'pm-nome', 'pm-cliente', 'opc-cliente-nome'];
+        if (targetIds.includes(id)) return true;
+        
+        // Campi da attaccare per keyword
+        const keywords = ['cliente', 'progetto', 'nome progetto', 'project', 'customer', 'cerca', 'clientenome'];
         
         return keywords.some(kw => 
             placeholder.includes(kw) || id.includes(kw) || name.includes(kw)
@@ -553,6 +569,7 @@ const ODOO_AUTOCOMPLETE = (function() {
         // Attacca a campi esistenti
         const selectors = [
             '#pm-nome',
+            '#clienteNome',
             '#opc-cliente-nome', 
             'input[placeholder*="cliente" i]',
             'input[placeholder*="Cerca cliente" i]',
