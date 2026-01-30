@@ -28,6 +28,7 @@ const ODOO_SEARCH = (function() {
         // Selettori sidebar per le varie app (in ordine di priorità)
         sidebarSelectors: [
             '.sidebar-item.sidebar-expandable',  // Dashboard Ufficio - menu viola
+            '.menu-items',                        // App Rilievo iPad - menu sistema
             '.main-nav-section',                  // App Rilievo iPad - menu laterale
             '#mainSideMenu .main-nav-item',       // App Rilievo iPad - fallback
             '#sidebar',
@@ -416,6 +417,11 @@ const ODOO_SEARCH = (function() {
         if (sidebar.classList.contains('sidebar-item') || sidebar.classList.contains('sidebar-expandable')) {
             sidebar.parentElement.insertBefore(btn, sidebar);
             btn.style.margin = '8px 12px';
+        }
+        // App Rilievo: .menu-items
+        else if (sidebar.classList.contains('menu-items')) {
+            sidebar.insertBefore(btn, sidebar.firstChild);
+            btn.style.cssText += 'margin:8px; width:calc(100% - 16px);';
         }
         // App Rilievo: .main-nav-section
         else if (sidebar.classList.contains('main-nav-section')) {
