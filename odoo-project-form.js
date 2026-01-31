@@ -1,8 +1,11 @@
 // ============================================================================
-// ODOO-PROJECT-FORM.js v1.2.0
+// ODOO-PROJECT-FORM.js v1.2.1
 // Form unificato creazione/modifica progetti con autocomplete Odoo
 // ============================================================================
 // 
+// CHANGELOG v1.2.1:
+// - Fix: apre automaticamente il progetto dopo il salvataggio
+//
 // CHANGELOG v1.2.0:
 // - Fix: ID "undefined" → genera ID correttamente
 // - Fix: JSON completo con tutti i campi standard
@@ -27,7 +30,7 @@
 const ODOO_PROJECT_FORM = (function() {
     'use strict';
 
-    const VERSION = '1.2.0';
+    const VERSION = '1.2.1';
 
     // =========================================================================
     // CONFIGURAZIONE
@@ -766,11 +769,23 @@ const ODOO_PROJECT_FORM = (function() {
             }
 
             showNotification('✅ Progetto salvato!', 'success');
+            const savedProjectId = data.id;
             close();
 
-            // Ricarica lista progetti - FIX: nome corretto!
+            // Ricarica lista progetti e apri quello appena creato
             if (typeof window.loadProjectsFromGitHub === 'function') {
-                setTimeout(() => window.loadProjectsFromGitHub(), 500);
+                console.log('🔄 Ricarico progetti e apro:', savedProjectId);
+                await window.loadProjectsFromGitHub();
+                
+                // Apri il progetto appena creato dopo un breve delay
+                setTimeout(() => {
+                    if (typeof window.loadGitHubProject === 'function') {
+                        console.log('📂 Apertura progetto:', savedProjectId);
+                        window.loadGitHubProject(savedProjectId);
+                    } else if (typeof window.loadGitHubProjectDirect === 'function') {
+                        window.loadGitHubProjectDirect(savedProjectId);
+                    }
+                }, 500);
             }
 
             return true;
@@ -899,5 +914,5 @@ const ODOO_PROJECT_FORM = (function() {
 
 if (typeof window !== 'undefined') {
     window.ODOO_PROJECT_FORM = ODOO_PROJECT_FORM;
-    console.log('📋 ODOO_PROJECT_FORM v1.2.0 disponibile');
+    console.log('📋 ODOO_PROJECT_FORM v1.2.1 disponibile');
 }
