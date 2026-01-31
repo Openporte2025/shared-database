@@ -1,8 +1,13 @@
 // ============================================================================
-// ODOO-PROJECT-FORM.js v1.1.0
+// ODOO-PROJECT-FORM.js v1.2.0
 // Form unificato creazione/modifica progetti con autocomplete Odoo
 // ============================================================================
 // 
+// CHANGELOG v1.2.0:
+// - Fix: ID "undefined" → genera ID correttamente
+// - Fix: JSON completo con tutti i campi standard
+// - Aggiunto: dataCreazione, dataModifica, status, source, indirizzo
+//
 // CHANGELOG v1.1.0:
 // - Fix: usa saveNewProjectToGitHub (nome corretto)
 // - Fix: usa loadProjectsFromGitHub (nome corretto)
@@ -22,7 +27,7 @@
 const ODOO_PROJECT_FORM = (function() {
     'use strict';
 
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
 
     // =========================================================================
     // CONFIGURAZIONE
@@ -662,10 +667,23 @@ const ODOO_PROJECT_FORM = (function() {
     function collectFormData() {
         const getValue = (id) => document.getElementById(id)?.value?.trim() || '';
 
+        // Genera ID se mancante o "undefined"
+        let projectId = getValue('opf-projectId');
+        if (!projectId || projectId === 'undefined' || projectId === 'null') {
+            projectId = generateProjectId();
+            console.log('🆔 ID generato:', projectId);
+        }
+
+        const now = new Date().toISOString();
+        const today = new Date().toLocaleDateString('it-IT');
+
         const data = {
-            id: getValue('opf-projectId'),
-            name: getValue('opf-nomeProgetto'),
-            client: getValue('opf-nome') + ' ' + getValue('opf-cognome'),
+            // Identificazione
+            id: projectId,
+            name: getValue('opf-nomeProgetto') || (getValue('opf-nome') + ' ' + getValue('opf-cognome')).trim(),
+            client: (getValue('opf-nome') + ' ' + getValue('opf-cognome')).trim(),
+            
+            // Dati cliente completi
             clientData: {
                 nome: getValue('opf-nome'),
                 cognome: getValue('opf-cognome'),
@@ -677,22 +695,33 @@ const ODOO_PROJECT_FORM = (function() {
                 provincia: getValue('opf-provincia'),
                 cap: getValue('opf-cap'),
                 zonaClimatica: getValue('opf-zonaClimatica'),
-                detrazione: getValue('opf-detrazione')
+                detrazione: getValue('opf-detrazione'),
+                indirizzo: [getValue('opf-via'), getValue('opf-cap'), getValue('opf-comune')].filter(Boolean).join(', ')
             },
+            
+            // Posizioni/Rilievi (vuoto inizialmente)
             posizioni: [],
-            createdAt: new Date().toISOString(),
-            version: VERSION
+            
+            // Metadati
+            createdAt: now,
+            updatedAt: now,
+            dataCreazione: today,
+            dataModifica: today,
+            status: 'nuovo',
+            version: VERSION,
+            source: 'dashboard'
         };
 
-        // Aggiungi Odoo se collegato
+        // Collegamento Odoo
         const odooId = getValue('opf-odooCustomerId');
-        if (odooId) {
+        if (odooId && odooId !== 'undefined' && odooId !== '') {
             data.odoo_customer_id = parseInt(odooId);
             if (_selectedOdooCustomer) {
                 data.odoo_customer = _selectedOdooCustomer;
             }
         }
 
+        console.log('📋 Dati progetto raccolti:', data);
         return data;
     }
 
@@ -870,5 +899,5 @@ const ODOO_PROJECT_FORM = (function() {
 
 if (typeof window !== 'undefined') {
     window.ODOO_PROJECT_FORM = ODOO_PROJECT_FORM;
-    console.log('📋 ODOO_PROJECT_FORM v1.1.0 disponibile');
+    console.log('📋 ODOO_PROJECT_FORM v1.2.0 disponibile');
 }
