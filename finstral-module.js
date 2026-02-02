@@ -365,6 +365,7 @@ function estraiNumeroAnte(tipo) {
     }
     
     return 1; // Default 1 anta
+}
 
 // ============================================================================
 // CALCOLO PREZZO CASSONETTO + HELPER COLORI/FERRAMENTA
@@ -748,3 +749,4 @@ if (typeof window !== 'undefined') {
     
     console.log('✅ FINSTRAL-MODULE v1.0.0 caricato - Helper calcolo prezzi');
 }
+
