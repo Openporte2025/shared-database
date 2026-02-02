@@ -1008,24 +1008,5 @@ window.calcolaSupplModelloAnta = function(modello, tipoAnta, isGrande) {
     return isGrande ? prezzi[1] : prezzi[0];
 }
 
-// 📄 Aggiorna title dinamicamente
-document.title = `Open Porte v${APP_VERSION} - ${APP_VERSION_NOTE}`;
-
-// 🚨 LOG VERSIONE - AUTOMATICO
-console.log('%c╔═══════════════════════════════════════════════╗', 'color: #16a34a; font-weight: bold; font-size: 14px;');
-console.log(`%c║   🚪 OPEN PORTE v${APP_VERSION} CARICATO! ✅           ║`, 'color: #16a34a; font-weight: bold; font-size: 14px;');
-console.log(`%c║   ${APP_VERSION_NOTE}!           ║`, 'color: #16a34a; font-weight: bold; font-size: 14px;');
-console.log('%c╚═══════════════════════════════════════════════╝', 'color: #16a34a; font-weight: bold; font-size: 14px;');
-console.log(`%c🔧 v${APP_VERSION}:`, 'color: #dc2626; font-weight: bold; font-size: 13px;');
-console.log('  📦 CASSONETTI CONDIZIONALI: Finstral vs Magò/Alpac');
-console.log('  🏢 Finstral: checkbox+text (Cassonetto, Posa, Colore AUTO, Isolamento, Soffitto)');
-console.log('  🏢 Magò/Alpac: select (Tipo, Posa, Finitura) - campi 5-6 nascosti');
-console.log('  ✅ Config Globale + Tab Posizioni implementate');
-console.log('%c🔧 v4.69:', 'color: #2563eb; font-weight: bold; font-size: 13px;');
-console.log('  ✅ 3 OPZIONI TAPPARELLE SEMPRE VISIBILI: Manuale | Motore esistente | Motorizzata');
-console.log(' ');
-
-
-console.log('✅ finstral.js caricato');
 
 console.log('✅ FINSTRAL-CONFIG v1.0.0 caricato - Database FINDOOR/FINWINDOW');
