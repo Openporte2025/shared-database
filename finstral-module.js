@@ -711,7 +711,7 @@ console.log('🔩 Helper ferramenta caricati: getCodiceApertura, getSupplementoC
 if (typeof window !== 'undefined') {
     // Costanti
     window.SUPPLEMENTI_VETRI = SUPPLEMENTI_VETRI;
-    window.SUPPLEMENTI_MANIGLIE = SUPPLEMENTI_MANIGLIE;
+    // SUPPLEMENTI_MANIGLIE: DEPRECATO, commentato - usa MANIGLIE_FINSTRAL da finstral.js
     window.MAPPING_APERTURE_TIPI = MAPPING_APERTURE_TIPI;
     window.COSTI_EXTRA = COSTI_EXTRA;
     
