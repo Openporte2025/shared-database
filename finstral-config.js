@@ -28,7 +28,12 @@ window.CODICI_TAGLIO_PER_TELAIO = {
 
 // Funzione helper per ottenere codici disponibili
 window.getCodiciTaglioPerTelaio = function(telaio) {
-    return CODICI_TAGLIO_PER_TELAIO[telaio] || [];
+    if (!telaio) return [];
+    // Estrai codice base: "965 - PVC-PVC Step-line" → "965"
+    const codice = telaio.split(' - ')[0].replace(/^[A-Z]*/, '').trim() || telaio.split(' - ')[0].trim();
+    // Prova match diretto, poi solo numerico
+    return CODICI_TAGLIO_PER_TELAIO[telaio] || CODICI_TAGLIO_PER_TELAIO[codice] || 
+           CODICI_TAGLIO_PER_TELAIO[telaio.split(' - ')[0].trim()] || [];
 }
 
 // 🆕 v4.81: Genera array posizioni tagli da tagliTelaio (non serve più salvare codTagli)
