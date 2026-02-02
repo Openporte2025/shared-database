@@ -24,7 +24,7 @@
 //
 // ============================================================================
 
-const FINSTRAL_PREZZI = {
+window.FINSTRAL_PREZZI = {
     // ═══════════════════════════════════════════════════════════════
     // ✅ v8.465: FATTORI VERIFICATI SU 9 POSIZIONI ORDINE RUGGERI
     // Le tabelle base sono EUR 2025/3, applico fattore correzione
@@ -760,7 +760,7 @@ telaiCompatibili: ["924", "991", "923", "129", "961", "962", "963", "964", "965"
 // 🆕 v8.469 (12 GEN 2026) - Integrazione completa FIN-Slide
 // ════════════════════════════════════════════════════════════════════════════
 
-const FINSLIDE_PREZZI = {
+window.FINSLIDE_PREZZI = {
     versione: 'EUR 2025/10',
     validitaDa: '04/2026',
     dataAggiornamento: '2026-01-12',
@@ -1008,7 +1008,7 @@ console.log('🏠 FIN-SLIDE Database caricato - Dashboard v8.469');
 // ============================================================================
 
 // BANCALI INTERNI (listino 10/2025 pag. 140)
-const FINSTRAL_BANCALI_INTERNI = {
+window.FINSTRAL_BANCALI_INTERNI = {
     'PVC': {
 codice: '25000',
 desc: 'MDF pellicolato 25mm',
@@ -1066,7 +1066,7 @@ prezzi: [
 };
 
 // ANTA TWIN - Veneziana e Plissettata (listino 10/2025 pag. 146-147)
-const FINSTRAL_ANTA_TWIN = {
+window.FINSTRAL_ANTA_TWIN = {
     tipiAnta: {
 'SLIM_TWIN': { cod: 'C788', desc: 'Slim-line Twin 77mm', codVeneziana: 'WS25' },
 'SLIM_TWIN_90': { cod: 'C988', desc: 'Slim-line Twin 90/124mm', codVeneziana: 'WS25' },
@@ -1150,7 +1150,7 @@ prezzi: [
 };
 
 // PROFILI ALLARGAMENTO (listino 10/2025 pag. 64-82)
-const FINSTRAL_ALLARGAMENTI = {
+window.FINSTRAL_ALLARGAMENTI = {
     'PVC_77': {
 codSenzaRinforzo: '1Q1',
 codConRinforzo: '1QX1',
@@ -1192,7 +1192,7 @@ misure: {
 };
 
 // Funzione calcolo prezzo bancale interno
-function calcolaPrezzoBancaleInterno(tipo, profondita, lunghezza) {
+window.calcolaPrezzoBancaleInterno = function(tipo, profondita, lunghezza) {
     const bancale = FINSTRAL_BANCALI_INTERNI[tipo];
     if (!bancale) return 0;
     
@@ -1214,7 +1214,7 @@ idxL = i;
 }
 
 // Funzione calcolo prezzo anta twin
-function calcolaPrezzoAntaTwin(tipoOscurante, larghezza, altezza, comando = '27') {
+window.calcolaPrezzoAntaTwin = function(tipoOscurante, larghezza, altezza, comando = '27') {
     const tabella = tipoOscurante === 'veneziana' ? 
 FINSTRAL_ANTA_TWIN.prezziVeneziana : 
 FINSTRAL_ANTA_TWIN.prezziPlissettata;
@@ -1250,7 +1250,7 @@ idxA = i;
  * SCHEMA VALIDAZIONE INFISSI FINSTRAL
  * Definisce quali campi sono necessari e a che livello
  */
-const SCHEMA_VALIDAZIONE = {
+window.SCHEMA_VALIDAZIONE = {
     infisso: {
 nome: "Infisso Finstral",
 campi: {
@@ -1390,7 +1390,7 @@ campi: {
  * @param {object} configGlobale - Configurazione globale (fallback)
  * @returns {object} { valido, errori[], warning[], info[], margineErrore, affidabilita }
  */
-function validaProdotto(tipoProdotto, prodotto, configGlobale = {}) {
+window.validaProdotto = function(tipoProdotto, prodotto, configGlobale = {}) {
     const schema = SCHEMA_VALIDAZIONE[tipoProdotto];
     if (!schema) {
 return { 
@@ -1515,7 +1515,7 @@ risultato.colore = '#22c55e';
  * @param {object} configGlobale - Configurazioni globali
  * @returns {object} { riepilogo, dettagli[] }
  */
-function validaProgetto(positions, configGlobale = {}) {
+window.validaProgetto = function(positions, configGlobale = {}) {
     const risultato = {
 totalePositioni: positions.length,
 completi: 0,
@@ -1587,7 +1587,7 @@ Math.round(sommaAffidabilita / contaProdotti) : 100;
 /**
  * Genera HTML popup validazione
  */
-function generaHTMLValidazione(validazione) {
+window.generaHTMLValidazione = function(validazione) {
     const { totalePositioni, completi, conWarning, conErrori, dettagli, affidabilitaMedia } = validazione;
     
     // Colore affidabilità
@@ -1681,7 +1681,7 @@ html += `
 /**
  * Mostra popup validazione
  */
-function mostraPopupValidazione(validazione, callback) {
+window.mostraPopupValidazione = function(validazione, callback) {
     const html = generaHTMLValidazione(validazione);
     const hasErrori = validazione.conErrori > 0;
     const hasWarning = validazione.conWarning > 0;
@@ -1741,7 +1741,7 @@ window.SCHEMA_VALIDAZIONE = SCHEMA_VALIDAZIONE;
 // 3. tipoInfissoAssociato (F, PF)
 // 4. tipo (F1, F2, PF1, PF2, etc.)
 // ═══════════════════════════════════════════════════════════════════
-function determinaTipoInfisso(infisso, configInfissi = null) {
+window.determinaTipoInfisso = function(infisso, configInfissi = null) {
     const codiceModello = infisso?.codiceModello || '';
     const ferramenta1 = infisso?.ferramenta1 || '';
     const tipoInfissoAssociato = infisso?.tipoInfissoAssociato || '';
@@ -1868,7 +1868,7 @@ return risultato;
 
 // FUNZIONI CALCOLO FINSTRAL
 // ✅ v8.46: Funzione helper per cercare prezzo in tabella semplice
-function cercaPrezzoInTabella(tabella, larghezza, altezza) {
+window.cercaPrezzoInTabella = function(tabella, larghezza, altezza) {
     if (!tabella) return null;
     
     // Trova colonna: prima colonna dove larghezza <= limite
@@ -1896,7 +1896,7 @@ return { prezzo: tabella.prezzi[rowIdx][colIdx], colIdx, rowIdx };
     return null;
 }
 
-function trovaPrezzoBaseFinstral(tipo, larghezza, altezza) {
+window.trovaPrezzoBaseFinstral = function(tipo, larghezza, altezza) {
     // ═══════════════════════════════════════════════════════════════════
     // ✅ v8.46: GESTIONE TIPI COMPOSITI (420, 421, ecc.)
     // Fonte: Listino Finstral EUR 2025/10 - Procedura calcolo prezzo
@@ -2029,7 +2029,7 @@ return prezzoCorretto;
     return null;
 }
 
-function calcolaPrezzoFinstral(config) {
+window.calcolaPrezzoFinstral = function(config) {
     const { tipo = "101", larghezza, altezza, telaio = "961", materiale = "pvc", vetro = "standard",
     tipoAnta = "step-line", colorePVC = "01", coloreAlluminio = null } = config;
     
@@ -2371,7 +2371,7 @@ console.log('✅ v8.45: FINSTRAL_FERRAMENTA_PREZZI e FINSTRAL_ACCESSORI_PREZZI c
 // ═══════════════════════════════════════════════════════════════════════════
 // 📦 FINSTRAL CASSONETTI PREZZI - Listino EUR 2025/3 (pag. 141-146)
 // ═══════════════════════════════════════════════════════════════════════════
-const FINSTRAL_CASSONETTI_PREZZI = {
+window.FINSTRAL_CASSONETTI_PREZZI = {
     versione: "EUR 2025/3",
     dataAggiornamento: "2025-12-04",
     note: "Per misure intermedie vale la casella più alta. Usb = 1,3 W/m²K",
@@ -2556,7 +2556,7 @@ console.log('✅ FINSTRAL_CASSONETTI_PREZZI caricato - Listino EUR 2025/3 (pag. 
 
 // ✅ v8.11: Funzione per determinare gruppo colore cassonetto da codice
 // Ignora gruppoColoreCass e usa il codice colore effettivo
-function determinaGruppoColoreCassonetto(coloreCass) {
+window.determinaGruppoColoreCassonetto = function(coloreCass) {
     if (!coloreCass) return 'bianco'; // Default
     
     // Estrai codice numerico dal colore (es. "27" da "27 - Bianco perla")
