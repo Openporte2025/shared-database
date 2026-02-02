@@ -269,8 +269,6 @@ function renderConfigGrateGlobale(project) {
             </h2>
             <p class="text-gray-600 mb-4">Imposta i valori di default per tutte le grate:</p>
             
-            ${typeof renderRilievoGlobale === 'function' ? renderRilievoGlobale(project, 'grate', 'Grate', '🔒') : ''}
-            
             <div class="space-y-2 mt-4">
                 <div class="grid md:grid-cols-2 gap-2">
                     <!-- 1. AZIENDA -->
