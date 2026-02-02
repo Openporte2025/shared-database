@@ -19,7 +19,7 @@
 // OPZIONI E COSTANTI
 // ============================================================
 
-const GRATE_OPZIONI = {
+window.GRATE_OPZIONI = {
 
     // Linee disponibili
     linee: ['EDILIA2', 'EVOLUTA18', 'SIKURA', 'LIBERA'],
@@ -125,7 +125,7 @@ const GRATE_OPZIONI = {
 // TEMPLATE CONFIG GLOBALE
 // ============================================================
 
-const GRATE_CONFIG_TEMPLATE = {
+window.GRATE_CONFIG_TEMPLATE = {
     azienda: 'Erreci',
     linea: '',
     modello: '',
@@ -142,7 +142,7 @@ const GRATE_CONFIG_TEMPLATE = {
 // TEMPLATE PRODOTTO POSIZIONE
 // ============================================================
 
-const GRATE_PRODUCT_TEMPLATE = {
+window.GRATE_PRODUCT_TEMPLATE = {
     id: '',
     qta: '1',
     azienda: 'Erreci',
