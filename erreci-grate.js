@@ -651,8 +651,10 @@ function calcolaPrezzoGrata(grata, pos) {
     // BRM fallback
     let L = parseInt(grata.BRM_L) || 0;
     let H = parseInt(grata.BRM_H) || 0;
-    if (!L && pos?.misure?.LI) L = parseInt(pos.misure.LI);
-    if (!H && pos?.misure?.HI) H = parseInt(pos.misure.HI);
+    if (!L && pos?.misure?.LF) L = parseInt(pos.misure.LF);
+    if (!H && pos?.misure?.HF) H = parseInt(pos.misure.HF);
+    if (!L && pos?.misure?.LVT) L = parseInt(pos.misure.LVT);
+    if (!H && pos?.misure?.HVT) H = parseInt(pos.misure.HVT);
 
     if (!L || !H) {
         return { errore: `Dimensioni mancanti: L=${L}, H=${H}` };
