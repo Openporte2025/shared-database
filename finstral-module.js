@@ -730,7 +730,7 @@ if (typeof window !== 'undefined') {
     window.calcolaSupplementoAnta = calcolaSupplementoAnta;
     window.calcolaSupplementoVetro = calcolaSupplementoVetro;
     window.getSupplementoAntaDimensionale = getSupplementoAntaDimensionale;
-    window.calcolaSupplementoManiglia = calcolaSupplementoManiglia;
+    // calcolaSupplementoManiglia: DEPRECATA v7.26, usa calcolaSupplementoManigliaFinstral
     window.estraiNumeroAnte = estraiNumeroAnte;
     
     // Cassonetto
