@@ -1,18 +1,22 @@
 // ============================================================================
-// ODOO-SEARCH-BUTTON.js v3.3.0
+// ODOO-SEARCH-BUTTON.js v3.4.0
 // FILE CENTRALIZZATO - shared-database/odoo-search-button.js
 //
-// v3.3.0: Click usa funzione globale _odooSelectResult()
-//         Dopo creazione apre scheda Dati Cliente (step 1)
+// v3.4.0: Dashboard → salva originale openPMProjectModal, pre-compila form
+//         App Rilievo → createProject diretto (funziona)
 // ============================================================================
 
 (function() {
     'use strict';
 
-    var VERSION = '3.3.0';
+    var VERSION = '3.4.0';
     var BUTTON_ID = 'odoo-search-sidebar-btn';
     var DIALOG_ID = 'odoo-newproject-dialog';
     var MARKER = '__odooOverride';
+
+    // Salva riferimenti alle funzioni ORIGINALI prima di sovrascriverle
+    var _origShowNewProjectModal = null;
+    var _origOpenPMProjectModal = null;
 
     console.log('📦 [OdooSearch v' + VERSION + '] Script caricato');
 
@@ -24,7 +28,7 @@
     }
 
     // ========================================================================
-    // OVERRIDE con POLLING
+    // OVERRIDE con POLLING - salva originali
     // ========================================================================
 
     function makeOverrideFn() {
@@ -38,12 +42,14 @@
 
     function doOverride() {
         if (typeof window.showNewProjectModal === 'function' && !window.showNewProjectModal[MARKER]) {
+            _origShowNewProjectModal = window.showNewProjectModal;
             window.showNewProjectModal = makeOverrideFn();
-            console.log('✅ [OdooSearch] Override showNewProjectModal');
+            console.log('✅ [OdooSearch] Override showNewProjectModal (originale salvata)');
         }
         if (typeof window.openPMProjectModal === 'function' && !window.openPMProjectModal[MARKER]) {
+            _origOpenPMProjectModal = window.openPMProjectModal;
             window.openPMProjectModal = makeOverrideFn();
-            console.log('✅ [OdooSearch] Override openPMProjectModal');
+            console.log('✅ [OdooSearch] Override openPMProjectModal (originale salvata)');
         }
     }
 
@@ -69,36 +75,33 @@
     }, 500);
 
     // ========================================================================
-    // VARIABILE GLOBALE per risultati ricerca
+    // CACHE RISULTATI RICERCA
     // ========================================================================
 
     window._odooSearchCache = [];
 
     // ========================================================================
-    // FUNZIONE GLOBALE: selezione risultato
-    // Chiamata da onclick="window._odooSelectResult(index)"
+    // SELEZIONE RISULTATO - funzione globale per onclick
     // ========================================================================
 
     window._odooSelectResult = function(index) {
         try {
-            console.log('🎯 [OdooSearch] Click su risultato index=' + index);
-
             var c = window._odooSearchCache[index];
             if (!c) {
-                alert('Errore: cliente non trovato in cache (index=' + index + ')');
+                alert('Errore: cliente non trovato (index=' + index + ')');
                 return;
             }
 
             var customerName = c.name || 'Cliente Odoo';
             var odooId = c.id;
 
-            console.log('🎯 [OdooSearch] Creo progetto per: ' + customerName + ' (Odoo ID: ' + odooId + ')');
+            console.log('🎯 [OdooSearch] Selezionato: ' + customerName + ' (Odoo ID: ' + odooId + ')');
 
             // Chiudi dialog
             var dialog = document.getElementById(DIALOG_ID);
             if (dialog) dialog.remove();
 
-            // Salva dati Odoo
+            // Salva dati Odoo per associazione
             window._pendingOdooId = odooId;
             window._pendingOdooCustomer = {
                 id: odooId,
@@ -110,18 +113,19 @@
                 zip: c.zip || c.zip_code || ''
             };
 
-            // === APP RILIEVO / POSA ===
+            // ============================================================
+            // APP RILIEVO / POSA: createProject() diretto
+            // ============================================================
             if (typeof window.createProject === 'function') {
-                console.log('📝 [OdooSearch] Chiamo createProject...');
+                console.log('📝 [OdooSearch] App Rilievo - createProject()');
                 window.createProject(customerName, customerName);
 
-                // Associa odoo_id al progetto appena creato
+                // Associa odoo_id
                 if (typeof state !== 'undefined' && state.projects && state.projects.length > 0) {
                     var lastProject = state.projects[state.projects.length - 1];
                     if (lastProject) {
                         lastProject.odoo_id = odooId;
                         lastProject.odoo_customer = window._pendingOdooCustomer;
-                        // Compila dati cliente
                         if (lastProject.clientData) {
                             lastProject.clientData.nome = c.name || '';
                             lastProject.clientData.telefono = c.phone || '';
@@ -131,34 +135,74 @@
                     }
                 }
 
-                // Naviga al progetto - scheda Dati Cliente (step 1)
                 state.screen = 'project';
                 state.setupStep = 1;
                 render();
-
-                showToast('✅ Cliente "' + customerName + '" collegato da Odoo');
-                console.log('✅ [OdooSearch] Progetto creato e aperto!');
-                return;
-            }
-
-            // === DASHBOARD ===
-            if (typeof window.createPMProject === 'function') {
-                console.log('📝 [OdooSearch] Dashboard - chiamo createPMProject...');
-                var nf = document.getElementById('pm-project-name') || document.getElementById('project-name');
-                var cf = document.getElementById('pm-project-client') || document.getElementById('client-name');
-                if (nf) nf.value = customerName;
-                if (cf) cf.value = customerName;
-                window.createPMProject();
                 showToast('✅ Cliente "' + customerName + '" collegato da Odoo');
                 return;
             }
 
-            // === FALLBACK ===
-            alert('Errore: funzione createProject non trovata.\nVerifica che app.js sia caricato.');
+            // ============================================================
+            // DASHBOARD: apri form ORIGINALE, poi pre-compila
+            // ============================================================
+            if (_origOpenPMProjectModal || typeof window.createPMProject === 'function') {
+                console.log('📝 [OdooSearch] Dashboard - apro form originale pre-compilato');
+
+                // Apri il modal nativo della Dashboard
+                if (_origOpenPMProjectModal) {
+                    _origOpenPMProjectModal();
+                }
+
+                // Pre-compila campi dopo che il modal si è aperto
+                var fillAttempts = 0;
+                var fillInterval = setInterval(function() {
+                    fillAttempts++;
+
+                    // Cerca tutti i possibili ID dei campi form
+                    var nameField = document.getElementById('pm-project-name')
+                        || document.getElementById('project-name')
+                        || document.querySelector('input[name="project-name"]')
+                        || document.querySelector('input[placeholder*="progetto" i]')
+                        || document.querySelector('input[placeholder*="nome" i]');
+
+                    var clientField = document.getElementById('pm-project-client')
+                        || document.getElementById('client-name')
+                        || document.querySelector('input[name="client-name"]')
+                        || document.querySelector('input[placeholder*="cliente" i]');
+
+                    if (nameField) {
+                        nameField.value = customerName;
+                        nameField.dispatchEvent(new Event('input', { bubbles: true }));
+                        console.log('✅ [OdooSearch] Nome progetto compilato: ' + customerName);
+                    }
+                    if (clientField) {
+                        clientField.value = customerName;
+                        clientField.dispatchEvent(new Event('input', { bubbles: true }));
+                        console.log('✅ [OdooSearch] Nome cliente compilato: ' + customerName);
+                    }
+
+                    // Se trovato almeno un campo, o dopo 10 tentativi, ferma
+                    if (nameField || clientField || fillAttempts >= 10) {
+                        clearInterval(fillInterval);
+                        if (nameField || clientField) {
+                            showToast('📝 Compila e clicca "Crea Progetto"');
+                        } else {
+                            console.warn('⚠️ [OdooSearch] Campi form non trovati dopo 10 tentativi');
+                            showToast('⚠️ Inserisci "' + customerName + '" come nome progetto');
+                        }
+                    }
+                }, 200);
+                return;
+            }
+
+            // ============================================================
+            // FALLBACK
+            // ============================================================
+            alert('Errore: nessuna funzione creazione trovata.\ncreateProject: ' + (typeof window.createProject) + '\nopenPMProjectModal orig: ' + (!!_origOpenPMProjectModal));
 
         } catch(err) {
-            console.error('❌ [OdooSearch] Errore in _odooSelectResult:', err);
-            alert('Errore creazione progetto:\n' + err.message);
+            console.error('❌ [OdooSearch] Errore:', err);
+            alert('Errore: ' + err.message);
         }
     };
 
@@ -223,7 +267,6 @@
             if (tab === 'search') {
                 sp.style.display = 'block'; mp.style.display = 'none';
                 st.style.cssText = ACTIVE; mt.style.cssText = INACTIVE;
-                setTimeout(function(){ var i=document.getElementById('odoo-np-search-input'); if(i) i.focus(); }, 100);
             } else {
                 sp.style.display = 'none'; mp.style.display = 'block';
                 mt.style.cssText = ACTIVE; st.style.cssText = INACTIVE;
@@ -232,9 +275,7 @@
         }
         window._odooNpSwitchTab = switchTab;
 
-        // ====================================================================
         // SEARCH
-        // ====================================================================
         function doSearch() {
             var input = document.getElementById('odoo-np-search-input');
             var resultsDiv = document.getElementById('odoo-np-search-results');
@@ -255,14 +296,12 @@
                 if (!customers || customers.length === 0) {
                     resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;">'
                         + '<p style="color:#9ca3af;">Nessun risultato per "' + query + '"</p>'
-                        + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:10px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">✏️ Inserisci manualmente</button>'
+                        + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:10px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;">✏️ Inserisci manualmente</button>'
                         + '</div>';
                     return;
                 }
 
-                // Salva in cache globale per accesso da onclick
                 window._odooSearchCache = customers.slice(0, 20);
-
                 var html = '';
                 for (var i = 0; i < window._odooSearchCache.length; i++) {
                     var c = window._odooSearchCache[i];
@@ -273,20 +312,17 @@
                         + '</div>';
                 }
                 resultsDiv.innerHTML = html;
-
             }).catch(function(err) {
                 console.error('❌ [OdooSearch]', err);
                 resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;">'
                     + '<p style="color:#ef4444;font-weight:600;">❌ Server non raggiungibile</p>'
                     + '<p style="color:#9ca3af;font-size:13px;margin-top:8px;">Verifica AVVIA-OPERA.bat</p>'
-                    + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:12px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">✏️ Inserisci manualmente</button>'
+                    + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:12px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;">✏️ Inserisci manualmente</button>'
                     + '</div>';
             });
         }
 
-        // ====================================================================
         // MANUAL CREATE
-        // ====================================================================
         function doCreateManual() {
             var clientInput = document.getElementById('odoo-np-client-name');
             var projectInput = document.getElementById('odoo-np-project-name');
@@ -296,6 +332,7 @@
             overlay.remove();
 
             try {
+                // App Rilievo
                 if (typeof window.createProject === 'function') {
                     window.createProject(projectName, clientName);
                     state.screen = 'project';
@@ -304,19 +341,37 @@
                     showToast('✅ Progetto "' + projectName + '" creato');
                     return;
                 }
-                if (typeof window.createPMProject === 'function') {
-                    var nf = document.getElementById('pm-project-name') || document.getElementById('project-name');
-                    var cf = document.getElementById('pm-project-client') || document.getElementById('client-name');
-                    if (nf) nf.value = projectName;
-                    if (cf) cf.value = clientName;
-                    window.createPMProject();
-                    showToast('✅ Progetto "' + projectName + '" creato');
+                // Dashboard - apri form originale pre-compilato
+                if (_origOpenPMProjectModal) {
+                    _origOpenPMProjectModal();
+                    setTimeout(function() {
+                        fillDashboardForm(projectName, clientName);
+                    }, 300);
+                    showToast('📝 Compila e clicca "Crea Progetto"');
                     return;
                 }
-                alert('Errore: funzione creazione progetto non trovata');
+                alert('Errore: funzione creazione non trovata');
             } catch(err) {
-                console.error('❌ [OdooSearch] Errore creazione manuale:', err);
                 alert('Errore: ' + err.message);
+            }
+        }
+
+        // Helper per compilare form Dashboard
+        function fillDashboardForm(name, client) {
+            var nameField = document.getElementById('pm-project-name')
+                || document.getElementById('project-name')
+                || document.querySelector('input[placeholder*="progetto" i]')
+                || document.querySelector('input[placeholder*="nome" i]');
+            var clientField = document.getElementById('pm-project-client')
+                || document.getElementById('client-name')
+                || document.querySelector('input[placeholder*="cliente" i]');
+            if (nameField) {
+                nameField.value = name;
+                nameField.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (clientField) {
+                clientField.value = client;
+                clientField.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
 
