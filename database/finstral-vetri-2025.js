@@ -5,7 +5,7 @@
 // Supplementi per m² di vetro (minimo fatturabile 0,4 m²)
 // ============================================================================
 
-const FINSTRAL_VETRI_2025 = {
+window.FINSTRAL_VETRI_2025 = {
     version: '2025.10',
     note: 'Prezzi in €/m² - Minimo fatturabile 0,4 m²',
     
@@ -209,7 +209,7 @@ const FINSTRAL_VETRI_2025 = {
 // TABELLA RIASSUNTIVA - VETRI PRINCIPALI CON PREZZI
 // =========================================================================
 
-const FINSTRAL_VETRI_PRINCIPALI = {
+window.FINSTRAL_VETRI_PRINCIPALI = {
     
     // ═══════════════════════════════════════════════════════════════════════
     // DOPPIO VETRO (Plus-Valor 2)
@@ -362,55 +362,15 @@ const FINSTRAL_VETRI_PRINCIPALI = {
 // FUNZIONI HELPER
 // =========================================================================
 
-/**
- * Calcola supplemento vetro per superficie
- * @param {string} codice - Codice vetro
- * @param {number} superficieM2 - Superficie in m²
- * @returns {number} Supplemento totale in €
- */
-function calcolaSupplementoVetro(codice, superficieM2) {
-    const vetro = FINSTRAL_VETRI_PRINCIPALI[codice] || 
-                  Object.values(FINSTRAL_VETRI_PRINCIPALI).find(v => v.codice === codice);
-    
-    if (!vetro) return 0;
-    
-    const superficieEffettiva = Math.max(superficieM2, 0.4); // Minimo 0.4 m²
-    return vetro.supplemento * superficieEffettiva;
-}
-
-/**
- * Ottiene lista vetri per tipo
- */
-function getVetriPerTipo(tipo) {
-    const risultato = {};
-    for (const [nome, dati] of Object.entries(FINSTRAL_VETRI_PRINCIPALI)) {
-        if (tipo === 'doppio' && nome.startsWith('DOPPIO')) {
-            risultato[nome] = dati;
-        } else if (tipo === 'triplo' && nome.startsWith('TRIPLO')) {
-            risultato[nome] = dati;
-        } else if (tipo === 'satinato' && nome.includes('SATINATO')) {
-            risultato[nome] = dati;
-        } else if (tipo === 'sicurezza' && (nome.includes('SICUREZZA') || dati.classe)) {
-            risultato[nome] = dati;
-        }
-    }
-    return risultato;
-}
-
-// Export
+// Export (funzioni calcolaSupplementoVetro e getVetriPerTipo sono in finstral-opzioni.js)
 if (typeof window !== 'undefined') {
-    window.FINSTRAL_VETRI_2025 = FINSTRAL_VETRI_2025;
-    window.FINSTRAL_VETRI_PRINCIPALI = FINSTRAL_VETRI_PRINCIPALI;
-    window.calcolaSupplementoVetro = calcolaSupplementoVetro;
-    window.getVetriPerTipo = getVetriPerTipo;
     console.log('🪟 FINSTRAL_VETRI_2025 v2025.10 caricato');
 }
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { 
         FINSTRAL_VETRI_2025, 
-        FINSTRAL_VETRI_PRINCIPALI,
-        calcolaSupplementoVetro,
-        getVetriPerTipo
+        FINSTRAL_VETRI_PRINCIPALI
     };
 }
+
