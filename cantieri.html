@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cantieri - Open Porte | O.P.E.R.A.</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
+        * { font-family: 'DM Sans', system-ui, -apple-system, sans-serif; }
+        body { margin: 0; background: #f8fafc; }
+        .light-pulse { animation: lpulse 2s ease-in-out infinite; }
+        @keyframes lpulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+        .fade-in { animation: fadeIn .3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ============================================================================
+// CONFIG
+// ============================================================================
+const API_URL = "https://jody-gowaned-hypsometrically.ngrok-free.dev";
+const REFRESH_MS = 60000;
+
+const STAGE_PALETTE = [
+    { color: "#2563eb", bg: "#eff6ff", emoji: "📐" },
+    { color: "#7c3aed", bg: "#f5f3ff", emoji: "📝" },
+    { color: "#9333ea", bg: "#faf5ff", emoji: "📦" },
+    { color: "#c026d3", bg: "#fdf4ff", emoji: "📨" },
+    { color: "#ea580c", bg: "#fff7ed", emoji: "📞" },
+    { color: "#0891b2", bg: "#ecfeff", emoji: "📄" },
+    { color: "#dc2626", bg: "#fef2f2", emoji: "🔨" },
+    { color: "#059669", bg: "#ecfdf5", emoji: "🔧" },
+];
+const CLOSED_STYLE  = { color: "#16a34a", bg: "#f0fdf4", emoji: "✅" };
+const CANCEL_STYLE  = { color: "#6b7280", bg: "#f3f4f6", emoji: "🚫" };
+
+const LIGHT_META = {
+    green:  { icon: "🟢", label: "In corso",    ring: "#22c55e" },
+    yellow: { icon: "🟡", label: "Attenzione",  ring: "#eab308" },
+    red:    { icon: "🔴", label: "Da avviare",  ring: "#ef4444" },
+    done:   { icon: "✅", label: "Completato",  ring: "#16a34a" },
+};
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+function getLight(p) {
+    if (p.progress_pct >= 100) return "done";
+    if (p.task_count === 0) return "red";
+    if (p.progress_pct >= 60) return "green";
+    if (p.progress_pct >= 20) return "yellow";
+    return "red";
+}
+
+// ============================================================================
+// MAIN APP
+// ============================================================================
+function App() {
+    const [data, setData]               = useState(null);
+    const [loading, setLoading]         = useState(true);
+    const [error, setError]             = useState(null);
+    const [isLive, setIsLive]           = useState(false);
+    const [lastUpdate, setLastUpdate]   = useState(null);
+    const [view, setView]               = useState("kanban");
+    const [search, setSearch]           = useState("");
+    const [filterStage, setFilterStage] = useState("all");
+    const [filterLight, setFilterLight] = useState("all");
+    const [selectedProject, setSelected]= useState(null);
+    const [sortBy, setSortBy]           = useState("progress");
+    const stageMap = useRef({});
+
+    const fetchData = useCallback(async () => {
+        try {
+            const r = await fetch(API_URL + "/api/projects/dashboard", {
+                headers: { Accept: "application/json", "ngrok-skip-browser-warning": "true" },
+                signal: AbortSignal.timeout(8000),
+            });
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            const json = await r.json();
+
+            // Build stage map
+            const m = {};
+            (json.stages || []).forEach((s, i) => {
+                const closed = s.is_closed || s.fold || false;
+                const nm = s.name || "Fase " + (i + 1);
+                if (closed && nm.toLowerCase().includes("annull"))
+                    m[nm] = { ...CANCEL_STYLE, seq: s.sequence || 999, closed: true };
+                else if (closed)
+                    m[nm] = { ...CLOSED_STYLE, seq: s.sequence || 998, closed: true };
+                else
+                    m[nm] = { ...STAGE_PALETTE[i % STAGE_PALETTE.length], seq: s.sequence || i * 10, closed: false };
+            });
+            m["Completato"] = { ...CLOSED_STYLE, seq: 9998, closed: true };
+            stageMap.current = m;
+
+            setData(json); setIsLive(true); setError(null); setLastUpdate(new Date());
+        } catch (e) {
+            setError(e.message);
+            if (!data) setIsLive(false);
+        }
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+        const t = setInterval(fetchData, REFRESH_MS);
+        return () => clearInterval(t);
+    }, [fetchData]);
+
+    function gs(name) {
+        return stageMap.current[name] || { color: "#6b7280", bg: "#f9fafb", emoji: "📋", seq: 0, closed: false };
+    }
+
+    // Loading
+    if (loading && !data) return (
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "#0f172a" }}>
+            <div className="text-center">
+                <div className="text-5xl mb-4 light-pulse">🏗️</div>
+                <p className="text-slate-300 font-semibold text-lg">Caricamento cantieri...</p>
+                <p className="text-slate-500 text-sm mt-2">Connessione a Odoo</p>
+            </div>
+        </div>
+    );
+
+    // Process
+    const all = (data?.projects || []).map(p => ({ ...p, _l: getLight(p), _s: gs(p.current_stage) }));
+    const filtered = all.filter(p => {
+        if (search) {
+            const q = search.toLowerCase();
+            if (![p.name, p.customer, p.sale_order].some(v => (v||"").toLowerCase().includes(q))) return false;
+        }
+        if (filterStage !== "all" && p.current_stage !== filterStage) return false;
+        if (filterLight !== "all" && p._l !== filterLight) return false;
+        return true;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+        if (sortBy === "progress") return (b.progress_pct||0) - (a.progress_pct||0);
+        if (sortBy === "name") return (a.name||"").localeCompare(b.name||"");
+        if (sortBy === "value") return (b.value||0) - (a.value||0);
+        if (sortBy === "date") return (b.date_start||"").localeCompare(a.date_start||"");
+        return 0;
+    });
+
+    const stageCounts = {}; all.forEach(p => { stageCounts[p.current_stage] = (stageCounts[p.current_stage]||0) + 1; });
+    const lightCounts = { green:0, yellow:0, red:0, done:0 }; all.forEach(p => { lightCounts[p._l]++; });
+    const totalValue = filtered.reduce((s,p) => s + (p.value||0), 0);
+    const totalOda   = filtered.reduce((s,p) => s + (p.purchase_orders?.length||0), 0);
+    const avgProg    = filtered.length ? Math.round(filtered.reduce((s,p) => s + (p.progress_pct||0), 0) / filtered.length) : 0;
+    const stages     = (data?.stages||[]).filter(s => !s.is_closed && !s.fold).sort((a,b) => (a.sequence||0) - (b.sequence||0));
+
+    return (
+        <div className="min-h-screen" style={{ background: "#f8fafc" }}>
+            {/* HEADER */}
+            <div className="sticky top-0 z-50 shadow-lg" style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)" }}>
+                <div className="max-w-7xl mx-auto px-4 py-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                            <a href="#" onClick={(e)=>{e.preventDefault(); const ref = new URLSearchParams(location.search).get('from') || document.referrer || 'javascript:history.back()'; location.href=ref;}}
+                                className="text-slate-400 hover:text-white transition-colors text-sm" title="Torna indietro">← Indietro</a>
+                            <span className="text-slate-600">|</span>
+                            <span className="text-2xl">🏗️</span>
+                            <div>
+                                <h1 className="text-base font-bold text-white tracking-tight leading-none">Cantieri Open Porte</h1>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    {all.length} progetti{lastUpdate && ` • ${lastUpdate.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`}
+                                </p>
+                            </div>
+                            {isLive ? (
+                                <span className="text-xs font-bold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-emerald-500/30">
+                                    <span className="w-2 h-2 bg-emerald-400 rounded-full light-pulse"></span>LIVE
+                                </span>
+                            ) : (
+                                <span className="text-xs font-bold bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30">⚠ Offline</span>
+                            )}
+                            {error && <span className="text-xs text-red-400">({error})</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex bg-slate-700/50 rounded-lg p-0.5">
+                                {[["kanban","▦"],["pipeline","▤"],["list","☰"]].map(([k,ic])=>(
+                                    <button key={k} onClick={()=>setView(k)}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${view===k?"bg-white/15 text-white shadow-inner":"text-slate-400 hover:text-white"}`}>{ic}</button>
+                                ))}
+                            </div>
+                            <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+                                className="px-2 py-1.5 text-xs bg-slate-700/50 text-slate-200 rounded-lg border border-slate-600">
+                                <option value="progress">↓ Avanzamento</option>
+                                <option value="name">A-Z Nome</option>
+                                <option value="value">↓ Valore</option>
+                                <option value="date">↓ Data</option>
+                            </select>
+                            <button onClick={()=>{setLoading(true);fetchData();}}
+                                className="px-3 py-1.5 text-xs bg-blue-500/20 text-blue-300 rounded-lg font-bold hover:bg-blue-500/30 transition-colors border border-blue-500/30">🔄</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* TRAFFIC LIGHTS */}
+            <div className="max-w-7xl mx-auto px-4 mt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {["green","yellow","red","done"].map(l => {
+                        const m = LIGHT_META[l], active = filterLight===l;
+                        return (
+                            <button key={l} onClick={()=>setFilterLight(active?"all":l)}
+                                className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${active?"shadow-md":"hover:shadow-sm bg-white"}`}
+                                style={{ borderColor: active?m.ring:"transparent", background: active?m.ring+"08":undefined }}>
+                                <span className="text-2xl">{m.icon}</span>
+                                <div className="text-left">
+                                    <div className="text-2xl font-extrabold text-slate-800 leading-none">{lightCounts[l]}</div>
+                                    <div className="text-xs text-slate-500 font-medium">{m.label}</div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+                {/* Summary */}
+                <div className="flex items-center gap-6 mt-3 px-1 text-sm text-slate-500 flex-wrap">
+                    <span>💰 <strong className="text-slate-700">€{totalValue.toLocaleString("it-IT")}</strong></span>
+                    <span>📦 <strong className="text-slate-700">{totalOda}</strong> OdA</span>
+                    <span>📊 <strong className="text-slate-700">{avgProg}%</strong> media</span>
+                    <span className="text-xs text-slate-400">({filtered.length} visualizzati)</span>
+                    {(filterStage!=="all"||filterLight!=="all"||search) && (
+                        <button onClick={()=>{setFilterStage("all");setFilterLight("all");setSearch("");}}
+                            className="text-xs text-red-500 hover:text-red-700 font-semibold">✕ Reset</button>
+                    )}
+                </div>
+            </div>
+
+            {/* SEARCH + PILLS */}
+            <div className="max-w-7xl mx-auto px-4 mt-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <input type="text" value={search} onChange={e=>setSearch(e.target.value)}
+                        placeholder="Cerca progetto, cliente, ordine..."
+                        className="flex-1 min-w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    <select value={filterStage} onChange={e=>setFilterStage(e.target.value)}
+                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="all">Tutte le fasi</option>
+                        {stages.map(s=>{const st=gs(s.name);return <option key={s.id} value={s.name}>{st.emoji} {s.name} ({stageCounts[s.name]||0})</option>})}
+                        <option value="Completato">✅ Completato ({stageCounts["Completato"]||0})</option>
+                    </select>
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 mt-2">
+                    {stages.map(s=>{
+                        const st=gs(s.name), ct=stageCounts[s.name]||0, ac=filterStage===s.name;
+                        return (
+                            <button key={s.id} onClick={()=>setFilterStage(ac?"all":s.name)}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0 ${ac?"ring-2 ring-offset-1":"opacity-70 hover:opacity-100"}`}
+                                style={{color:st.color,background:st.bg,borderColor:st.color+"30"}}>
+                                {st.emoji} {s.name.length>16?s.name.slice(0,14)+"…":s.name}
+                                <span className="rounded-full px-1.5 py-0.5 text-xs font-bold bg-white" style={{color:st.color}}>{ct}</span>
+                            </button>
+                        );
+                    })}
+                    <button onClick={()=>setFilterStage(filterStage==="Completato"?"all":"Completato")}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0 ${filterStage==="Completato"?"ring-2 ring-offset-1":"opacity-70 hover:opacity-100"}`}
+                        style={{color:"#16a34a",background:"#f0fdf4",borderColor:"#16a34a30"}}>
+                        ✅ Completato <span className="rounded-full px-1.5 py-0.5 font-bold bg-white" style={{color:"#16a34a"}}>{stageCounts["Completato"]||0}</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* CONTENT */}
+            <div className="max-w-7xl mx-auto px-4 mt-3 pb-8">
+                {view==="kanban"   && <KanbanView projects={sorted} gs={gs} onSelect={setSelected}/>}
+                {view==="pipeline" && <PipelineView projects={sorted} stages={stages} gs={gs} onSelect={setSelected} counts={stageCounts}/>}
+                {view==="list"     && <ListView projects={sorted} gs={gs} onSelect={setSelected}/>}
+                {sorted.length===0 && !loading && (
+                    <div className="text-center py-20 text-slate-400">
+                        <div className="text-5xl mb-3">📭</div>
+                        <p className="text-lg font-semibold">Nessun progetto trovato</p>
+                    </div>
+                )}
+            </div>
+
+            {selectedProject && <Detail p={selectedProject} gs={gs} onClose={()=>setSelected(null)}/>}
+        </div>
+    );
+}
+
+// ============================================================================
+// CARD
+// ============================================================================
+function Card({ p, gs, onClick }) {
+    const s = gs(p.current_stage), l = LIGHT_META[getLight(p)];
+    return (
+        <div onClick={onClick} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-lg transition-all cursor-pointer group hover:border-blue-300 fade-in"
+            style={{ borderLeft: `4px solid ${s.color}` }}>
+            <div className="flex items-start justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm">{l.icon}</span>
+                    <span className="text-xs font-mono font-bold text-blue-600">{p.sale_order||`#${p.id}`}</span>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap" style={{color:s.color,background:s.bg}}>
+                    {s.emoji} {(p.current_stage||"").length>14?(p.current_stage||"").slice(0,12)+"…":p.current_stage||"N/D"}
+                </span>
+            </div>
+            <h3 className="font-bold text-slate-800 text-sm leading-tight group-hover:text-blue-700 transition-colors">{p.name||"Senza nome"}</h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate">👤 {p.customer||"N/D"}</p>
+            <div className="mt-3">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                    <span>{p.tasks_done||0}/{p.task_count||0} fasi</span>
+                    <span className="font-bold" style={{color:s.color}}>{p.progress_pct||0}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="h-2 rounded-full transition-all duration-500" style={{width:(p.progress_pct||0)+"%",background:s.color}}></div>
+                </div>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                    {(p.purchase_orders?.length||0)>0 && <span>📦 {p.purchase_orders.length}</span>}
+                    {p.date_start && <span>📅 {p.date_start.slice(5)}</span>}
+                </div>
+                {(p.value||0)>0 && <span className="text-sm font-extrabold text-emerald-700">€{(p.value/1000).toFixed(1)}k</span>}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// VIEWS
+// ============================================================================
+function KanbanView({ projects, gs, onSelect }) {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {projects.map(p => <Card key={p.id} p={p} gs={gs} onClick={()=>onSelect(p)}/>)}
+        </div>
+    );
+}
+
+function PipelineView({ projects, stages, gs, onSelect, counts }) {
+    const names = [...stages.map(s=>s.name), "Completato"];
+    const cols = {}; names.forEach(n=>{cols[n]=[];}); projects.forEach(p=>{(cols[p.current_stage]||cols["Completato"]||[]).push(p);});
+    return (
+        <div className="flex gap-3 overflow-x-auto pb-4" style={{minHeight:300}}>
+            {names.map(name=>{
+                const s=gs(name), items=cols[name]||[], val=items.reduce((a,p)=>a+(p.value||0),0);
+                return (
+                    <div key={name} className="flex-shrink-0" style={{width:250}}>
+                        <div className="rounded-t-lg px-3 py-2 border border-b-0" style={{background:s.bg,borderColor:s.color+"30"}}>
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs" style={{color:s.color}}>{s.emoji} {name.length>18?name.slice(0,16)+"…":name}</span>
+                                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full" style={{background:s.color+"15",color:s.color}}>{items.length}</span>
+                            </div>
+                            {val>0 && <div className="text-xs mt-0.5 font-medium" style={{color:s.color+"bb"}}>€{val.toLocaleString("it-IT")}</div>}
+                        </div>
+                        <div className="space-y-2 p-2 rounded-b-lg border border-t-0 min-h-16" style={{background:s.bg+"40",borderColor:s.color+"20"}}>
+                            {items.map(p=>{
+                                const l=LIGHT_META[getLight(p)];
+                                return (
+                                    <div key={p.id} onClick={()=>onSelect(p)} className="bg-white rounded-lg shadow-sm border border-slate-200 p-2.5 hover:shadow-md cursor-pointer hover:border-blue-300 transition-all fade-in">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs">{l.icon}</span>
+                                                <span className="text-xs font-mono font-bold text-blue-600">{p.sale_order||`#${p.id}`}</span>
+                                            </div>
+                                            {(p.purchase_orders?.length||0)>0 && <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-semibold">📦{p.purchase_orders.length}</span>}
+                                        </div>
+                                        <h4 className="font-semibold text-slate-800 text-xs leading-tight">{p.name}</h4>
+                                        <p className="text-xs text-slate-400 truncate">{p.customer||"N/D"}</p>
+                                        <div className="mt-1.5 flex items-center gap-2">
+                                            <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                                                <div className="h-1.5 rounded-full" style={{width:(p.progress_pct||0)+"%",background:s.color}}></div>
+                                            </div>
+                                            <span className="text-xs font-bold" style={{color:s.color}}>{p.progress_pct||0}%</span>
+                                        </div>
+                                        {(p.value||0)>0 && <div className="mt-1 text-right"><span className="text-xs font-bold text-emerald-700">€{p.value.toLocaleString("it-IT")}</span></div>}
+                                    </div>
+                                );
+                            })}
+                            {items.length===0 && <div className="text-center py-4 text-xs text-slate-300">—</div>}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function ListView({ projects, gs, onSelect }) {
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="bg-slate-50 border-b text-left">
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase w-8"></th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase">Ordine</th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase">Progetto / Cliente</th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase">Fase</th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase" style={{minWidth:140}}>Avanzamento</th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase text-center">OdA</th>
+                            <th className="px-3 py-2.5 font-semibold text-slate-500 text-xs uppercase text-right">Valore</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {projects.map(p=>{
+                            const s=gs(p.current_stage), l=LIGHT_META[getLight(p)];
+                            return (
+                                <tr key={p.id} onClick={()=>onSelect(p)} className="border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer transition-colors group">
+                                    <td className="px-3 py-2.5 text-center">{l.icon}</td>
+                                    <td className="px-3 py-2.5"><span className="font-mono text-xs font-bold text-blue-600">{p.sale_order||`#${p.id}`}</span></td>
+                                    <td className="px-3 py-2.5">
+                                        <div className="font-semibold text-slate-800 group-hover:text-blue-700 text-sm">{p.name}</div>
+                                        <div className="text-xs text-slate-400">{p.customer||"N/D"}</div>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap" style={{color:s.color,background:s.bg}}>
+                                            {s.emoji} {(p.current_stage||"").length>14?(p.current_stage||"").slice(0,12)+"…":p.current_stage||"N/D"}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-slate-200 rounded-full h-2"><div className="h-2 rounded-full" style={{width:(p.progress_pct||0)+"%",background:s.color}}></div></div>
+                                            <span className="text-xs font-bold w-8 text-right" style={{color:s.color}}>{p.progress_pct||0}%</span>
+                                        </div>
+                                        <span className="text-xs text-slate-400">{p.tasks_done||0}/{p.task_count||0}</span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center">
+                                        {(p.purchase_orders?.length||0)>0?<span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-semibold">📦 {p.purchase_orders.length}</span>:<span className="text-slate-300">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right">
+                                        {(p.value||0)>0?<span className="font-bold text-emerald-700">€{p.value.toLocaleString("it-IT")}</span>:<span className="text-slate-300">—</span>}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// DETAIL MODAL
+// ============================================================================
+function Detail({ p, gs, onClose }) {
+    const s = gs(p.current_stage), l = LIGHT_META[getLight(p)];
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-6 px-4 backdrop-blur-sm"
+            onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] overflow-y-auto fade-in">
+                {/* Header */}
+                <div className="p-5 border-b" style={{background:`linear-gradient(135deg,${s.bg},white)`}}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-lg">{l.icon}</span>
+                                <span className="font-mono text-sm font-extrabold text-blue-600">{p.sale_order||`#${p.id}`}</span>
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{color:s.color,background:s.bg,border:`1.5px solid ${s.color}40`}}>
+                                    {s.emoji} {p.current_stage||"N/D"}
+                                </span>
+                            </div>
+                            <h2 className="text-xl font-extrabold text-slate-900">{p.name||"Senza nome"}</h2>
+                            <p className="text-sm text-slate-500 mt-0.5">👤 {p.customer||"N/D"}</p>
+                        </div>
+                        <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600 transition-colors p-2 leading-none">✕</button>
+                    </div>
+                    <div className="mt-4">
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-500">{p.tasks_done||0} di {p.task_count||0} fasi completate</span>
+                            <span className="font-extrabold" style={{color:s.color}}>{p.progress_pct||0}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-3">
+                            <div className="h-3 rounded-full transition-all duration-500" style={{width:(p.progress_pct||0)+"%",background:s.color}}></div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3 p-5 border-b bg-slate-50">
+                    <div className="text-center">
+                        <div className="text-2xl font-extrabold text-emerald-700">{(p.value||0)>0?`€${(p.value/1000).toFixed(1)}k`:"—"}</div>
+                        <div className="text-xs text-slate-500">Valore</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-2xl font-extrabold text-blue-600">{p.purchase_orders?.length||0}</div>
+                        <div className="text-xs text-slate-500">OdA</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-2xl font-extrabold" style={{color:s.color}}>{p.progress_pct||0}%</div>
+                        <div className="text-xs text-slate-500">Avanzamento</div>
+                    </div>
+                </div>
+
+                {/* Tasks */}
+                <div className="p-5">
+                    <h3 className="font-bold text-slate-900 mb-3">📋 Fasi Progetto</h3>
+                    {(p.tasks||[]).map((t,i)=>{
+                        const done = t.done || t.is_closed;
+                        const isCur = !done && (i===0 || (p.tasks[i-1] && (p.tasks[i-1].done || p.tasks[i-1].is_closed)));
+                        return (
+                            <div key={i} className="flex items-start gap-3">
+                                <div className="flex flex-col items-center">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold border-2 flex-shrink-0 ${
+                                        done?"bg-emerald-500 border-emerald-500 text-white":isCur?"bg-white border-blue-500 text-blue-500":"bg-slate-100 border-slate-300 text-slate-400"}`}>
+                                        {done?"✓":i+1}
+                                    </div>
+                                    {i<p.tasks.length-1 && <div className={`w-0.5 h-8 ${done?"bg-emerald-300":"bg-slate-200"}`}></div>}
+                                </div>
+                                <div className={`pb-4 pt-0.5 ${done?"opacity-50":""}`}>
+                                    <div className={`text-sm font-semibold ${isCur?"text-blue-700":done?"text-slate-500 line-through":"text-slate-700"}`}>{t.name||`Fase ${i+1}`}</div>
+                                    {isCur && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold mt-0.5 inline-block">← In corso</span>}
+                                    {t.deadline && <span className="text-xs text-slate-400 ml-2">📅 {t.deadline}</span>}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {(!p.tasks||p.tasks.length===0) && <p className="text-sm text-slate-400 py-4">Nessuna fase</p>}
+                </div>
+
+                {/* Purchase Orders */}
+                {(p.purchase_orders?.length||0)>0 && (
+                    <div className="p-5 border-t">
+                        <h3 className="font-bold text-slate-900 mb-3">📦 Ordini Acquisto</h3>
+                        <div className="space-y-2">
+                            {p.purchase_orders.map((po,i)=>(
+                                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                    <div>
+                                        <span className="font-mono text-sm font-bold text-blue-600">{po.name||"N/D"}</span>
+                                        <span className="text-sm text-slate-600 ml-2">{po.supplier||""}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            po.state==="done"?"bg-emerald-100 text-emerald-700":po.state==="purchase"?"bg-blue-100 text-blue-700":po.state==="cancel"?"bg-red-100 text-red-600":"bg-slate-100 text-slate-600"}`}>
+                                            {po.state==="done"?"✅ Ricevuto":po.state==="purchase"?"📦 Ordinato":po.state==="cancel"?"🚫 Annullato":"📝 Bozza"}
+                                        </span>
+                                        {(po.amount||0)>0 && <span className="font-bold text-slate-700">€{po.amount.toLocaleString("it-IT")}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-4 border-t bg-slate-50 flex items-center justify-between rounded-b-2xl">
+                    <span className="text-xs text-slate-400">Odoo #{p.id} • {p.date_start||"N/D"}</span>
+                    <button onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300 transition-colors">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// RENDER
+// ============================================================================
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
