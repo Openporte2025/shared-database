@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // 💰 SISTEMA SCONTI FORNITORI v2.0 (03 FEB 2026)
 // Sconti applicati dai fornitori a Open Porte & Finestre
-// Supporta override da localStorage per personalizzazione da UI
+// Override salvati nel progetto (window.currentData.scontiOverride)
 // ═══════════════════════════════════════════════════════════════════════════
 const SCONTI_FORNITORI = {
 
@@ -21,7 +21,7 @@ const SCONTI_FORNITORI = {
         'ERRECI':         45.00,
     },
 
-    // Sconti attivi (defaults + override localStorage)
+    // Sconti attivi (defaults + override progetto)
     sconti: {},
 
     // Alias per normalizzazione nomi
@@ -48,24 +48,25 @@ const SCONTI_FORNITORI = {
     },
 
     // ═══════════════════════════════════════════════════════════════════
-    // INIT - Carica defaults + override da localStorage
+    // INIT - Carica defaults (chiamato all'avvio)
     // ═══════════════════════════════════════════════════════════════════
     init: function() {
         this.sconti = { ...this._defaults };
-        try {
-            const saved = localStorage.getItem('sconti_fornitori_override');
-            if (saved) {
-                const overrides = JSON.parse(saved);
-                Object.assign(this.sconti, overrides);
-                console.log('💰 Sconti: caricati override localStorage', overrides);
-            }
-        } catch(e) {
-            console.warn('⚠️ Sconti: errore lettura localStorage', e);
+    },
+
+    /** Carica override da progetto corrente */
+    loadFromProject: function() {
+        this.sconti = { ...this._defaults };
+        const overrides = window.currentData?.scontiOverride;
+        if (overrides && typeof overrides === 'object') {
+            Object.assign(this.sconti, overrides);
+            console.log('💰 Sconti: caricati override progetto', overrides);
         }
     },
 
-    // Salva solo le differenze rispetto ai defaults
-    _saveOverrides: function() {
+    /** Salva override nel progetto corrente */
+    _saveToProject: function() {
+        if (!window.currentData) return;
         const overrides = {};
         for (const [k, v] of Object.entries(this.sconti)) {
             if (this._defaults[k] === undefined || this._defaults[k] !== v) {
@@ -73,9 +74,9 @@ const SCONTI_FORNITORI = {
             }
         }
         if (Object.keys(overrides).length > 0) {
-            localStorage.setItem('sconti_fornitori_override', JSON.stringify(overrides));
+            window.currentData.scontiOverride = overrides;
         } else {
-            localStorage.removeItem('sconti_fornitori_override');
+            delete window.currentData.scontiOverride;
         }
     },
 
@@ -83,11 +84,11 @@ const SCONTI_FORNITORI = {
     // METODI GESTIONE SCONTI
     // ═══════════════════════════════════════════════════════════════════
 
-    /** Imposta/aggiorna sconto per azienda */
+    /** Imposta/aggiorna sconto per azienda (salva nel progetto) */
     setSconto: function(azienda, percentuale) {
         const nome = this.normalizzaAzienda(azienda);
         this.sconti[nome] = parseFloat(percentuale) || 0;
-        this._saveOverrides();
+        this._saveToProject();
     },
 
     /** Rimuovi sconto custom (ripristina default o elimina) */
@@ -98,13 +99,13 @@ const SCONTI_FORNITORI = {
         } else {
             delete this.sconti[nome];
         }
-        this._saveOverrides();
+        this._saveToProject();
     },
 
-    /** Ripristina tutti i defaults */
+    /** Ripristina tutti i defaults per questo progetto */
     resetAll: function() {
         this.sconti = { ...this._defaults };
-        localStorage.removeItem('sconti_fornitori_override');
+        if (window.currentData) delete window.currentData.scontiOverride;
     },
 
     /** Ottieni lista completa per UI */
@@ -119,7 +120,7 @@ const SCONTI_FORNITORI = {
     },
 
     // ═══════════════════════════════════════════════════════════════════
-    // METODI CALCOLO (invariati)
+    // METODI CALCOLO
     // ═══════════════════════════════════════════════════════════════════
 
     normalizzaAzienda: function(azienda) {
@@ -162,6 +163,7 @@ const SCONTI_FORNITORI = {
     }
 };
 
-// Init al caricamento
+// Init al caricamento (solo defaults, override caricati con progetto)
 SCONTI_FORNITORI.init();
-console.log(`✅ SCONTI_FORNITORI v2.0 - ${Object.keys(SCONTI_FORNITORI.sconti).length} fornitori attivi`);
+console.log(`✅ SCONTI_FORNITORI v2.0 - ${Object.keys(SCONTI_FORNITORI.sconti).length} fornitori default`);
+
