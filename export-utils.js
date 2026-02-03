@@ -146,11 +146,14 @@
     // ═══════════════════════════════════════════════════════════════
     // 📐 GET PRODUCT BRM - Legge BRM da prodotto con fallback misure
     // ═══════════════════════════════════════════════════════════════
-    // Usato dal Dashboard per leggere BRM con fallback unificato
-    // Ogni prodotto: BRM_L/BRM_H → LF/HF → LVT/HVT
+    // Usato da Dashboard per TUTTI i prodotti: infissi, tapparelle,
+    // persiane, zanzariere, cassonetti, grate
+    // 
+    // offsets (opzionale): { L: +100, H: +50 } per infissi Finstral
+    //   Applicati SOLO quando si usa fallback (BRM non disponibile)
     // ═══════════════════════════════════════════════════════════════
 
-    function getProductBRM(product, pos) {
+    function getProductBRM(product, pos, offsets) {
         if (!product) return { L: 0, H: 0, C: 0, B: 0, stimato: false, origine: 'none' };
 
         let L = parseInt(product.BRM_L) || parseInt(product.brm?.L) || 0;
@@ -161,16 +164,18 @@
         let origine = 'BRM';
 
         const misure = pos?.misure || {};
+        const oL = (offsets && offsets.L) || 0;  // es. +100 per infissi
+        const oH = (offsets && offsets.H) || 0;  // es. +50 per infissi
 
         // Fallback L
-        if (!L && misure.LF)  { L = parseInt(misure.LF);  stimato = true; origine = 'LF'; }
-        if (!L && misure.LVT) { L = parseInt(misure.LVT); stimato = true; origine = 'LVT'; }
-        if (!L && misure.TMV) { L = parseInt(misure.TMV); stimato = true; origine = 'TMV'; }
+        if (!L && misure.LF)  { L = parseInt(misure.LF) + oL;  stimato = true; origine = oL ? `LF+${oL}` : 'LF'; }
+        if (!L && misure.LVT) { L = parseInt(misure.LVT) + oL; stimato = true; origine = oL ? `LVT+${oL}` : 'LVT'; }
+        if (!L && misure.TMV) { L = parseInt(misure.TMV) - (oL ? 40 : 0); stimato = true; origine = oL ? 'TMV-40' : 'TMV'; }
 
         // Fallback H
-        if (!H && misure.HF)  { H = parseInt(misure.HF);  stimato = true; }
-        if (!H && misure.HVT) { H = parseInt(misure.HVT); stimato = true; }
-        if (!H && misure.HMT) { H = parseInt(misure.HMT); stimato = true; }
+        if (!H && misure.HF)  { H = parseInt(misure.HF) + oH;  stimato = true; }
+        if (!H && misure.HVT) { H = parseInt(misure.HVT) + oH; stimato = true; }
+        if (!H && misure.HMT) { H = parseInt(misure.HMT) - (oH ? 20 : 0); stimato = true; }
 
         return { L, H, C, B, stimato, origine };
     }
