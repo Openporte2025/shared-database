@@ -1,24 +1,28 @@
 // ============================================================================
-// ODOO-SEARCH-BUTTON.js v3.4.0
+// ODOO-SEARCH-BUTTON.js v3.1.0
 // FILE CENTRALIZZATO - shared-database/odoo-search-button.js
 //
-// v3.4.0: Dashboard → salva originale openPMProjectModal, pre-compila form
-//         App Rilievo → createProject diretto (funziona)
+// Sovrascrive "Nuovo Progetto" su TUTTE le app con dialog moderno:
+//   Tab 1: 🔍 Cerca cliente in Odoo → redirect ?odoo_id=
+//   Tab 2: ✏️ Inserimento manuale → crea progetto nativo
+//
+// Aggiunge bottone "🔍 Cerca in Odoo" nel menu sidebar
+// Aggiunge bottone "🏗️ Stato Cantieri" nel menu sidebar
+// con MutationObserver per sopravvivere a render() dinamici.
+//
+// App supportate:
+//   - App Rilievo iPad  → sovrascrive showNewProjectModal()
+//   - Dashboard Ufficio → sovrascrive openPMProjectModal()
+//   - App Posa          → sovrascrive showNewProjectModal()
 // ============================================================================
 
 (function() {
     'use strict';
 
-    var VERSION = '3.4.0';
-    var BUTTON_ID = 'odoo-search-sidebar-btn';
-    var DIALOG_ID = 'odoo-newproject-dialog';
-    var MARKER = '__odooOverride';
-
-    // Salva riferimenti alle funzioni ORIGINALI prima di sovrascriverle
-    var _origShowNewProjectModal = null;
-    var _origOpenPMProjectModal = null;
-
-    console.log('📦 [OdooSearch v' + VERSION + '] Script caricato');
+    const VERSION = '3.1.0';
+    const BUTTON_ID = 'odoo-search-sidebar-btn';
+    const CANTIERI_BTN_ID = 'odoo-cantieri-sidebar-btn';
+    const DIALOG_ID = 'odoo-newproject-dialog';
 
     function getServerUrl() {
         if (window.ODOO_INTEGRATION && window.ODOO_INTEGRATION._serverUrl) {
@@ -27,432 +31,381 @@
         return 'https://jody-gowaned-hypsometrically.ngrok-free.dev';
     }
 
+    const CANTIERI_URL = 'https://openporte2025.github.io/shared-database/cantieri.html';
+
     // ========================================================================
-    // OVERRIDE con POLLING - salva originali
+    // DETECT APP & SAVE ORIGINALS
     // ========================================================================
 
-    function makeOverrideFn() {
-        var fn = function() {
-            closeMenusSafe();
-            showNewProjectDialog();
-        };
-        fn[MARKER] = true;
-        return fn;
-    }
+    let _origShowNewProjectModal = null;
+    let _origOpenPMProjectModal = null;
 
-    function doOverride() {
-        if (typeof window.showNewProjectModal === 'function' && !window.showNewProjectModal[MARKER]) {
+    function detectAndOverride() {
+        if (typeof window.showNewProjectModal === 'function') {
             _origShowNewProjectModal = window.showNewProjectModal;
-            window.showNewProjectModal = makeOverrideFn();
-            console.log('✅ [OdooSearch] Override showNewProjectModal (originale salvata)');
+            window.showNewProjectModal = () => {
+                closeMenusSafe();
+                showUnifiedDialog('rilievo');
+            };
+            console.log('✅ [OdooSearch v' + VERSION + '] Override: showNewProjectModal (App Rilievo)');
         }
-        if (typeof window.openPMProjectModal === 'function' && !window.openPMProjectModal[MARKER]) {
+        if (typeof window.openPMProjectModal === 'function') {
             _origOpenPMProjectModal = window.openPMProjectModal;
-            window.openPMProjectModal = makeOverrideFn();
-            console.log('✅ [OdooSearch] Override openPMProjectModal (originale salvata)');
+            window.openPMProjectModal = () => {
+                closeMenusSafe();
+                showUnifiedDialog('dashboard');
+            };
+            console.log('✅ [OdooSearch v' + VERSION + '] Override: openPMProjectModal (Dashboard)');
         }
     }
 
     function closeMenusSafe() {
-        if (typeof window.closeMainMenuNoRender === 'function') window.closeMainMenuNoRender();
-        try { if (typeof state !== 'undefined') { state.mainMenuOpen = false; state.projectMenuOpen = false; } } catch(e) {}
-        if (typeof window.closeSidebar === 'function') window.closeSidebar();
+        if (typeof window.closeMainMenuNoRender === 'function') {
+            window.closeMainMenuNoRender();
+        }
+        try {
+            if (typeof state !== 'undefined') {
+                state.mainMenuOpen = false;
+                state.projectMenuOpen = false;
+            }
+        } catch(e) {}
+        if (typeof window.closeSidebar === 'function') {
+            window.closeSidebar();
+        }
     }
 
-    // Polling
-    var pollCount = 0;
-    var fastPoll = setInterval(function() {
-        pollCount++;
-        doOverride();
-        if (!document.getElementById(BUTTON_ID)) injectButton();
-        if (pollCount >= 60) {
-            clearInterval(fastPoll);
-            setInterval(function() {
-                doOverride();
-                if (!document.getElementById(BUTTON_ID)) injectButton();
-            }, 3000);
-        }
-    }, 500);
-
     // ========================================================================
-    // CACHE RISULTATI RICERCA
+    // DIALOG UNIFICATO: Odoo Search + Manuale
     // ========================================================================
 
-    window._odooSearchCache = [];
-
-    // ========================================================================
-    // SELEZIONE RISULTATO - funzione globale per onclick
-    // ========================================================================
-
-    window._odooSelectResult = function(index) {
-        try {
-            var c = window._odooSearchCache[index];
-            if (!c) {
-                alert('Errore: cliente non trovato (index=' + index + ')');
-                return;
-            }
-
-            var customerName = c.name || 'Cliente Odoo';
-            var odooId = c.id;
-
-            console.log('🎯 [OdooSearch] Selezionato: ' + customerName + ' (Odoo ID: ' + odooId + ')');
-
-            // Chiudi dialog
-            var dialog = document.getElementById(DIALOG_ID);
-            if (dialog) dialog.remove();
-
-            // Salva dati Odoo per associazione
-            window._pendingOdooId = odooId;
-            window._pendingOdooCustomer = {
-                id: odooId,
-                name: c.name || '',
-                phone: c.phone || '',
-                email: c.email || '',
-                street: c.street || '',
-                city: c.city || '',
-                zip: c.zip || c.zip_code || ''
-            };
-
-            // ============================================================
-            // APP RILIEVO / POSA: createProject() diretto
-            // ============================================================
-            if (typeof window.createProject === 'function') {
-                console.log('📝 [OdooSearch] App Rilievo - createProject()');
-                window.createProject(customerName, customerName);
-
-                // Associa odoo_id
-                if (typeof state !== 'undefined' && state.projects && state.projects.length > 0) {
-                    var lastProject = state.projects[state.projects.length - 1];
-                    if (lastProject) {
-                        lastProject.odoo_id = odooId;
-                        lastProject.odoo_customer = window._pendingOdooCustomer;
-                        if (lastProject.clientData) {
-                            lastProject.clientData.nome = c.name || '';
-                            lastProject.clientData.telefono = c.phone || '';
-                            lastProject.clientData.email = c.email || '';
-                            lastProject.clientData.indirizzo = [c.street, c.zip || c.zip_code, c.city].filter(Boolean).join(', ');
-                        }
-                    }
-                }
-
-                state.screen = 'project';
-                state.setupStep = 1;
-                render();
-                showToast('✅ Cliente "' + customerName + '" collegato da Odoo');
-                return;
-            }
-
-            // ============================================================
-            // DASHBOARD: apri form ORIGINALE, poi pre-compila
-            // ============================================================
-            if (_origOpenPMProjectModal || typeof window.createPMProject === 'function') {
-                console.log('📝 [OdooSearch] Dashboard - apro form originale pre-compilato');
-
-                // Apri il modal nativo della Dashboard
-                if (_origOpenPMProjectModal) {
-                    _origOpenPMProjectModal();
-                }
-
-                // Pre-compila campi dopo che il modal si è aperto
-                var fillAttempts = 0;
-                var fillInterval = setInterval(function() {
-                    fillAttempts++;
-
-                    // Cerca tutti i possibili ID dei campi form
-                    var nameField = document.getElementById('pm-project-name')
-                        || document.getElementById('project-name')
-                        || document.querySelector('input[name="project-name"]')
-                        || document.querySelector('input[placeholder*="progetto" i]')
-                        || document.querySelector('input[placeholder*="nome" i]');
-
-                    var clientField = document.getElementById('pm-project-client')
-                        || document.getElementById('client-name')
-                        || document.querySelector('input[name="client-name"]')
-                        || document.querySelector('input[placeholder*="cliente" i]');
-
-                    if (nameField) {
-                        nameField.value = customerName;
-                        nameField.dispatchEvent(new Event('input', { bubbles: true }));
-                        console.log('✅ [OdooSearch] Nome progetto compilato: ' + customerName);
-                    }
-                    if (clientField) {
-                        clientField.value = customerName;
-                        clientField.dispatchEvent(new Event('input', { bubbles: true }));
-                        console.log('✅ [OdooSearch] Nome cliente compilato: ' + customerName);
-                    }
-
-                    // Se trovato almeno un campo, o dopo 10 tentativi, ferma
-                    if (nameField || clientField || fillAttempts >= 10) {
-                        clearInterval(fillInterval);
-                        if (nameField || clientField) {
-                            showToast('📝 Compila e clicca "Crea Progetto"');
-                        } else {
-                            console.warn('⚠️ [OdooSearch] Campi form non trovati dopo 10 tentativi');
-                            showToast('⚠️ Inserisci "' + customerName + '" come nome progetto');
-                        }
-                    }
-                }, 200);
-                return;
-            }
-
-            // ============================================================
-            // FALLBACK
-            // ============================================================
-            alert('Errore: nessuna funzione creazione trovata.\ncreateProject: ' + (typeof window.createProject) + '\nopenPMProjectModal orig: ' + (!!_origOpenPMProjectModal));
-
-        } catch(err) {
-            console.error('❌ [OdooSearch] Errore:', err);
-            alert('Errore: ' + err.message);
-        }
-    };
-
-    // ========================================================================
-    // DIALOG
-    // ========================================================================
-
-    function showNewProjectDialog() {
-        var old = document.getElementById(DIALOG_ID);
+    function showUnifiedDialog(appType) {
+        const old = document.getElementById(DIALOG_ID);
         if (old) old.remove();
 
-        var overlay = document.createElement('div');
+        const overlay = document.createElement('div');
         overlay.id = DIALOG_ID;
         overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding-top:60px;';
 
-        overlay.innerHTML = '<div style="background:white;border-radius:16px;width:94%;max-width:520px;box-shadow:0 25px 50px rgba(0,0,0,0.25);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;max-height:85vh;overflow-y:auto;">'
-            + '<div style="background:linear-gradient(135deg,#714B67 0%,#9B6B8E 100%);color:white;padding:18px 20px;">'
-            + '<h2 style="margin:0;font-size:1.2rem;">➕ Nuovo Progetto</h2>'
-            + '<p style="margin:6px 0 0;opacity:0.9;font-size:0.85rem;">Cerca cliente da Odoo oppure inserisci manualmente</p>'
-            + '</div>'
-            + '<div style="display:flex;border-bottom:2px solid #e5e7eb;">'
-            + '<button id="odoo-np-tab-search" style="flex:1;padding:12px;border:none;background:#f0e6f0;font-weight:600;font-size:14px;cursor:pointer;color:#714B67;border-bottom:3px solid #714B67;">🔍 Cerca in Odoo</button>'
-            + '<button id="odoo-np-tab-manual" style="flex:1;padding:12px;border:none;background:white;font-weight:500;font-size:14px;cursor:pointer;color:#6b7280;border-bottom:3px solid transparent;">✏️ Manuale</button>'
-            + '</div>'
-            + '<div id="odoo-np-search-panel" style="padding:16px;">'
-            + '<div style="display:flex;gap:8px;">'
-            + '<input id="odoo-np-search-input" type="text" placeholder="Cerca nome, telefono, email..." style="flex:1;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;-webkit-appearance:none;" />'
-            + '<button id="odoo-np-search-go" style="padding:12px 18px;background:#714B67;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px;">Cerca</button>'
-            + '</div>'
-            + '<div id="odoo-np-search-results" style="margin-top:12px;max-height:300px;overflow-y:auto;">'
-            + '<p style="color:#9ca3af;text-align:center;padding:20px;font-size:14px;">Digita almeno 2 caratteri e premi Cerca</p>'
-            + '</div></div>'
-            + '<div id="odoo-np-manual-panel" style="padding:16px;display:none;">'
-            + '<div style="margin-bottom:12px;">'
-            + '<label style="display:block;font-weight:600;font-size:13px;color:#374151;margin-bottom:4px;">Nome Cliente *</label>'
-            + '<input id="odoo-np-client-name" type="text" placeholder="Es: Rossi Mario" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;box-sizing:border-box;" />'
-            + '</div>'
-            + '<div style="margin-bottom:16px;">'
-            + '<label style="display:block;font-weight:600;font-size:13px;color:#374151;margin-bottom:4px;">Nome Progetto <span style="color:#9ca3af;font-weight:400;">(opzionale)</span></label>'
-            + '<input id="odoo-np-project-name" type="text" placeholder="Lascia vuoto per usare nome cliente" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;box-sizing:border-box;" />'
-            + '</div>'
-            + '<button id="odoo-np-create-manual" style="width:100%;padding:14px;background:linear-gradient(135deg,#714B67,#9B6B8E);color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">➕ Crea Progetto</button>'
-            + '</div>'
-            + '<div style="padding:12px 16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">'
-            + '<span style="font-size:11px;color:#d1d5db;">v' + VERSION + '</span>'
-            + '<button id="odoo-np-close" style="padding:10px 24px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;font-size:14px;">Chiudi</button>'
-            + '</div></div>';
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;width:94%;max-width:520px;box-shadow:0 25px 50px rgba(0,0,0,0.25);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;max-height:85vh;overflow-y:auto;">
+                <div style="background:linear-gradient(135deg,#714B67 0%,#9B6B8E 100%);color:white;padding:18px 20px;">
+                    <h2 style="margin:0;font-size:1.2rem;">➕ Nuovo Progetto</h2>
+                    <p style="margin:6px 0 0;opacity:0.9;font-size:0.85rem;">Cerca cliente da Odoo oppure inserisci manualmente</p>
+                </div>
+                <div id="odoo-np-tabs" style="display:flex;border-bottom:2px solid #e5e7eb;">
+                    <button id="odoo-np-tab-search" style="flex:1;padding:12px;border:none;background:#f0e6f0;font-weight:600;font-size:14px;cursor:pointer;color:#714B67;border-bottom:3px solid #714B67;">🔍 Cerca in Odoo</button>
+                    <button id="odoo-np-tab-manual" style="flex:1;padding:12px;border:none;background:white;font-weight:500;font-size:14px;cursor:pointer;color:#6b7280;border-bottom:3px solid transparent;">✏️ Manuale</button>
+                </div>
+                <div id="odoo-np-search-panel" style="padding:16px;">
+                    <div style="display:flex;gap:8px;">
+                        <input id="odoo-np-search-input" type="text" placeholder="Cerca nome, telefono, email..."
+                            style="flex:1;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;-webkit-appearance:none;" />
+                        <button id="odoo-np-search-go" style="padding:12px 18px;background:#714B67;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cerca</button>
+                    </div>
+                    <div id="odoo-np-search-results" style="margin-top:12px;max-height:300px;overflow-y:auto;">
+                        <p style="color:#9ca3af;text-align:center;padding:20px;font-size:14px;">Digita almeno 2 caratteri e premi Cerca</p>
+                    </div>
+                </div>
+                <div id="odoo-np-manual-panel" style="padding:16px;display:none;">
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-weight:600;font-size:13px;color:#374151;margin-bottom:4px;">Nome Cliente *</label>
+                        <input id="odoo-np-client-name" type="text" placeholder="Es: Rossi Mario"
+                            style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-weight:600;font-size:13px;color:#374151;margin-bottom:4px;">Nome Progetto <span style="color:#9ca3af;font-weight:400;">(opzionale)</span></label>
+                        <input id="odoo-np-project-name" type="text" placeholder="Lascia vuoto per usare nome cliente"
+                            style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:8px;font-size:16px;outline:none;box-sizing:border-box;" />
+                    </div>
+                    <button id="odoo-np-create-manual" style="width:100%;padding:14px;background:linear-gradient(135deg,#714B67,#9B6B8E);color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">➕ Crea Progetto</button>
+                </div>
+                <div style="padding:12px 16px;border-top:1px solid #e5e7eb;text-align:right;">
+                    <button id="odoo-np-close" style="padding:10px 24px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;font-size:14px;">Chiudi</button>
+                </div>
+            </div>
+        `;
 
         document.body.appendChild(overlay);
-        setTimeout(function() { var i = document.getElementById('odoo-np-search-input'); if(i) i.focus(); }, 150);
+        setTimeout(() => document.getElementById('odoo-np-search-input')?.focus(), 150);
 
-        // TAB SWITCH
-        var ACTIVE = 'flex:1;padding:12px;border:none;background:#f0e6f0;font-weight:600;font-size:14px;cursor:pointer;color:#714B67;border-bottom:3px solid #714B67;';
-        var INACTIVE = 'flex:1;padding:12px;border:none;background:white;font-weight:500;font-size:14px;cursor:pointer;color:#6b7280;border-bottom:3px solid transparent;';
+        const activeCSS = 'flex:1;padding:12px;border:none;background:#f0e6f0;font-weight:600;font-size:14px;cursor:pointer;color:#714B67;border-bottom:3px solid #714B67;';
+        const inactiveCSS = 'flex:1;padding:12px;border:none;background:white;font-weight:500;font-size:14px;cursor:pointer;color:#6b7280;border-bottom:3px solid transparent;';
 
         function switchTab(tab) {
-            var sp = document.getElementById('odoo-np-search-panel');
-            var mp = document.getElementById('odoo-np-manual-panel');
-            var st = document.getElementById('odoo-np-tab-search');
-            var mt = document.getElementById('odoo-np-tab-manual');
+            const sp = document.getElementById('odoo-np-search-panel');
+            const mp = document.getElementById('odoo-np-manual-panel');
+            const st = document.getElementById('odoo-np-tab-search');
+            const mt = document.getElementById('odoo-np-tab-manual');
             if (!sp) return;
             if (tab === 'search') {
                 sp.style.display = 'block'; mp.style.display = 'none';
-                st.style.cssText = ACTIVE; mt.style.cssText = INACTIVE;
+                st.style.cssText = activeCSS; mt.style.cssText = inactiveCSS;
+                setTimeout(() => document.getElementById('odoo-np-search-input')?.focus(), 100);
             } else {
                 sp.style.display = 'none'; mp.style.display = 'block';
-                mt.style.cssText = ACTIVE; st.style.cssText = INACTIVE;
-                setTimeout(function(){ var i=document.getElementById('odoo-np-client-name'); if(i) i.focus(); }, 100);
+                mt.style.cssText = activeCSS; st.style.cssText = inactiveCSS;
+                setTimeout(() => document.getElementById('odoo-np-client-name')?.focus(), 100);
             }
         }
-        window._odooNpSwitchTab = switchTab;
 
-        // SEARCH
-        function doSearch() {
-            var input = document.getElementById('odoo-np-search-input');
-            var resultsDiv = document.getElementById('odoo-np-search-results');
-            var query = input.value.trim();
+        async function doSearch() {
+            const input = document.getElementById('odoo-np-search-input');
+            const resultsDiv = document.getElementById('odoo-np-search-results');
+            const query = input.value.trim();
             if (query.length < 2) {
                 resultsDiv.innerHTML = '<p style="color:#ef4444;text-align:center;padding:12px;">Digita almeno 2 caratteri</p>';
                 return;
             }
             resultsDiv.innerHTML = '<p style="color:#6b7280;text-align:center;padding:20px;">⏳ Ricerca...</p>';
-
-            fetch(getServerUrl() + '/api/customers?search=' + encodeURIComponent(query), {
-                headers: { 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' }
-            }).then(function(resp) {
+            try {
+                const resp = await fetch(getServerUrl() + '/api/customers?search=' + encodeURIComponent(query), {
+                    headers: { 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' }
+                });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                return resp.json();
-            }).then(function(data) {
-                var customers = data.customers || data.results || (Array.isArray(data) ? data : []);
+                const data = await resp.json();
+                const customers = data.customers || data.results || (Array.isArray(data) ? data : []);
                 if (!customers || customers.length === 0) {
-                    resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;">'
-                        + '<p style="color:#9ca3af;">Nessun risultato per "' + query + '"</p>'
-                        + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:10px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;">✏️ Inserisci manualmente</button>'
-                        + '</div>';
+                    resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;"><p style="color:#9ca3af;">Nessun risultato per "' + query + '"</p><button id="odoo-np-goto-manual" style="margin-top:10px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">✏️ Inserisci manualmente</button></div>';
+                    document.getElementById('odoo-np-goto-manual')?.addEventListener('click', () => switchTab('manual'));
                     return;
                 }
-
-                window._odooSearchCache = customers.slice(0, 20);
-                var html = '';
-                for (var i = 0; i < window._odooSearchCache.length; i++) {
-                    var c = window._odooSearchCache[i];
-                    var details = [c.phone, c.email, c.city].filter(Boolean).join(' • ');
-                    html += '<div onclick="window._odooSelectResult(' + i + ')" style="padding:14px 16px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'white\'">'
-                        + '<div style="font-weight:600;color:#111827;font-size:15px;">' + (c.name || 'Senza nome') + '</div>'
-                        + '<div style="font-size:13px;color:#6b7280;margin-top:3px;">' + (details || 'Nessun dettaglio') + '</div>'
-                        + '</div>';
-                }
-                resultsDiv.innerHTML = html;
-            }).catch(function(err) {
-                console.error('❌ [OdooSearch]', err);
-                resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;">'
-                    + '<p style="color:#ef4444;font-weight:600;">❌ Server non raggiungibile</p>'
-                    + '<p style="color:#9ca3af;font-size:13px;margin-top:8px;">Verifica AVVIA-OPERA.bat</p>'
-                    + '<button onclick="window._odooNpSwitchTab(\'manual\')" style="margin-top:12px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;">✏️ Inserisci manualmente</button>'
-                    + '</div>';
-            });
+                resultsDiv.innerHTML = customers.slice(0, 20).map(c =>
+                    '<div class="odoo-np-result" data-id="' + c.id + '" style="padding:14px 16px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'white\'">' +
+                    '<div style="font-weight:600;color:#111827;font-size:15px;">' + (c.name || 'Senza nome') + '</div>' +
+                    '<div style="font-size:13px;color:#6b7280;margin-top:3px;">' + [c.phone, c.email, c.city].filter(Boolean).join(' &bull; ') + '</div></div>'
+                ).join('');
+                resultsDiv.querySelectorAll('.odoo-np-result').forEach(item => {
+                    item.addEventListener('click', () => {
+                        overlay.remove();
+                        window.location.href = window.location.pathname + '?odoo_id=' + item.dataset.id;
+                    });
+                });
+            } catch (err) {
+                console.error('❌ [OdooSearch] Errore:', err);
+                resultsDiv.innerHTML = '<div style="text-align:center;padding:20px;"><p style="color:#ef4444;font-weight:600;">❌ Server non raggiungibile</p><p style="color:#9ca3af;font-size:13px;margin-top:8px;">Verifica AVVIA-OPERA.bat</p><button id="odoo-np-goto-manual2" style="margin-top:12px;padding:8px 16px;background:#714B67;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">✏️ Inserisci manualmente</button></div>';
+                document.getElementById('odoo-np-goto-manual2')?.addEventListener('click', () => switchTab('manual'));
+            }
         }
 
-        // MANUAL CREATE
         function doCreateManual() {
-            var clientInput = document.getElementById('odoo-np-client-name');
-            var projectInput = document.getElementById('odoo-np-project-name');
-            var clientName = clientInput.value.trim();
+            const clientInput = document.getElementById('odoo-np-client-name');
+            const projectInput = document.getElementById('odoo-np-project-name');
+            const clientName = clientInput.value.trim();
             if (!clientName) { clientInput.style.borderColor = '#ef4444'; clientInput.focus(); return; }
-            var projectName = projectInput.value.trim() || clientName;
+            const projectName = projectInput.value.trim() || clientName;
             overlay.remove();
 
-            try {
-                // App Rilievo
-                if (typeof window.createProject === 'function') {
-                    window.createProject(projectName, clientName);
-                    state.screen = 'project';
-                    state.setupStep = 1;
-                    render();
-                    showToast('✅ Progetto "' + projectName + '" creato');
-                    return;
-                }
-                // Dashboard - apri form originale pre-compilato
-                if (_origOpenPMProjectModal) {
-                    _origOpenPMProjectModal();
-                    setTimeout(function() {
-                        fillDashboardForm(projectName, clientName);
-                    }, 300);
-                    showToast('📝 Compila e clicca "Crea Progetto"');
-                    return;
-                }
-                alert('Errore: funzione creazione non trovata');
-            } catch(err) {
-                alert('Errore: ' + err.message);
+            if (typeof window.createProject === 'function') {
+                window.createProject(projectName, clientName);
+                try { state.screen = 'project'; render(); } catch(e) {}
+                return;
             }
+            if (typeof window.createPMProject === 'function') {
+                const nameField = document.getElementById('pm-project-name') || document.getElementById('project-name');
+                const clientField = document.getElementById('pm-project-client') || document.getElementById('client-name');
+                if (nameField) nameField.value = projectName;
+                if (clientField) clientField.value = clientName;
+                window.createPMProject();
+                return;
+            }
+            if (_origShowNewProjectModal) { _origShowNewProjectModal(); return; }
+            if (_origOpenPMProjectModal) { _origOpenPMProjectModal(); return; }
+            alert('Errore: nessuna funzione di creazione progetto trovata');
         }
 
-        // Helper per compilare form Dashboard
-        function fillDashboardForm(name, client) {
-            var nameField = document.getElementById('pm-project-name')
-                || document.getElementById('project-name')
-                || document.querySelector('input[placeholder*="progetto" i]')
-                || document.querySelector('input[placeholder*="nome" i]');
-            var clientField = document.getElementById('pm-project-client')
-                || document.getElementById('client-name')
-                || document.querySelector('input[placeholder*="cliente" i]');
-            if (nameField) {
-                nameField.value = name;
-                nameField.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-            if (clientField) {
-                clientField.value = client;
-                clientField.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        }
-
-        // EVENTS
-        document.getElementById('odoo-np-tab-search').addEventListener('click', function() { switchTab('search'); });
-        document.getElementById('odoo-np-tab-manual').addEventListener('click', function() { switchTab('manual'); });
+        document.getElementById('odoo-np-tab-search').addEventListener('click', () => switchTab('search'));
+        document.getElementById('odoo-np-tab-manual').addEventListener('click', () => switchTab('manual'));
         document.getElementById('odoo-np-search-go').addEventListener('click', doSearch);
-        document.getElementById('odoo-np-search-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSearch(); });
+        document.getElementById('odoo-np-search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
         document.getElementById('odoo-np-create-manual').addEventListener('click', doCreateManual);
-        document.getElementById('odoo-np-client-name').addEventListener('keydown', function(e) { if (e.key === 'Enter') doCreateManual(); });
-        document.getElementById('odoo-np-close').addEventListener('click', function() { overlay.remove(); });
-        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+        document.getElementById('odoo-np-client-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') doCreateManual(); });
+        document.getElementById('odoo-np-close').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     }
 
     // ========================================================================
-    // TOAST
-    // ========================================================================
-
-    function showToast(message) {
-        var toast = document.createElement('div');
-        toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#065f46;color:white;padding:14px 24px;border-radius:12px;font-size:15px;font-weight:600;z-index:999999;box-shadow:0 8px 25px rgba(0,0,0,0.3);';
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
-    }
-
-    // ========================================================================
-    // BOTTONE SIDEBAR
+    // BOTTONE SIDEBAR "Cerca in Odoo"
     // ========================================================================
 
     function injectButton() {
         if (document.getElementById(BUTTON_ID)) return false;
-        var sub = document.getElementById('main-submenu-progetti');
-        if (sub) {
-            var item = document.createElement('div');
+
+        const progettiSubmenu = document.getElementById('main-submenu-progetti');
+        if (progettiSubmenu) {
+            const item = document.createElement('div');
             item.id = BUTTON_ID;
             item.className = 'main-submenu-item';
             item.style.cssText = 'background:linear-gradient(135deg,#714B67,#9B6B8E);color:white;border-radius:8px;margin:4px 8px;font-weight:600;cursor:pointer;';
             item.innerHTML = '<span>🔍 Cerca in Odoo</span>';
-            item.onclick = function(e) {
+            item.onclick = (e) => {
                 e.preventDefault(); e.stopPropagation();
                 if (typeof window.closeMainMenuNoRender === 'function') window.closeMainMenuNoRender();
-                setTimeout(showNewProjectDialog, 100);
+                setTimeout(() => showUnifiedDialog('rilievo'), 100);
             };
-            sub.appendChild(item);
+            progettiSubmenu.appendChild(item);
             return true;
         }
-        var sc = document.querySelector('.sidebar-content');
-        if (sc) {
-            var after = null;
-            var items = sc.querySelectorAll('.sidebar-item, div[class*="sidebar"]');
-            for (var i = 0; i < items.length; i++) {
-                if ((items[i].textContent || '').toLowerCase().indexOf('nuovo progetto') >= 0) { after = items[i]; break; }
+
+        const pmNewBtn = document.querySelector('.pm-sidebar-new-btn, [onclick*="openPMProjectModal"]');
+        if (pmNewBtn) {
+            const btn = document.createElement('a');
+            btn.id = BUTTON_ID;
+            btn.href = '#';
+            btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 16px;margin:4px 12px;background:linear-gradient(135deg,#714B67,#9B6B8E);color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;';
+            btn.innerHTML = '🔍 Cerca in Odoo';
+            btn.onmouseover = () => btn.style.opacity = '0.85';
+            btn.onmouseout = () => btn.style.opacity = '1';
+            btn.onclick = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (typeof window.closeSidebar === 'function') window.closeSidebar();
+                showUnifiedDialog('dashboard');
+            };
+            pmNewBtn.parentNode.insertBefore(btn, pmNewBtn.nextSibling);
+            return true;
+        }
+
+        const sidebarContent = document.querySelector('.sidebar-content');
+        if (sidebarContent) {
+            let insertAfter = null;
+            for (const el of sidebarContent.querySelectorAll('.sidebar-item, div[class*="sidebar"]')) {
+                if ((el.textContent || '').toLowerCase().includes('nuovo progetto')) { insertAfter = el; break; }
             }
-            if (!after && sc.children.length > 0) after = sc.children[0];
-            if (after) {
-                var btn = document.createElement('div');
+            if (!insertAfter && sidebarContent.children.length > 0) insertAfter = sidebarContent.children[0];
+            if (insertAfter) {
+                const btn = document.createElement('div');
                 btn.id = BUTTON_ID;
                 btn.className = 'sidebar-item';
-                btn.style.cssText = 'cursor:pointer;background:linear-gradient(135deg,#714B67,#9B6B8E);border-radius:8px;margin:4px 0;';
-                btn.innerHTML = '<div class="sidebar-item-header" style="color:white;font-weight:600;padding:10px 16px;">🔍 Cerca in Odoo</div>';
-                btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); showNewProjectDialog(); };
-                after.parentNode.insertBefore(btn, after.nextSibling);
+                btn.style.cssText = 'cursor:pointer;background:linear-gradient(135deg,#714B67,#9B6B8E);border-radius:8px;margin:4px 0;transition:opacity 0.2s;';
+                btn.innerHTML = '<div class="sidebar-item-header" style="color:white;font-weight:600;padding:10px 16px;"><span>🔍</span> Cerca in Odoo</div>';
+                btn.onmouseover = () => btn.style.opacity = '0.85';
+                btn.onmouseout = () => btn.style.opacity = '1';
+                btn.onclick = (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    if (typeof window.closeSidebar === 'function') window.closeSidebar();
+                    showUnifiedDialog('dashboard');
+                };
+                insertAfter.parentNode.insertBefore(btn, insertAfter.nextSibling);
                 return true;
             }
         }
-        var pmBtn = document.querySelector('.pm-sidebar-new-btn, [onclick*="openPMProjectModal"]');
-        if (pmBtn) {
-            var a = document.createElement('a');
-            a.id = BUTTON_ID;
-            a.href = '#';
-            a.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 16px;margin:4px 12px;background:linear-gradient(135deg,#714B67,#9B6B8E);color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;';
-            a.innerHTML = '🔍 Cerca in Odoo';
-            a.onclick = function(e) { e.preventDefault(); e.stopPropagation(); showNewProjectDialog(); };
-            pmBtn.parentNode.insertBefore(a, pmBtn.nextSibling);
-            return true;
-        }
+
         return false;
     }
 
-    // EXPORTS
-    window.ODOO_SEARCH_BUTTON = { VERSION: VERSION, showDialog: showNewProjectDialog, forceOverride: doOverride };
+    // ========================================================================
+    // BOTTONE SIDEBAR "🏗️ Stato Cantieri"
+    // ========================================================================
+
+    function injectCantieriButton() {
+        if (document.getElementById(CANTIERI_BTN_ID)) return false;
+
+        function cantieriHref() {
+            return CANTIERI_URL + '?from=' + encodeURIComponent(window.location.href);
+        }
+
+        // --- APP RILIEVO: dentro submenu Progetti ---
+        const progettiSubmenu = document.getElementById('main-submenu-progetti');
+        if (progettiSubmenu) {
+            const item = document.createElement('div');
+            item.id = CANTIERI_BTN_ID;
+            item.className = 'main-submenu-item';
+            item.style.cssText = 'background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;border-radius:8px;margin:4px 8px;font-weight:600;cursor:pointer;';
+            item.innerHTML = '<span>🏗️ Stato Cantieri</span>';
+            item.onclick = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                window.open(cantieriHref(), '_blank');
+            };
+            progettiSubmenu.appendChild(item);
+            return true;
+        }
+
+        // --- DASHBOARD: dopo bottone Cerca in Odoo (o Nuovo Progetto) ---
+        const searchBtn = document.getElementById(BUTTON_ID);
+        const anchor = searchBtn || document.querySelector('.pm-sidebar-new-btn, [onclick*="openPMProjectModal"]');
+        if (anchor) {
+            const btn = document.createElement('a');
+            btn.id = CANTIERI_BTN_ID;
+            btn.href = '#';
+            btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 16px;margin:4px 12px;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;';
+            btn.innerHTML = '🏗️ Stato Cantieri';
+            btn.onmouseover = () => btn.style.opacity = '0.85';
+            btn.onmouseout = () => btn.style.opacity = '1';
+            btn.onclick = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                window.open(cantieriHref(), '_blank');
+            };
+            anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+            return true;
+        }
+
+        // --- DASHBOARD: sidebar-content generico ---
+        const sidebarContent = document.querySelector('.sidebar-content');
+        if (sidebarContent) {
+            let insertAfter = document.getElementById(BUTTON_ID);
+            if (!insertAfter) {
+                for (const el of sidebarContent.querySelectorAll('.sidebar-item, div[class*="sidebar"]')) {
+                    if ((el.textContent || '').includes('Impostazioni')) { insertAfter = el; break; }
+                }
+            }
+            if (!insertAfter && sidebarContent.lastElementChild) insertAfter = sidebarContent.lastElementChild;
+            if (insertAfter) {
+                const btn = document.createElement('div');
+                btn.id = CANTIERI_BTN_ID;
+                btn.className = 'sidebar-item';
+                btn.style.cssText = 'cursor:pointer;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:8px;margin:4px 0;transition:opacity 0.2s;';
+                btn.innerHTML = '<div class="sidebar-item-header" style="color:white;font-weight:600;padding:10px 16px;"><span>🏗️</span> Stato Cantieri</div>';
+                btn.onmouseover = () => btn.style.opacity = '0.85';
+                btn.onmouseout = () => btn.style.opacity = '1';
+                btn.onclick = (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    window.open(cantieriHref(), '_blank');
+                };
+                insertAfter.parentNode.insertBefore(btn, insertAfter.nextSibling);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // ========================================================================
+    // MUTATION OBSERVER - re-inject dopo render() dinamici
+    // ========================================================================
+
+    let observer = null;
+    function startObserver() {
+        if (observer) return;
+        const target = document.getElementById('app') || document.body;
+        observer = new MutationObserver(() => {
+            if (!document.getElementById(BUTTON_ID)) injectButton();
+            if (!document.getElementById(CANTIERI_BTN_ID)) injectCantieriButton();
+        });
+        observer.observe(target, { childList: true, subtree: true });
+    }
+
+    // ========================================================================
+    // EXPORTS & INIT
+    // ========================================================================
+
+    window.ODOO_SEARCH_BUTTON = {
+        VERSION: VERSION,
+        showDialog: showUnifiedDialog,
+        injectButton: injectButton,
+        injectCantieriButton: injectCantieriButton
+    };
+
+    function init() {
+        detectAndOverride();
+        injectButton();
+        injectCantieriButton();
+        startObserver();
+        console.log('🔍 [OdooSearch v' + VERSION + '] Inizializzato - centralizzato per tutte le app');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 2500));
+    } else {
+        setTimeout(init, 2500);
+    }
 
 })();
