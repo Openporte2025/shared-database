@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📦 EXPORT-UTILS v1.0.0 - Utility centralizzate shared
+// 📦 EXPORT-UTILS v1.1.0 - Utility centralizzate shared
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared tra App Rilievo e Dashboard
 // Contiene:
@@ -188,5 +188,5 @@
     window.calculateBRM = calculateBRM;
     window.getProductBRM = getProductBRM;
 
-    console.log('✅ EXPORT-UTILS v1.0.0 caricato - Export posizioni + calculateBRM + getProductBRM centralizzati');
+    console.log('✅ EXPORT-UTILS v1.1.0 caricato - Export posizioni + calculateBRM + getProductBRM centralizzati');
 })();
