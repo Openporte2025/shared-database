@@ -1,7 +1,14 @@
 // ============================================================================
-// ODOO-INTEGRATION.js v3.3.0
-// Integrazione Odoo ↔ Dashboard/App Rilievo
+// ODOO-INTEGRATION.js v3.4.0
+// Integrazione Odoo ↔ Dashboard/App Rilievo (SHARED)
 // 
+// CHANGELOG v3.4.0:
+// - FIX CRITICO: openNewProjectForm rileva App Rilievo vs Dashboard
+//   App Rilievo: createProject() + popola clientData + odoo fields + render
+//   Dashboard: ODOO_PROJECT_FORM + saveNewProjectToGitHub (come prima)
+// - FIX: openExistingProject rileva App Rilievo (loadProject/state)
+// - Helper isAppRilievo() per rilevamento automatico
+//
 // CHANGELOG v3.3.0:
 // - Nuovo: bottone "Cerca in Odoo" nella sidebar
 // - Nuovo: dialog ricerca clienti Odoo con risultati cliccabili
@@ -16,7 +23,7 @@
 (function() {
     'use strict';
     
-    const VERSION = '3.3.0';
+    const VERSION = '3.4.0';
     const SERVER_URL = 'https://jody-gowaned-hypsometrically.ngrok-free.dev';
     
     console.log(`🔌 Odoo Integration v${VERSION} caricato`);
@@ -29,6 +36,14 @@
         initDelay: 2000,
         projectsTimeout: 10000
     };
+
+    // ========================================================================
+    // HELPER: RILEVA APP
+    // ========================================================================
+    
+    function isAppRilievo() {
+        return typeof window.createProject === 'function' && typeof window.saveState === 'function';
+    }
 
     // ========================================================================
     // UTILITY - Lettura parametri URL
@@ -263,7 +278,56 @@
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
         
-        // Prepara dati precompilati
+        // ================================================================
+        // v3.4.0: APP RILIEVO → usa createProject() nativo
+        // ================================================================
+        if (isAppRilievo()) {
+            console.log('📱 Rilevata App Rilievo - uso createProject()');
+            
+            const projectName = customer.name || (firstName + ' ' + lastName).trim();
+            
+            try {
+                // 1. Crea progetto nativo
+                window.createProject(projectName, customer.name);
+                
+                // 2. Trova progetto appena creato (è currentProject)
+                const proj = state.projects.find(p => p.id === state.currentProject);
+                if (proj) {
+                    // 3. Popola clientData da Odoo
+                    if (!proj.clientData) proj.clientData = {};
+                    proj.clientData.nome = firstName;
+                    proj.clientData.cognome = lastName;
+                    proj.clientData.telefono = customer.phone || '';
+                    proj.clientData.email = customer.email || '';
+                    proj.clientData.via = customer.street || '';
+                    proj.clientData.indirizzo = customer.street || '';
+                    proj.clientData.citta = customer.city || '';
+                    proj.clientData.comune = customer.city || '';
+                    proj.clientData.cap = customer.zip || '';
+                    
+                    // 4. Collegamento Odoo
+                    proj.odoo_customer_id = customer.id;
+                    proj.odoo_customer = customer;
+                    
+                    console.log('✅ ClientData popolato da Odoo:', proj.clientData);
+                }
+                
+                // 5. Salva, naviga, renderizza
+                state.screen = 'project';
+                window.saveState();
+                if (typeof window.render === 'function') window.render();
+                
+                showNotification(`✅ Progetto "${projectName}" creato da Odoo!`, 'success');
+            } catch (error) {
+                console.error('❌ Errore creazione progetto App Rilievo:', error);
+                showNotification('❌ Errore: ' + error.message, 'error');
+            }
+            return;
+        }
+        
+        // ================================================================
+        // DASHBOARD → usa ODOO_PROJECT_FORM + saveNewProjectToGitHub
+        // ================================================================
         const preloadData = {
             name: customer.name,
             clientData: {
@@ -281,12 +345,11 @@
         
         // Usa form unificato se disponibile
         if (typeof ODOO_PROJECT_FORM !== 'undefined') {
-            console.log('✅ Usando ODOO_PROJECT_FORM');
+            console.log('🖥️ Dashboard - Usando ODOO_PROJECT_FORM');
             ODOO_PROJECT_FORM.open({
                 preload: preloadData,
                 onSave: async (projectData) => {
                     console.log('💾 Salvataggio progetto:', projectData);
-                    // FIX: nome corretto funzione!
                     if (typeof window.saveNewProjectToGitHub === 'function') {
                         await window.saveNewProjectToGitHub(projectData);
                         // Ricarica progetti
@@ -299,17 +362,13 @@
                 }
             });
         } 
-        // Fallback: form vecchio
+        // Fallback: form vecchio Dashboard
         else if (typeof window.openPMProjectModal === 'function') {
             console.log('⚠️ ODOO_PROJECT_FORM non disponibile, uso form vecchio');
             window._pendingOdooCustomer = customer;
             window._pendingOdooId = customer.id;
             window.openPMProjectModal();
-            
-            // Prova a compilare i campi dopo un delay
-            setTimeout(() => {
-                fillOldFormFields(customer);
-            }, 500);
+            setTimeout(() => fillOldFormFields(customer), 500);
         } else {
             console.error('❌ Nessun form disponibile!');
             alert('Errore: form creazione progetto non disponibile');
@@ -346,18 +405,31 @@
         console.log('📂 Apertura progetto:', project);
         
         if (project.source === 'github') {
-            // Carica da GitHub
+            // v3.4.0: App Rilievo → usa state.currentProject + render
+            if (isAppRilievo()) {
+                console.log('📱 App Rilievo - apertura progetto:', project.id);
+                const found = state.projects.find(p => p.id === project.id);
+                if (found) {
+                    state.currentProject = project.id;
+                    state.screen = 'project';
+                    window.saveState();
+                    if (typeof window.render === 'function') window.render();
+                } else {
+                    showNotification('❌ Progetto non trovato in locale', 'error');
+                }
+                return;
+            }
+            
+            // Dashboard: funzioni esistenti
             if (typeof window.loadGitHubProject === 'function') {
                 window.loadGitHubProject(project.id);
             } else if (typeof window.openProject === 'function') {
                 window.openProject(project.id);
             }
         } else if (project.source === 'odoo') {
-            // Carica da Odoo
             if (typeof ODOO_CORE !== 'undefined' && ODOO_CORE.loadAndDisplay) {
                 ODOO_CORE.loadAndDisplay(project.id);
             } else {
-                // Fallback: mostra info
                 alert(`Progetto Odoo: ${project.name}\nID: ${project.id}\n\nCaricamento da Odoo non disponibile.`);
             }
         }
