@@ -1,20 +1,20 @@
 // ============================================================================
-// FINDOOR-PORTONCINI.js v1.0.0 - Database Portoncini FIN-Door Finstral
+// FINDOOR-PORTONCINI.js v2.0.0 - Database Portoncini FIN-Door Finstral
 // ============================================================================
 // Listino EUR 2025/10 - Ottobre 2025 (359 pagine)
 // Modulo STANDALONE per shared-database
 //
 // CONTIENE: Tutti i dati per configurazione portoncini FIN-Door
-// - 67 modelli standard (01-122) + 30 modelli Inlay (C2.0-28.0)
+// - 97 modelli (55 STD + 12 T935 + 30 INLAY)
 // - Colori PVC, Alluminio, Legno, Superfici Inlay
-// - Tipi apertura, combinazioni materiali
-// - Telai per combinazione, ante per combinazione
-// - Maniglie (set + maniglioni), Tagli telaio
-// - Prezzi base (griglie PVC/ALU)
-// - Helper functions: getTipoAperturaInfo, getCombinazioneMat, etc.
-//
-// SOSTITUISCE: sezione FINDOOR_* in finstral-config.js
-// ESTRAE DA app.js: getTipoAperturaInfo()
+// - Tipi apertura, combinazioni materiali, telai
+// - Maniglie REALI: set, maniglioni, aste, interne, barre (pag. 134-153)
+// - Ferramenta: serrature, cerniere, cilindri, chiudiporta, soglie, RC2
+// - Accessori: contatti, spioncini, fermaporta, limitatori
+// - Prezzi base porta 720 PVC/ALU (pag. 82)
+// - Griglie laterali 102HT (pag. 83-85), fissi accoppiati (pag. 86-87)
+// - Griglie sopraluce fisso/anta (pag. 88-89)
+// - calcolaPrezzoPortoncinoFindoor() - calcolo completo
 //
 // DIPENDENZE: nessuna (modulo autonomo)
 // ============================================================================
@@ -403,34 +403,94 @@ window.FINDOOR_ANTE_PER_COMB = {
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// 10. MANIGLIE - Set e Maniglioni (pag. 55-60)
+// 10. MANIGLIE REALI (pag. 134-153 listino EUR 2025/10)
 // ════════════════════════════════════════════════════════════════════════════
+// Codici colore: 01=bianco, 02=marrone, 07=grigio, 43=inox, 44=inox satinato,
+//   48=ottone PVD, 41=ottone brunito, 56=alluminio neutro, E03=nero, RAL=verniciato
 
 window.FINDOOR_MANIGLIE = {
+    // ── SET MANIGLIE ESTERNE (coppia int+est, pag. 134-137) ──
     set: {
-        'S01': { desc: 'Dublin (PVC)', prezzo: 0 },
-        'S02': { desc: 'London (PVC)', prezzo: 64 },
-        'S03': { desc: 'Amsterdam (PVC satinato)', prezzo: 114 },
-        'S04': { desc: 'New York (inox)', prezzo: 197 },
-        'S05': { desc: 'Shanghai (inox satinato)', prezzo: 197 },
-        'S06': { desc: 'Tokio (inox lucido)', prezzo: 241 },
-        'S07': { desc: 'Paris (inox)', prezzo: 241 },
-        'S08': { desc: 'Berlin (inox nero)', prezzo: 197 },
-        'S09': { desc: 'Roma (inox opaco)', prezzo: 241 },
-        'S10': { desc: 'Sydney (inox design)', prezzo: 287 },
-        'S11': { desc: 'Vienna (inox premium)', prezzo: 362 },
-        'S12': { desc: 'Milano (inox flat)', prezzo: 241 }
+        '450': { desc: 'Maniglia su rosetta ovale', finiture: { '01': 104, '02': 104, '56': 104, '44': 104 } },
+        '451': { desc: 'Maniglia int + piatta est', finiture: { '56': 104, '44': 104 } },
+        '452': { desc: 'Maniglia su rosetta tonda', finiture: { '01': 104, '02': 104, '56': 104, '44': 104 } },
+        '425': { desc: 'Maniglia design su rosetta', finiture: { '56': 118 } },
+        '426': { desc: 'Maniglia design premium', finiture: { '56': 141 } },
+        '401': { desc: 'Maniglia classica su placca', finiture: { '01': 104, '02': 104, '56': 104 } },
+        '404': { desc: 'Maniglia classica premium', finiture: { '01': 141, '02': 141, '56': 141 } },
+        '423': { desc: 'Maniglia ottone su rosetta', finiture: { '41': 141, '48': 214 } },
+        '424': { desc: 'Maniglia ottone su placca', finiture: { '41': 140, '48': 214 } },
+        '405': { desc: 'Pomello fisso est + maniglia int', finiture: { '56': 77.1 } },
+        '407': { desc: 'Pomello + rosetta protez. cilindro', finiture: { '56': 90.4 } },
+        '406': { desc: 'Pomello girevole est + man. int', finiture: { '56': 86.4 } }
     },
+
+    // ── MANIGLIONI ESTERNI (pag. 138-140) ──
     maniglioni: {
-        'M01': { desc: 'Maniglione 400mm dritto (inox)', prezzo: 183 },
-        'M02': { desc: 'Maniglione 600mm dritto (inox)', prezzo: 225 },
-        'M03': { desc: 'Maniglione 800mm dritto (inox)', prezzo: 268 },
-        'M04': { desc: 'Maniglione 1000mm dritto (inox)', prezzo: 310 },
-        'M05': { desc: 'Maniglione 400mm curvo (inox)', prezzo: 225 },
-        'M06': { desc: 'Maniglione 600mm curvo (inox)', prezzo: 268 },
-        'M07': { desc: 'Maniglione 800mm angolo (inox)', prezzo: 310 },
-        'M08': { desc: 'Maniglione 1200mm dritto (inox)', prezzo: 362 },
-        'M09': { desc: 'Maniglione 1600mm dritto (inox)', prezzo: 415 }
+        '506': { desc: 'Pomello fisso ø35mm', finiture: { '43': 223 } },
+        '487': { desc: 'Maniglione ø35mm prof.90mm', finiture: { '43': 289 } },
+        '488': { desc: 'Maniglione ø35mm asse 300mm L485', finiture: { '43': 519 } },
+        '485': { desc: 'Maniglione ø35mm asse 300mm', finiture: { '43': 200 } },
+        '468': { desc: 'Maniglione 45×15 asse 450mm', finiture: { '56': 413, 'E03': 523 } },
+        '469': { desc: 'Maniglione 45×15 asse 450mm curvo', finiture: { '56': 434, 'E03': 553 } },
+        '498': { desc: 'Maniglione 45×15 asse 350mm', finiture: { '56': 395, 'E03': 505 } },
+        '391': { desc: 'Piastra 330×125mm', finiture: { '43': 133 } },
+        '390': { desc: 'Piastra inox 330×90mm', finiture: { '43': 260 } },
+        '341': { desc: 'Maniglione design 120×150mm', finiture: { '43': 293 } }
+    },
+
+    // ── MANIGLIE AD ASTA (pag. 141-142) ──
+    // Prezzi: 43=inox, colori=verniciato RAL
+    aste: {
+        '490': { desc: 'Asta tonda ø30mm 500mm', finiture: { '43': 147, 'colori': 258 } },
+        '491': { desc: 'Asta tonda ø30mm 600mm', finiture: { '43': 168, 'colori': 279 } },
+        '492': { desc: 'Asta tonda ø30mm 1000mm', finiture: { '43': 189, 'colori': 300 } },
+        '493': { desc: 'Asta tonda ø30mm 1800mm', finiture: { '43': 223, 'colori': 334 }, minAnta: 2000 },
+        '494': { desc: 'Asta tonda ø30mm personaliz.', finiture: { '43': 466, 'colori': 577 } },
+        '310': { desc: 'Asta piatta 40×15mm 500mm', finiture: { '43': 154, 'colori': 265 } },
+        '311': { desc: 'Asta piatta 40×15mm 600mm', finiture: { '43': 175, 'colori': 285 } },
+        '312': { desc: 'Asta piatta 40×15mm 1000mm', finiture: { '43': 196, 'colori': 306 } },
+        '313': { desc: 'Asta piatta 40×15mm 1800mm', finiture: { '43': 230, 'colori': 341 } },
+        '320': { desc: 'Asta quadra 35×35mm 500mm', finiture: { '43': 196, 'colori': 306 } },
+        '321': { desc: 'Asta quadra 35×35mm 600mm', finiture: { '43': 203, 'colori': 313 } },
+        '438': { desc: 'Asta tonda ø30mm variabile', finiture: { '43': 419, 'colori': 529 } },
+        '439': { desc: 'Asta quadra 30×30mm variabile', finiture: { '43': 440, 'colori': 551 } },
+        '380': { desc: 'Maniglione ø35mm 600mm asse 400', finiture: { '43': 145 } },
+        '381': { desc: 'Maniglione ø35mm 1200mm asse 1000', finiture: { '43': 213 } },
+        '382': { desc: 'Maniglione ø35mm 1600mm asse 1260', finiture: { '43': 263 }, minAnta: 2000 },
+        '453': { desc: 'Maniglione angolare 1050×1050mm', finiture: { '43': 663 } }
+    },
+
+    // ── MANIGLIE INTERNE (pag. 146-149) ──
+    interne: {
+        '500': { desc: 'Maniglia int. su rosetta ovale', finiture: { '01': 90.1, '07': 97.4, '56': 90.1, '43': 105, '48': 164 } },
+        '502': { desc: 'Maniglia int. semplice', finiture: { '56': 51.8, '44': 51.8 } },
+        '570': { desc: 'Maniglia int. design S.10', finiture: { '56': 87.3, 'E03': 92.5, '43': 149 } },
+        '571': { desc: 'Maniglia int. design S.11', finiture: { '56': 92.5, 'E03': 97.7, '43': 158 } },
+        '574': { desc: 'Maniglia int. design S.11', finiture: { '56': 76.9, 'E03': 79.5, '43': 139 } },
+        '575': { desc: 'Maniglia int. design S.12', finiture: { '56': 82.1, 'E03': 84.7, '43': 129, '48': 189 } },
+        '576': { desc: 'Maniglia int. design S.13', finiture: { '56': 107, 'E03': 116, '43': 162, '48': 222 } },
+        '577': { desc: 'Maniglia int. design S.14', finiture: { '56': 84.7, 'E03': 88.6, '43': 149 } }
+    },
+
+    // ── BARRE MANIGLIA (pag. 144) ──
+    barre: {
+        '70515': { desc: 'Barra verticale est. (solo Flat Planar)', finiture: { 'colori': 42.8 } },
+        '830':   { desc: 'Rosetta quadrata', finiture: { 'colori': 122 } },
+        '830L':  { desc: 'Rosetta quadrata con LED', finiture: { 'colori': 352 } },
+        '830-6': { desc: 'Rosetta con Inlay ceramica', finiture: { 'colori': 361 } },
+        '830L6': { desc: 'Rosetta Inlay ceramica + LED', finiture: { 'colori': 591 } }
+    },
+
+    // ── PREPARAZIONE FORI (pag. 153-154) ──
+    fori: {
+        '125_43': { desc: 'Rosetta rotonda inox', prezzo: 16.8 },
+        '125_col': { desc: 'Rosetta rotonda verniciata', prezzo: 35.0 },
+        '126_43': { desc: 'Rosetta rotonda inox + quadrotto', prezzo: 16.8 },
+        '126_col': { desc: 'Rosetta rotonda vern. + quadrotto', prezzo: 35.0 },
+        '118R_56': { desc: 'Cilindro con rosetta alluminio', prezzo: 9.50 },
+        '118R_43': { desc: 'Cilindro con rosetta inox', prezzo: 9.50 },
+        '127':     { desc: 'Senza fori maniglia', prezzo: 0 }
     }
 };
 
@@ -471,60 +531,293 @@ window.FINDOOR_TAGLI_PER_TELAIO = {
 // Colonne: Larghezze BRM (mm) | Righe: Altezze BRM (mm) → Prezzo €
 
 window.FINDOOR_PREZZI_BASE = {
-    PVC: {
-        colonne: [700, 800, 900, 1000, 1100, 1115],
+    // ── Porta 720 tipo base, pag 84 listino EUR 2025/10 ──
+    // PVC-PVC: Step Frame - Step Frame
+    PVC_PVC: {
+        colonne: [990, 1115, 1240, 1365],
         righe: {
-            1800: [1298, 1355, 1412, 1470, 1527, 1534],
-            1900: [1355, 1412, 1470, 1527, 1584, 1591],
-            2000: [1412, 1470, 1527, 1584, 1641, 1649],
-            2100: [1470, 1527, 1584, 1641, 1698, 1706],
-            2200: [1527, 1584, 1641, 1698, 1756, 1763],
-            2300: [1584, 1641, 1698, 1756, 1813, 1820],
-            2355: [1613, 1670, 1727, 1785, 1842, 1849]
+            2040: [1265, 1323, 1378, 1436],
+            2165: [1297, 1356, 1416, 1473],
+            2290: [1329, 1389, 1450, 1512],
+            2415: [1440, 1503, 1566, 1629],
+            2540: [1472, 1537, 1601, 1666],
+            2665: [1505, 1571, 1638, 1703],
+            2790: [1536, 1604, 1673, 1742],
+            2915: [1568, 1639, 1709, 1779]
         }
     },
-    PVC_GRANDE: {
-        colonne: [1116, 1200, 1300, 1400],
+    // ALU-ALU: Flat Frame - Flat Frame, Flat Frame - Step Frame
+    ALU_ALU: {
+        colonne: [990, 1115, 1240, 1365, 1490],
         righe: {
-            1800: [1541, 1598, 1670, 1741],
-            1900: [1598, 1656, 1727, 1798],
-            2000: [1656, 1713, 1784, 1856],
-            2100: [1713, 1770, 1842, 1913],
-            2200: [1770, 1827, 1899, 1970],
-            2300: [1827, 1885, 1956, 2027],
-            2356: [1856, 1913, 1985, 2056],
-            2500: [1913, 1970, 2042, 2113]
-        }
-    },
-    ALU: {
-        colonne: [700, 800, 900, 1000, 1100, 1115],
-        righe: {
-            1800: [1870, 1941, 2013, 2084, 2156, 2163],
-            1900: [1941, 2013, 2084, 2156, 2227, 2234],
-            2000: [2013, 2084, 2156, 2227, 2299, 2306],
-            2100: [2084, 2156, 2227, 2299, 2370, 2377],
-            2200: [2156, 2227, 2299, 2370, 2442, 2449],
-            2300: [2227, 2299, 2370, 2442, 2513, 2520],
-            2355: [2263, 2334, 2406, 2477, 2549, 2556]
-        }
-    },
-    ALU_GRANDE: {
-        colonne: [1116, 1200, 1300, 1400],
-        righe: {
-            1800: [2170, 2242, 2327, 2413],
-            1900: [2242, 2313, 2399, 2484],
-            2000: [2313, 2385, 2470, 2556],
-            2100: [2385, 2456, 2542, 2627],
-            2200: [2456, 2528, 2613, 2699],
-            2300: [2528, 2599, 2685, 2770],
-            2356: [2563, 2635, 2720, 2806],
-            2500: [2635, 2706, 2792, 2877]
+            2040: [1908, 1983, 2058, 2135, 2208],
+            2165: [1960, 2038, 2115, 2192, 2270],
+            2290: [2012, 2092, 2172, 2251, 2330],
+            2415: [2077, 2159, 2241, 2322, 2402],
+            2540: [2129, 2212, 2296, 2380, 2464],
+            2665: [2182, 2267, 2353, 2439, 2525],
+            2790: [2234, 2322, 2408, 2497, 2585],
+            2915: [2286, 2376, 2466, 2556, 2646]
         }
     }
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// 13. HELPER FUNCTIONS
+// 12b. PREZZI LATERALI - Tipo 102HT con soglia (pag 83-85)
+// ════════════════════════════════════════════════════════════════════════════
+
+window.FINDOOR_PREZZI_LATERALI = {
+    // PVC-PVC pag 83 (prima tabella) - tipo 102HT
+    PVC_PVC: {
+        colonne: [615, 740, 865, 990, 1115, 1240, 1365, 1490, 1615, 1740, 1865, 1990, 2115, 2240, 2365, 2490, 2615, 2740, 2865, 2990, 3115],
+        righe: {
+            2040: [445, 501, 553, 606, 658, 710, 763, 816, 868, 922, 974, 1027, 1079, 1132, 1186, 1237, 1289, 1342, 1395, 1448, 1501],
+            2165: [459, 516, 570, 626, 682, 735, 792, 846, 902, 955, 1012, 1066, 1122, 1175, 1231, 1286, 1341, 1396, 1452, 1507, 1562],
+            2290: [476, 534, 590, 644, 704, 759, 815, 870, 927, 984, 1040, 1098, 1154, 1211, 1267, 1324, 1379, 1436, 1492, 1549, 1605],
+            2415: [488, 549, 606, 665, 724, 782, 840, 900, 958, 1018, 1074, 1134, 1192, 1251, 1311, 1368, 1427, 1485, 1544, 1602, 1662],
+            2540: [506, 564, 623, 687, 747, 807, 868, 928, 990, 1050, 1113, 1172, 1232, 1294, 1355, 1415, 1475, 1537, 1595, 1658, 1719],
+            2665: [519, 581, 643, 707, 767, 831, 895, 955, 1019, 1080, 1143, 1207, 1269, 1332, 1394, 1458, 1521, 1581, 1644, 1707, 1769],
+            2790: [533, 597, 661, 726, 791, 856, 920, 984, 1049, 1114, 1177, 1242, 1308, 1372, 1436, 1500, 1565, 1630, 1694, 1758, 1824],
+            2915: [547, 612, 680, 746, 814, 879, 945, 1013, 1077, 1143, 1213, 1275, 1343, 1411, 1475, 1543, 1610, 1674, 1742, 1808, 1874]
+        }
+    },
+    // PVC-PVC pag 83 (seconda tabella) - tipo 102HT variante
+    PVC_PVC_ZOCCOLO: {
+        colonne: [615, 740, 865, 990, 1115, 1240, 1490, 1615, 1740, 1865, 1990, 2115, 2240, 2365, 2490, 2615, 2740, 2865, 2990, 3115],
+        righe: {
+            2040: [519, 573, 623, 678, 727, 778, 839, 893, 944, 996, 1048, 1101, 1151, 1205, 1256, 1309, 1361, 1412, 1464, 1517],
+            2165: [536, 591, 644, 700, 751, 809, 868, 924, 977, 1032, 1087, 1141, 1195, 1251, 1305, 1359, 1415, 1468, 1523, 1576],
+            2290: [552, 608, 665, 722, 778, 837, 901, 957, 1014, 1070, 1127, 1182, 1240, 1297, 1354, 1411, 1467, 1524, 1579, 1638],
+            2415: [571, 627, 689, 745, 805, 861, 928, 986, 1046, 1104, 1161, 1220, 1279, 1337, 1395, 1454, 1512, 1570, 1629, 1687],
+            2540: [587, 650, 708, 767, 830, 889, 960, 1019, 1079, 1140, 1203, 1260, 1323, 1381, 1442, 1503, 1564, 1625, 1684, 1745],
+            2665: [604, 668, 730, 794, 854, 915, 986, 1049, 1113, 1173, 1235, 1297, 1361, 1422, 1483, 1547, 1608, 1671, 1732, 1794],
+            2790: [621, 690, 749, 816, 879, 944, 1017, 1079, 1143, 1210, 1272, 1337, 1400, 1464, 1529, 1592, 1658, 1723, 1784, 1849],
+            2915: [640, 705, 770, 839, 906, 971, 1048, 1114, 1179, 1246, 1314, 1379, 1447, 1514, 1578, 1646, 1712, 1779, 1846, 1911]
+        }
+    },
+    // ALU-ALU pag 84 - tipo 102HT
+    ALU_ALU: {
+        colonne: [615, 740, 865, 990, 1115, 1240, 1490, 1615, 1740, 1865, 1990, 2115, 2240, 2365, 2490, 2615, 2740, 2865, 2990, 3115],
+        righe: {
+            2040: [733, 809, 882, 957, 1031, 1105, 1183, 1259, 1332, 1408, 1481, 1553, 1629, 1702, 1777, 1849, 1925, 1998, 2072, 2147],
+            2165: [754, 829, 904, 977, 1057, 1131, 1214, 1289, 1364, 1440, 1516, 1590, 1667, 1741, 1818, 1892, 1969, 2044, 2120, 2194],
+            2290: [770, 849, 926, 1007, 1082, 1161, 1245, 1324, 1403, 1479, 1558, 1636, 1713, 1790, 1869, 1946, 2025, 2102, 2181, 2258],
+            2415: [792, 871, 950, 1030, 1109, 1190, 1277, 1356, 1436, 1516, 1594, 1675, 1754, 1833, 1915, 1993, 2073, 2153, 2233, 2311],
+            2540: [806, 891, 968, 1052, 1134, 1215, 1306, 1386, 1468, 1551, 1633, 1715, 1795, 1878, 1958, 2042, 2124, 2204, 2286, 2368],
+            2665: [824, 910, 993, 1075, 1159, 1244, 1336, 1420, 1503, 1586, 1671, 1754, 1838, 1922, 2004, 2088, 2174, 2257, 2340, 2425],
+            2790: [845, 930, 1017, 1101, 1189, 1271, 1367, 1451, 1537, 1622, 1709, 1792, 1879, 1964, 2050, 2136, 2221, 2305, 2391, 2477],
+            2915: [863, 950, 1037, 1124, 1214, 1301, 1398, 1483, 1572, 1659, 1746, 1833, 1922, 2009, 2095, 2184, 2270, 2357, 2447, 2533]
+        }
+    },
+    // ALU-ALU pag 85 (seconda tabella 102HT)
+    ALU_ALU_2: {
+        colonne: [615, 740, 865, 990, 1115, 1240, 1490, 1615, 1740, 1865, 1990, 2115, 2240, 2365, 2490, 2615, 2740, 2865, 2990, 3115],
+        righe: {
+            2040: [902, 972, 1047, 1117, 1190, 1259, 1339, 1411, 1482, 1554, 1628, 1697, 1769, 1842, 1914, 1984, 2057, 2128, 2199, 2273],
+            2165: [929, 1004, 1077, 1149, 1224, 1296, 1377, 1450, 1524, 1597, 1671, 1743, 1817, 1889, 1964, 2036, 2109, 2183, 2256, 2330],
+            2290: [955, 1032, 1108, 1181, 1258, 1335, 1418, 1490, 1568, 1643, 1719, 1793, 1870, 1945, 2021, 2096, 2172, 2248, 2324, 2398],
+            2415: [982, 1061, 1138, 1216, 1293, 1369, 1456, 1532, 1611, 1686, 1765, 1842, 1919, 1994, 2074, 2151, 2227, 2304, 2383, 2460],
+            2540: [1009, 1091, 1167, 1247, 1326, 1407, 1494, 1571, 1651, 1731, 1811, 1889, 1969, 2048, 2127, 2206, 2287, 2364, 2444, 2525],
+            2665: [1036, 1119, 1202, 1281, 1363, 1441, 1532, 1615, 1694, 1776, 1856, 1938, 2019, 2099, 2180, 2261, 2343, 2423, 2503, 2585],
+            2790: [1065, 1148, 1232, 1313, 1396, 1479, 1571, 1654, 1737, 1820, 1901, 1985, 2070, 2152, 2234, 2316, 2399, 2482, 2566, 2648],
+            2915: [1093, 1175, 1260, 1347, 1431, 1516, 1610, 1693, 1779, 1864, 1948, 2033, 2117, 2201, 2287, 2372, 2455, 2541, 2624, 2708]
+        }
+    }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// 12c. PREZZI LATERALI/SOPRALUCE FISSO - Tipo 102 accoppiato (pag 87)
+// ════════════════════════════════════════════════════════════════════════════
+
+window.FINDOOR_PREZZI_FISSO = {
+    // ALU-ALU pag 87 - tipo 102 elemento fisso accoppiato
+    ALU_ALU: {
+        colonne: [615, 740, 865, 990, 1115, 1240, 1355, 1480, 1605, 1730, 1855, 1980, 2105, 2230, 2355, 2490],
+        righe: {
+            605:  [333, 356, 378, 402, 424, 445, 469, 495, 515, 538, 562, 584, 607, 629, 651, 677],
+            730:  [356, 379, 408, 431, 455, 482, 508, 533, 557, 581, 607, 631, 658, 683, 706, 731],
+            855:  [378, 408, 434, 459, 490, 514, 543, 570, 599, 623, 653, 681, 707, 733, 761, 791],
+            980:  [402, 431, 460, 494, 520, 549, 581, 610, 640, 668, 699, 729, 757, 788, 818, 844],
+            1105: [424, 457, 490, 520, 551, 584, 616, 649, 681, 710, 744, 775, 809, 839, 871, 903],
+            1230: [445, 483, 516, 550, 585, 618, 654, 689, 722, 755, 791, 825, 858, 894, 928, 961],
+            1355: [469, 508, 543, 581, 616, 654, 691, 724, 761, 800, 836, 872, 908, 945, 983, 1017],
+            1480: [496, 533, 570, 610, 649, 689, 724, 764, 804, 842, 883, 921, 958, 999, 1039, 1073],
+            1605: [516, 557, 599, 641, 681, 722, 761, 804, 845, 888, 929, 968, 1009, 1051, 1090, 1133],
+            1730: [539, 582, 623, 668, 715, 755, 800, 842, 888, 930, 974, 1014, 1059, 1104, 1148, 1189],
+            1855: [562, 609, 653, 700, 745, 791, 837, 883, 929, 974, 1018, 1062, 1110, 1156, 1203, 1246],
+            1980: [585, 634, 681, 729, 775, 826, 872, 921, 968, 1014, 1062, 1113, 1160, 1210, 1258, 1307],
+            2105: [608, 658, 708, 758, 810, 858, 908, 958, 1010, 1059, 1110, 1160, 1211, 1262, 1313, 1363],
+            2230: [632, 683, 734, 788, 840, 895, 947, 999, 1052, 1104, 1157, 1210, 1262, 1314, 1367, 1420],
+            2355: [653, 710, 762, 820, 873, 928, 983, 1039, 1093, 1148, 1203, 1258, 1313, 1367, 1422, 1475],
+            2480: [678, 732, 792, 848, 904, 962, 1017, 1074, 1134, 1191, 1246, 1308, 1363, 1420, 1475, 1533],
+            2605: [700, 758, 818, 878, 936, 996, 1054, 1115, 1171, 1230, 1293, 1350, 1413, 1467, 1530, 1589],
+            2730: [713, 773, 831, 895, 954, 1012, 1073, 1135, 1199, 1255, 1316, 1377, 1439, 1497, 1561, 1622],
+            2855: [723, 788, 844, 908, 974, 1031, 1095, 1156, 1218, 1275, 1341, 1406, 1468, 1527, 1589, 1655],
+            2980: [734, 803, 858, 925, 992, 1050, 1116, 1173, 1240, 1302, 1364, 1431, 1497, 1556, 1624, 1686]
+        }
+    }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// 12d. PREZZI SOPRALUCE (pag 88-89)
+// ════════════════════════════════════════════════════════════════════════════
+
+window.FINDOOR_PREZZI_SOPRALUCE = {
+    // PVC-PVC pag 88 - sopraluce fisso
+    PVC_PVC_FISSO: {
+        colonne: [740, 990, 1240, 1490, 1740, 1990, 2240, 2490],
+        righe: {
+            355: [181, 194, 212, 228, 244, 262, 277, 298],
+            480: [186, 203, 222, 240, 264, 288, 312, 335],
+            605: [195, 211, 233, 263, 289, 317, 345, 375],
+            730: [203, 221, 251, 286, 315, 346, 379, 410],
+            855: [215, 235, 275, 312, 345, 381, 418, 452],
+            980: [222, 251, 295, 334, 375, 412, 452, 493]
+        }
+    },
+    // PVC-PVC pag 88 - sopraluce con anta Step-line
+    PVC_PVC_ANTA: {
+        colonne: [740, 990, 1240, 1490, 1740, 1990, 2240, 2490, 2740],
+        righe: {
+            355: [181, 194, 212, 228, 244, 262, 277, 298, 318],
+            480: [186, 203, 222, 240, 264, 288, 312, 335, 359],
+            605: [195, 211, 233, 263, 289, 317, 345, 375, 403],
+            730: [203, 221, 251, 286, 315, 346, 379, 410, 443],
+            855: [215, 235, 275, 312, 345, 381, 418, 452, 490],
+            980: [222, 251, 295, 334, 375, 412, 452, 493, 532]
+        }
+    },
+    // ALU-ALU pag 89 - sopraluce fisso
+    ALU_ALU_FISSO: {
+        colonne: [990, 1240, 1490, 1740, 1990, 2240, 2490],
+        righe: {
+            605: [402, 445, 495, 538, 584, 630, 675],
+            730: [430, 481, 533, 581, 632, 682, 731],
+            855: [458, 516, 571, 623, 681, 733, 791]
+        }
+    },
+    // ALU-ALU pag 89 - sopraluce Nova-line
+    ALU_ALU_NOVALINE: {
+        colonne: [1050, 1300, 1550, 1800, 2050, 2300, 2490],
+        righe: {
+            665: [616, 680, 753, 839, 908, 965, 1028]
+        }
+    }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// 13. SERRATURE E FERRAMENTA (pag. 108-132 listino EUR 2025/10)
+// ════════════════════════════════════════════════════════════════════════════
+
+window.FINDOOR_SERRATURE = {
+    // ── SERRATURE (pag. 108-115) ──
+    // Prezzo per anta. 101.0 = compresa nel prezzo base
+    '101.0': { desc: 'Serratura manuale (standard)', prezzo: 0, note: 'compresa' },
+    '102.0': { desc: 'Serratura autobloccante', prezzo: 28.7 },
+    '102.T': { desc: 'Serr. autobloccante con scrocco', prezzo: 32.6 },
+    '102.0M': { desc: 'Serr. autobloccante motorizzata', prezzo: 462.7, note: '28.7+434' },
+    '103.0': { desc: 'Serr. motorizzata con cilindro', prezzo: 654 },
+    '105.0_2': { desc: 'Serr. motorizzata Instinct 2 punti', prezzo: 1630, maxH: 2051 },
+    '105.0_3': { desc: 'Serr. motorizzata Instinct 3 punti', prezzo: 1897, maxH: 2401 },
+    '105.0_4': { desc: 'Serr. motorizzata Instinct 4 punti', prezzo: 2164, maxH: 2600 }
+};
+
+window.FINDOOR_ACCESSORI_SERRATURA = {
+    // ── ACCESSORI SERRATURA (pag. 116-130) ──
+    '105_00': { desc: 'Apriporta elettrico', prezzo: 86.4 },
+    '107_00': { desc: 'Apriporta elettrico maggiorato', prezzo: 95.3 },
+    '106_00': { desc: 'Dispositivo fermo a giorno', prezzo: 62.4 },
+    '108_00': { desc: 'Verifica chiusura a chiave', prezzo: 93.6 },
+    '230AC':  { desc: 'Alimentatore integrato', prezzo: 164 },
+    'TC_1':   { desc: 'Telecomando singolo', prezzo: 160 },
+    'TC_71':  { desc: 'Telecomando + modulo controllo', prezzo: 315 },
+    'LI_60E': { desc: 'Lettore impronte digitali inox', prezzo: 906 },
+    'LI_60V': { desc: 'Lettore impronte digitali verniciato', prezzo: 924 },
+    'TC_1310': { desc: 'Telecomando aggiuntivo', prezzo: 60.4 },
+    'AL_02':  { desc: 'Alimentatore 12V DC', prezzo: 65.2 }
+};
+
+window.FINDOOR_CERNIERE = {
+    // ── CERNIERE (pag. 109-110) ──
+    'S805':  { desc: 'Cerniere in vista con rostri sicurezza', prezzo: 0, note: 'comprese' },
+    'S250':  { desc: 'Cerniere in vista standard', prezzo: 0, note: 'comprese' },
+    '300':   { desc: 'Cerniere carichi elevati', prezzo: 78.2, note: 'per anta' },
+    '201':   { desc: 'Cerniere a scomparsa (T935/T947/T936/T926)', prezzo: 228, note: 'per anta' },
+    '211':   { desc: 'Cerniere a scomparsa (T812/T815/F96/A96/A95)', prezzo: 415, note: 'per anta' },
+    '220':   { desc: 'Cerniere a scomparsa complanare (telaio 707)', prezzo: 415, note: 'per anta' }
+};
+
+window.FINDOOR_CILINDRI = {
+    // ── CILINDRI (pag. 111-114) ──
+    '02P':     { desc: 'Cilindro standard', prezzo: 0, note: 'compreso' },
+    '1P':      { desc: 'Cilindro sicurezza classe 1', prezzo: 71.2 },
+    '2P':      { desc: 'Cilindro sicurezza classe 2', prezzo: 236 },
+    '2PHS':    { desc: 'Cilindro chiave maestra HS', prezzo: 392 },
+    'CH_180':  { desc: 'Chiave aggiuntiva', prezzo: 22.3 },
+    'CH_1P':   { desc: 'Duplicato chiave 1P (security card)', prezzo: 68.5 },
+    'CH_2P':   { desc: 'Duplicato chiave 2P (security card)', prezzo: 80.8 },
+    'CH_HS':   { desc: 'Chiave maestra HS', prezzo: 34.9 },
+    'POM_1P':  { desc: 'Pomello interno 1P', prezzo: 2.79 },
+    'POM_2P':  { desc: 'Pomello interno 2P', prezzo: 52.4 },
+    'ROT_1P':  { desc: 'Rotazione libera 1P (35mm)', prezzo: 11.7 },
+    'ROT_2P':  { desc: 'Rotazione libera 2P (31mm)', prezzo: 8.24 },
+    'KA_1P':   { desc: 'Chiave unificata 1P', prezzo: 3.77 },
+    'KA_2P':   { desc: 'Chiave unificata 2P', prezzo: 16.1 }
+};
+
+window.FINDOOR_CHIUDIPORTA = {
+    // ── CHIUDIPORTA (pag. 156-160) ──
+    '901': { desc: 'Chiudiporta standard', prezzi: {
+        'M01': 475, 'M03': 475, '07': 475, '02': 475, '16': 475, '56': 475, 'RAL': 518
+    }},
+    '903': { desc: 'Chiudiporta scorrevole', prezzi: {
+        'M01': 475, 'M03': 475, '07': 475, '02': 475, '16': 475, '56': 475, 'RAL': 518
+    }},
+    '905': { desc: 'Chiudiporta apertura esterno', prezzi: { 'M03': 504, '56': 504 } },
+    '907': { desc: 'Chiudiporta scorrevole var.', prezzi: { '56': 475, 'RAL': 518 } },
+    '911': { desc: 'Chiudiporta a scomparsa', prezzo: 386 }
+};
+
+window.FINDOOR_SOGLIE = {
+    // ── SOGLIE (pag. 59-60) ──
+    // Apertura interno
+    'S0': { desc: 'Soglia ribassata 2cm (standard)', prezzo_ml: 0, note: 'compresa' },
+    'S1': { desc: 'Soglia ribassata 2cm disparità liv.', prezzo_ml: 0, note: 'compresa' },
+    'S2': { desc: 'Soglia ribassata 2cm profilo alu', prezzo_ml: 5.18 },
+    'S3': { desc: 'Soglia ribassata 0cm + lama parafreddo', prezzo_ml: 147 },
+    'S4': { desc: 'Senza soglia + lama parafreddo', prezzo_ml: 104 },
+    // Apertura esterno (stessi prezzi)
+    'A0': { desc: 'Soglia rib. 2cm est. (standard)', prezzo_ml: 0, note: 'compresa' },
+    'A1': { desc: 'Soglia rib. 2cm est. disparità', prezzo_ml: 0, note: 'compresa' },
+    'A2': { desc: 'Soglia rib. 2cm est. profilo alu', prezzo_ml: 5.18 },
+    'A3': { desc: 'Soglia rib. 0cm est. + lama', prezzo_ml: 147 },
+    'A4': { desc: 'Senza soglia est. + lama', prezzo_ml: 104 }
+};
+
+window.FINDOOR_RC2 = {
+    // ── RC2 SICUREZZA (pag. 133) ──
+    'RC2':    { desc: 'Allestimento sicurezza RC2', prezzo: 16.4, note: 'per porta' },
+    'PZ_RC':  { desc: 'Protezione cilindro RC2', prezzo: 135 }
+};
+
+window.FINDOOR_ACCESSORI = {
+    // ── ACCESSORI VARI (pag. 131-132) ──
+    'Z50':    { desc: 'Contatto magnetico 10m', prezzo: 46.8 },
+    'Z50_2':  { desc: 'Contatto magnetico 20m', prezzo: 105 },
+    'Z50V':   { desc: 'Contatto magnetico 6m', prezzo: 58.3 },
+    'B001':   { desc: 'Limitatore apertura', prezzo: 51.5 },
+    '109_51': { desc: 'Spioncino cromato', prezzo: 51.8 },
+    '109_52': { desc: 'Spioncino nichelato', prezzo: 51.8 },
+    '356_43': { desc: 'Spioncino digitale', prezzo: 151 },
+    '112_51': { desc: 'Tappo paracolpi', prezzo: 10.4 },
+    '102_56': { desc: 'Fermaporta alluminio neutro', prezzo: 125 },
+    '102_01': { desc: 'Fermaporta bianco', prezzo: 86.3 },
+    '102_02': { desc: 'Fermaporta marrone', prezzo: 86.3 },
+    '02_11203': { desc: 'Trasmettitore citofoni', prezzo: 148 }
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// 14. HELPER FUNCTIONS
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -558,23 +851,234 @@ window.getAntePerComb = function(comb) {
 };
 
 /**
- * Cerca prezzo base in griglia dimensionale
+ * Cerca prezzo in griglia dimensionale con interpolazione
+ * Trova la cella >= L e >= H (arrotondamento per eccesso)
  */
-window.calcolaPrezzoBasePortoncino = function(L, H, tipoTab) {
-    const isGrande = (L > 1115 || H > 2355);
-    const tabKey = isGrande ? tipoTab + '_GRANDE' : tipoTab;
-    const tab = window.FINDOOR_PREZZI_BASE[tabKey];
-    if (!tab) return 0;
+window.cercaPrezzoGriglia = function(griglia, L, H) {
+    if (!griglia || !griglia.colonne || !griglia.righe) return 0;
 
-    // Trova colonna (larghezza)
-    let colIdx = tab.colonne.findIndex(c => c >= L);
-    if (colIdx < 0) colIdx = tab.colonne.length - 1;
+    // Trova colonna (larghezza) >= L
+    let colIdx = griglia.colonne.findIndex(c => c >= L);
+    if (colIdx < 0) colIdx = griglia.colonne.length - 1;
 
-    // Trova riga (altezza)
-    const altezze = Object.keys(tab.righe).map(Number).sort((a, b) => a - b);
+    // Trova riga (altezza) >= H
+    const altezze = Object.keys(griglia.righe).map(Number).sort((a, b) => a - b);
     const altTrovata = altezze.find(a => a >= H) || altezze[altezze.length - 1];
 
-    return tab.righe[altTrovata]?.[colIdx] || 0;
+    return griglia.righe[altTrovata]?.[colIdx] || 0;
+};
+
+/**
+ * Cerca prezzo base portoncino porta 720
+ * @param {number} L - Larghezza BRM mm
+ * @param {number} H - Altezza BRM mm
+ * @param {string} comb - Combinazione materiali: 'PVC-PVC', 'PVC-ALU', 'LEGNO-ALU', 'ALU-ALU'
+ */
+window.calcolaPrezzoBasePortoncino = function(L, H, comb) {
+    // PVC-ALU e LEGNO-ALU usano griglia ALU
+    const tabKey = (comb === 'PVC-PVC') ? 'PVC_PVC' : 'ALU_ALU';
+    const tab = window.FINDOOR_PREZZI_BASE[tabKey];
+    return window.cercaPrezzoGriglia(tab, L, H);
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * FUNZIONE PRINCIPALE DI CALCOLO PORTONCINO FINDOOR
+ * ═══════════════════════════════════════════════════════════════════════
+ * Chiamata da app.js → _calcolaPortoncino()
+ * @param {Object} ptc - Dati portoncino dalla posizione
+ * @returns {Object} { prezzoBase, supplModello, supplSerratura, supplCerniere,
+ *   supplCilindro, supplSoglia, supplManiglia, supplAccessori, prezzoLaterali,
+ *   prezzoSopraluce, totale, dettaglio }
+ */
+window.calcolaPrezzoPortoncinoFindoor = function(ptc) {
+    const result = {
+        prezzoBase: 0,
+        supplModello: 0,
+        supplSerratura: 0,
+        supplCerniere: 0,
+        supplCilindro: 0,
+        supplSoglia: 0,
+        supplManiglia: 0,
+        supplManigliaInt: 0,
+        supplChiudiporta: 0,
+        supplRC2: 0,
+        supplAccessori: 0,
+        prezzoLaterali: 0,
+        prezzoSopraluce: 0,
+        totale: 0,
+        dettaglio: []
+    };
+
+    try {
+        // ── Combinazione materiali ──
+        const comb = window.getCombinazioneMat(ptc);
+        const isAlu = (comb !== 'PVC-PVC');
+
+        // ── Dimensioni BRM ──
+        const L = parseInt(ptc.larghezza || ptc.BRM_L || ptc.LVT || 1000);
+        const H = parseInt(ptc.altezza || ptc.BRM_H || ptc.HVT || 2100);
+        const isGrande = (L > 1115 || H > 2355);
+
+        // ── 1. PREZZO BASE porta 720 ──
+        result.prezzoBase = window.calcolaPrezzoBasePortoncino(L, H, comb);
+        result.dettaglio.push(`Base ${comb} ${L}×${H}: €${result.prezzoBase}`);
+
+        // ── 2. SUPPLEMENTO MODELLO ANTA ──
+        if (ptc.modelloAnta) {
+            const modello = window.FINDOOR_MODELLI_ANTA[ptc.modelloAnta];
+            if (modello) {
+                const idx = isGrande ? 1 : 0;
+                result.supplModello = modello.prezzi[idx] || 0;
+                if (result.supplModello > 0) {
+                    result.dettaglio.push(`Modello ${ptc.modelloAnta}: +€${result.supplModello}`);
+                }
+            }
+        }
+
+        // ── 3. SERRATURA ──
+        const codSerr = ptc.serratura || '101.0';
+        const serr = window.FINDOOR_SERRATURE[codSerr];
+        if (serr && serr.prezzo > 0) {
+            result.supplSerratura = serr.prezzo;
+            result.dettaglio.push(`Serratura ${codSerr}: +€${serr.prezzo}`);
+        }
+
+        // ── 4. CERNIERE ──
+        if (ptc.cerniere) {
+            const cern = window.FINDOOR_CERNIERE[ptc.cerniere];
+            if (cern && cern.prezzo > 0) {
+                result.supplCerniere = cern.prezzo;
+                result.dettaglio.push(`Cerniere ${ptc.cerniere}: +€${cern.prezzo}`);
+            }
+        }
+
+        // ── 5. CILINDRO ──
+        if (ptc.cilindro) {
+            const cil = window.FINDOOR_CILINDRI[ptc.cilindro];
+            if (cil && cil.prezzo > 0) {
+                result.supplCilindro = cil.prezzo;
+                result.dettaglio.push(`Cilindro ${ptc.cilindro}: +€${cil.prezzo}`);
+            }
+        }
+
+        // ── 6. SOGLIA ──
+        if (ptc.soglia) {
+            const sogl = window.FINDOOR_SOGLIE[ptc.soglia];
+            if (sogl && sogl.prezzo_ml > 0) {
+                const Lm = L / 1000;
+                result.supplSoglia = Math.round(sogl.prezzo_ml * Lm * 100) / 100;
+                result.dettaglio.push(`Soglia ${ptc.soglia}: +€${result.supplSoglia} (${Lm}ml)`);
+            }
+        }
+
+        // ── 7. MANIGLIA ESTERNA (set/maniglione/asta) ──
+        if (ptc.maniglia && ptc.manigliaFinitura) {
+            const cats = ['set', 'maniglioni', 'aste', 'barre'];
+            for (const cat of cats) {
+                const item = window.FINDOOR_MANIGLIE[cat]?.[ptc.maniglia];
+                if (item) {
+                    const prezzo = item.finiture?.[ptc.manigliaFinitura] || 0;
+                    if (prezzo > 0) {
+                        result.supplManiglia = prezzo;
+                        result.dettaglio.push(`Maniglia ${ptc.maniglia}/${ptc.manigliaFinitura}: +€${prezzo}`);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // ── 8. MANIGLIA INTERNA ──
+        if (ptc.manigliaInt && ptc.manigliaIntFinitura) {
+            const item = window.FINDOOR_MANIGLIE.interne?.[ptc.manigliaInt];
+            if (item) {
+                const prezzo = item.finiture?.[ptc.manigliaIntFinitura] || 0;
+                if (prezzo > 0) {
+                    result.supplManigliaInt = prezzo;
+                    result.dettaglio.push(`Maniglia int. ${ptc.manigliaInt}: +€${prezzo}`);
+                }
+            }
+        }
+
+        // ── 9. CHIUDIPORTA ──
+        if (ptc.chiudiporta) {
+            const cp = window.FINDOOR_CHIUDIPORTA[ptc.chiudiporta];
+            if (cp) {
+                const prezzo = cp.prezzo || (cp.prezzi ? (cp.prezzi[ptc.chiudiportaFinitura] || cp.prezzi['56'] || 0) : 0);
+                if (prezzo > 0) {
+                    result.supplChiudiporta = prezzo;
+                    result.dettaglio.push(`Chiudiporta ${ptc.chiudiporta}: +€${prezzo}`);
+                }
+            }
+        }
+
+        // ── 10. RC2 ──
+        if (ptc.rc2) {
+            result.supplRC2 = (window.FINDOOR_RC2['RC2']?.prezzo || 0);
+            if (ptc.rc2_pz) result.supplRC2 += (window.FINDOOR_RC2['PZ_RC']?.prezzo || 0);
+            if (result.supplRC2 > 0) {
+                result.dettaglio.push(`RC2: +€${result.supplRC2}`);
+            }
+        }
+
+        // ── 11. ACCESSORI AGGIUNTIVI ──
+        if (ptc.accessori && Array.isArray(ptc.accessori)) {
+            for (const acc of ptc.accessori) {
+                const codice = acc.codice || acc;
+                const item = window.FINDOOR_ACCESSORI[codice] || window.FINDOOR_ACCESSORI_SERRATURA[codice];
+                if (item) {
+                    const qta = acc.qta || 1;
+                    const prezzoAcc = (item.prezzo || 0) * qta;
+                    result.supplAccessori += prezzoAcc;
+                    if (prezzoAcc > 0) {
+                        result.dettaglio.push(`Acc. ${codice} x${qta}: +€${prezzoAcc}`);
+                    }
+                }
+            }
+        }
+
+        // ── 12. ELEMENTI LATERALI ──
+        if (ptc.laterale) {
+            const latL = parseInt(ptc.laterale.larghezza || 0);
+            const latH = parseInt(ptc.laterale.altezza || H);
+            if (latL > 0) {
+                const tabKey = isAlu ? 'ALU_ALU' : 'PVC_PVC';
+                const griglia = window.FINDOOR_PREZZI_LATERALI[tabKey];
+                result.prezzoLaterali = window.cercaPrezzoGriglia(griglia, latL, latH);
+                // Se 2 laterali (tipo 633, 649 etc.)
+                const numLat = ptc.laterale.quantita || 1;
+                result.prezzoLaterali *= numLat;
+                result.dettaglio.push(`Laterale ${latL}×${latH} x${numLat}: +€${result.prezzoLaterali}`);
+            }
+        }
+
+        // ── 13. SOPRALUCE ──
+        if (ptc.sopraluce) {
+            const sopL = parseInt(ptc.sopraluce.larghezza || L);
+            const sopH = parseInt(ptc.sopraluce.altezza || 0);
+            if (sopH > 0) {
+                const tabKey = isAlu ? 'ALU_ALU_FISSO' : 'PVC_PVC_FISSO';
+                const griglia = window.FINDOOR_PREZZI_SOPRALUCE[tabKey];
+                result.prezzoSopraluce = window.cercaPrezzoGriglia(griglia, sopL, sopH);
+                result.dettaglio.push(`Sopraluce ${sopL}×${sopH}: +€${result.prezzoSopraluce}`);
+            }
+        }
+
+        // ── TOTALE ──
+        result.totale = result.prezzoBase + result.supplModello + result.supplSerratura +
+            result.supplCerniere + result.supplCilindro + result.supplSoglia +
+            result.supplManiglia + result.supplManigliaInt + result.supplChiudiporta +
+            result.supplRC2 + result.supplAccessori + result.prezzoLaterali + result.prezzoSopraluce;
+
+        result.totale = Math.round(result.totale * 100) / 100;
+        result.dettaglio.push(`── TOTALE: €${result.totale.toLocaleString('it-IT')} ──`);
+
+    } catch (e) {
+        console.error('❌ Errore calcolo portoncino FIN-Door:', e);
+        result.dettaglio.push(`ERRORE: ${e.message}`);
+    }
+
+    return result;
 };
 
 /**
@@ -652,6 +1156,6 @@ window.getModelliAntaOptionsHTML = function(selectedCod, comb) {
 };
 
 // Log caricamento
-console.log(`📦 FINDOOR-PORTONCINI v1.0.0 caricato: ${Object.keys(window.FINDOOR_MODELLI_ANTA).length} modelli, ${Object.keys(window.FINDOOR_TIPI_APERTURA).length} tipi apertura`);
+console.log(`📦 FINDOOR-PORTONCINI v2.0.0 caricato: ${Object.keys(window.FINDOOR_MODELLI_ANTA).length} modelli, ${Object.keys(window.FINDOOR_TIPI_APERTURA).length} tipi apertura, ferramenta completa`);
 
 })();
