@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🦟 PALAGINA MODULE v1.0.0 - Modulo Centralizzato Zanzariere
+// 🦟 PALAGINA MODULE v1.0.1 - Modulo Centralizzato Zanzariere
 // Per shared-database - Usato da App Rilievo + Dashboard
 // Pattern: identico a persiane-module.js
 // Dipendenze: palagina.js (PALAGINA_DATABASE_2025) - per calcolo prezzi
@@ -9,7 +9,7 @@
 // ============================================================
 // OPZIONI ZANZARIERE (centralizzate)
 // ============================================================
-const PALAGINA_OPZIONI = {
+var PALAGINA_OPZIONI = {
     aziende: ['Palagina'],
     
     linee: ['SINTESI', 'SV', 'EVO', 'COMPATTO'],
@@ -77,7 +77,7 @@ const PALAGINA_OPZIONI = {
 // ============================================================
 // TEMPLATE CONFIG GLOBALE (configZanzariere)
 // ============================================================
-const PALAGINA_CONFIG_TEMPLATE = {
+var PALAGINA_CONFIG_TEMPLATE = {
     azienda: 'Palagina',
     linea: '',
     modello: '',
@@ -91,7 +91,7 @@ const PALAGINA_CONFIG_TEMPLATE = {
 // ============================================================
 // TEMPLATE BRM CONFIG ZANZARIERE (brmConfigZanzariere)
 // ============================================================
-const PALAGINA_BRM_CONFIG_TEMPLATE = {
+var PALAGINA_BRM_CONFIG_TEMPLATE = {
     misuraBaseL: '',
     operazioneL: '',
     valoreL: '',
@@ -104,7 +104,7 @@ const PALAGINA_BRM_CONFIG_TEMPLATE = {
 // ============================================================
 // TEMPLATE PRODOTTO ZANZARIERA (pos.zanzariera)
 // ============================================================
-const PALAGINA_PRODUCT_TEMPLATE = {
+var PALAGINA_PRODUCT_TEMPLATE = {
     id: '',
     qta: '1',
     azienda: 'Palagina',
@@ -600,7 +600,7 @@ window.PALAGINA_MODULE = {
 // Esporta anche le costanti per accesso diretto
 window.PALAGINA_OPZIONI = PALAGINA_OPZIONI;
 
-console.log('✅ palagina-module.js v1.0.0 caricato');
+console.log('✅ palagina-module.js v1.0.1 caricato');
 console.log('   🦟 Modelli:', PALAGINA_OPZIONI.modelli.length);
 console.log('   🎨 Linee:', PALAGINA_OPZIONI.linee.length);
 console.log('   🔩 Accessori:', PALAGINA_OPZIONI.accessori.length);
