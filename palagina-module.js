@@ -1,15 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🦟 PALAGINA MODULE v1.0.1 - Modulo Centralizzato Zanzariere
+// 🦟 PALAGINA MODULE v1.0.2 - Modulo Centralizzato Zanzariere
 // Per shared-database - Usato da App Rilievo + Dashboard
 // Pattern: identico a persiane-module.js
 // Dipendenze: palagina.js (PALAGINA_DATABASE_2025) - per calcolo prezzi
 //             opzioni-prodotti.js (OPZIONI_PRODOTTI.zanzariere) - opzionale
+// v1.0.2: Fix SyntaxError "already been declared" - usa window.X
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ============================================================
 // OPZIONI ZANZARIERE (centralizzate)
 // ============================================================
-var PALAGINA_OPZIONI = {
+window.PALAGINA_OPZIONI = {
     aziende: ['Palagina'],
     
     linee: ['SINTESI', 'SV', 'EVO', 'COMPATTO'],
@@ -77,7 +78,7 @@ var PALAGINA_OPZIONI = {
 // ============================================================
 // TEMPLATE CONFIG GLOBALE (configZanzariere)
 // ============================================================
-var PALAGINA_CONFIG_TEMPLATE = {
+window.PALAGINA_CONFIG_TEMPLATE = {
     azienda: 'Palagina',
     linea: '',
     modello: '',
@@ -91,7 +92,7 @@ var PALAGINA_CONFIG_TEMPLATE = {
 // ============================================================
 // TEMPLATE BRM CONFIG ZANZARIERE (brmConfigZanzariere)
 // ============================================================
-var PALAGINA_BRM_CONFIG_TEMPLATE = {
+window.PALAGINA_BRM_CONFIG_TEMPLATE = {
     misuraBaseL: '',
     operazioneL: '',
     valoreL: '',
@@ -104,7 +105,7 @@ var PALAGINA_BRM_CONFIG_TEMPLATE = {
 // ============================================================
 // TEMPLATE PRODOTTO ZANZARIERA (pos.zanzariera)
 // ============================================================
-var PALAGINA_PRODUCT_TEMPLATE = {
+window.PALAGINA_PRODUCT_TEMPLATE = {
     id: '',
     qta: '1',
     azienda: 'Palagina',
