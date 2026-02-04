@@ -1,9 +1,10 @@
 // ============================================================================
-// DATA MANAGER - Gestione Dati Unificata v1.2.0
+// DATA MANAGER - Gestione Dati Unificata v1.3.0
 // ============================================================================
 // Modulo condiviso per gestire dati tra App Rilievo, Dashboard e Editor
 // Standardizza su formato `positions` (app rilievo), converte automaticamente
 // 
+// v1.3.0: Gestione prodotti preventivo (escludi/includi, modifica qta, elimina)
 // v1.2.0: Aggiunto supporto formato ODOO (progetti da CRM senza posizioni)
 // 
 // USO:
@@ -13,9 +14,13 @@
 //   DATA_MANAGER.getPositions(project) // ritorna sempre array positions
 //   DATA_MANAGER.setPositions(project, positions) // imposta positions
 //   DATA_MANAGER.normalizeProject(project) // normalizza formato (incl. Odoo)
+//   DATA_MANAGER.escludiProdotto(project, posIdx, productType) // toggle escluso
+//   DATA_MANAGER.modificaQtaProdotto(project, posIdx, productType, nuovaQta)
+//   DATA_MANAGER.eliminaPosizione(project, posIdx) // rimuove posizione intera
+//   DATA_MANAGER.isProdottoEscluso(prodotto) // check se escluso
 // ============================================================================
 
-const DATA_MANAGER_VERSION = '1.2.0';
+const DATA_MANAGER_VERSION = '1.3.0';
 
 (function() {
     'use strict';
@@ -892,6 +897,153 @@ const DATA_MANAGER_VERSION = '1.2.0';
     }
     
     // ========================================================================
+    // 🆕 v1.3.0: GESTIONE PRODOTTI PREVENTIVO
+    // ========================================================================
+    // Funzioni centralizzate per escludere/includere, modificare qta, eliminare
+    // prodotti dal preventivo. Lavorano sull'array positions in memoria.
+    // Le app chiamano queste funzioni + il proprio render + il proprio save.
+    // ========================================================================
+    
+    /**
+     * Toggle escluso/incluso di un prodotto nella posizione.
+     * Escluso = il prodotto resta nei dati ma non viene contato nel preventivo.
+     * 
+     * @param {Object} project - Oggetto progetto (window.currentData)
+     * @param {number} posIndex - Indice posizione (0-based)
+     * @param {string} productType - Tipo prodotto (infisso, persiana, tapparella, cassonetto, zanzariera, blindata, portoncino, grata)
+     * @returns {Object|null} - { escluso: boolean, posIndex, productType } o null se errore
+     */
+    function escludiProdotto(project, posIndex, productType) {
+        const positions = getPositions(project);
+        if (posIndex < 0 || posIndex >= positions.length) {
+            console.warn(`⚠️ DATA_MANAGER.escludiProdotto: Indice ${posIndex} fuori range (0-${positions.length - 1})`);
+            return null;
+        }
+        
+        const pos = positions[posIndex];
+        
+        // Supporta prodotti nested (es. blindata dentro ingresso) e diretti
+        let prodotto = pos[productType];
+        if (!prodotto && productType === 'blindata' && pos.ingresso?.blindata) {
+            prodotto = pos.ingresso.blindata;
+        }
+        
+        if (!prodotto) {
+            console.warn(`⚠️ DATA_MANAGER.escludiProdotto: ${productType} non esiste in posizione ${posIndex}`);
+            return null;
+        }
+        
+        // Toggle flag escluso
+        prodotto.escluso = !prodotto.escluso;
+        
+        const stato = prodotto.escluso ? 'ESCLUSO ❌' : 'INCLUSO ✅';
+        console.log(`🔄 DATA_MANAGER.escludiProdotto: Pos ${posIndex + 1} ${productType} → ${stato}`);
+        
+        return { escluso: prodotto.escluso, posIndex, productType };
+    }
+    
+    /**
+     * Modifica la quantità di un prodotto specifico.
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {number} posIndex - Indice posizione (0-based)
+     * @param {string} productType - Tipo prodotto
+     * @param {number|string} nuovaQta - Nuova quantità (min 1)
+     * @returns {Object|null} - { qta, posIndex, productType } o null se errore
+     */
+    function modificaQtaProdotto(project, posIndex, productType, nuovaQta) {
+        const positions = getPositions(project);
+        if (posIndex < 0 || posIndex >= positions.length) {
+            console.warn(`⚠️ DATA_MANAGER.modificaQtaProdotto: Indice ${posIndex} fuori range`);
+            return null;
+        }
+        
+        const pos = positions[posIndex];
+        let prodotto = pos[productType];
+        if (!prodotto && productType === 'blindata' && pos.ingresso?.blindata) {
+            prodotto = pos.ingresso.blindata;
+        }
+        
+        if (!prodotto) {
+            console.warn(`⚠️ DATA_MANAGER.modificaQtaProdotto: ${productType} non esiste in posizione ${posIndex}`);
+            return null;
+        }
+        
+        const qta = Math.max(1, parseInt(nuovaQta) || 1);
+        prodotto.qta = String(qta);
+        
+        console.log(`✏️ DATA_MANAGER.modificaQtaProdotto: Pos ${posIndex + 1} ${productType} qta → ${qta}`);
+        
+        return { qta, posIndex, productType };
+    }
+    
+    /**
+     * Elimina un'intera posizione dal progetto.
+     * ATTENZIONE: azione irreversibile.
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {number} posIndex - Indice posizione (0-based)
+     * @returns {Object|null} - { removed: posizione rimossa, posIndex } o null
+     */
+    function eliminaPosizione(project, posIndex) {
+        const positions = getPositions(project);
+        if (posIndex < 0 || posIndex >= positions.length) {
+            console.warn(`⚠️ DATA_MANAGER.eliminaPosizione: Indice ${posIndex} fuori range`);
+            return null;
+        }
+        
+        const removed = positions.splice(posIndex, 1)[0];
+        setPositions(project, positions); // Sincronizza positions/posizioni
+        
+        console.log(`🗑️ DATA_MANAGER.eliminaPosizione: Rimossa posizione ${posIndex + 1} (${removed.ambiente || removed.id || 'N/D'})`);
+        
+        return { removed, posIndex };
+    }
+    
+    /**
+     * Elimina un singolo prodotto dalla posizione (senza rimuovere la posizione).
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @param {number} posIndex - Indice posizione (0-based)
+     * @param {string} productType - Tipo prodotto da eliminare
+     * @returns {boolean} - true se eliminato con successo
+     */
+    function eliminaProdotto(project, posIndex, productType) {
+        const positions = getPositions(project);
+        if (posIndex < 0 || posIndex >= positions.length) {
+            console.warn(`⚠️ DATA_MANAGER.eliminaProdotto: Indice ${posIndex} fuori range`);
+            return false;
+        }
+        
+        const pos = positions[posIndex];
+        
+        if (productType === 'blindata' && pos.ingresso?.blindata) {
+            delete pos.ingresso.blindata;
+            console.log(`🗑️ DATA_MANAGER.eliminaProdotto: Rimosso blindata da pos ${posIndex + 1}`);
+            return true;
+        }
+        
+        if (pos[productType]) {
+            delete pos[productType];
+            console.log(`🗑️ DATA_MANAGER.eliminaProdotto: Rimosso ${productType} da pos ${posIndex + 1}`);
+            return true;
+        }
+        
+        console.warn(`⚠️ DATA_MANAGER.eliminaProdotto: ${productType} non esiste in posizione ${posIndex}`);
+        return false;
+    }
+    
+    /**
+     * Verifica se un prodotto è escluso dal preventivo.
+     * 
+     * @param {Object} prodotto - Oggetto prodotto (es. pos.infisso)
+     * @returns {boolean} - true se escluso
+     */
+    function isProdottoEscluso(prodotto) {
+        return !!(prodotto && prodotto.escluso);
+    }
+    
+    // ========================================================================
     // ESPORTA MODULO
     // ========================================================================
     
@@ -914,7 +1066,14 @@ const DATA_MANAGER_VERSION = '1.2.0';
         createProduct,
         removeProduct,
         
-        // 🆕 Funzioni dirette su posizione (per Editor)
+        // 🆕 v1.3.0: Gestione prodotti preventivo
+        escludiProdotto,
+        modificaQtaProdotto,
+        eliminaPosizione,
+        eliminaProdotto,
+        isProdottoEscluso,
+        
+        // Funzioni dirette su posizione (per Editor)
         applyPositionUpdate,
         applyProductUpdate,
         applyMisuraUpdate,
@@ -934,6 +1093,7 @@ const DATA_MANAGER_VERSION = '1.2.0';
     console.log(`✅ Data Manager v${DATA_MANAGER_VERSION} - Pronto!`);
     console.log('   📌 Funzioni progetto: updatePosition(), updateProduct(), updateMisura()');
     console.log('   📌 Funzioni editor: applyPositionUpdate(), applyProductUpdate(), applyMisuraUpdate()');
+    console.log('   🆕 Funzioni preventivo: escludiProdotto(), modificaQtaProdotto(), eliminaPosizione(), eliminaProdotto()');
     console.log('   🔗 Supporto Odoo: normalizeProject() gestisce progetti da CRM');
     
 })();
