@@ -1,14 +1,10 @@
 /**
- * PROJECT-LIST-VIEW.js v1.1
+ * PROJECT-LIST-VIEW.js v1.2
  * Modulo condiviso per visualizzazione lista progetti
  * Usato da: App Rilievo + Dashboard Rilievi
  * Deploy: shared-database/project-list-view.js
  * 
- * ╔══════════════════════════════════════════════════════════╗
- * ║  CONFIGURAZIONE STATI — MODIFICA SOLO QUI               ║
- * ║  Aggiungi/rinomina/riordina stati in STATI_CONFIG        ║
- * ║  Tutto il resto si adatta automaticamente                ║
- * ╚══════════════════════════════════════════════════════════╝
+ * v1.2: Card migliorate, dropdown stato (no ciclo), layout più spazioso
  */
 
 // =============================================================================
@@ -76,7 +72,7 @@ STATI_CONFIG.forEach((s, i) => {
 // =============================================================================
 
 const ProjectListView = {
-    VERSION: '1.1',
+    VERSION: '1.2',
     _currentTab: STATI_DEFAULT,
 
     // Esponi config per accesso esterno
@@ -201,7 +197,7 @@ const ProjectListView = {
                 ${sc?.emptyMsg || 'Nessun progetto'}
             </div>`;
         }
-        return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">
+        return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;">
             ${filtered.map(p => this._generateCard(p, currentTab, opts)).join('')}
         </div>`;
     },
@@ -217,7 +213,7 @@ const ProjectListView = {
         }
 
         const odooBadge = p.hasOdoo 
-            ? '<span style="display:inline-block;padding:1px 6px;background:#714B67;color:white;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;vertical-align:middle;">Odoo</span>' : '';
+            ? '<span style="display:inline-block;padding:2px 8px;background:#714B67;color:white;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;vertical-align:middle;">Odoo</span>' : '';
 
         const ambienteRow = (opts.showAmbiente && p.ambiente && p.ambiente !== 'N/D')
             ? `<div style="font-size:12px;color:#9ca3af;margin-bottom:4px;">🏠 ${p.ambiente}</div>` : '';
@@ -229,36 +225,58 @@ const ProjectListView = {
                     style="padding:4px 6px;border:none;background:none;cursor:pointer;font-size:14px;opacity:0.4;transition:opacity 0.15s;"
                     onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">🗑️</button>` : '';
 
+        // Dropdown opzioni stato
+        const statiOptions = STATI_CONFIG.map(s => {
+            const selected = s.key === p.stato;
+            return `<div onclick="event.stopPropagation();ProjectListView.setStato('${p.id}','${s.key}')" 
+                style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;
+                       background:${selected ? s.bg : 'white'};font-weight:${selected ? 700 : 400};color:${selected ? s.color : '#374151'};
+                       border-left:3px solid ${selected ? s.color : 'transparent'};"
+                onmouseenter="this.style.background='${s.bg}'" onmouseleave="this.style.background='${selected ? s.bg : 'white'}'">
+                ${s.icon} ${s.labelSingolare}
+            </div>`;
+        }).join('');
+
+        const dropdownId = 'stato-dd-' + p.id.replace(/[^a-zA-Z0-9]/g, '_');
+
         return `<div onclick="${opts.onOpenFn}('${p.id}')" 
-             style="background:white;border-radius:12px;padding:14px 16px;cursor:pointer;border:1px solid #e5e7eb;
-                    transition:all 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.06);position:relative;
+             style="background:white;border-radius:14px;padding:18px 20px;cursor:pointer;border:1px solid #e5e7eb;
+                    transition:all 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.06);position:relative;
+                    border-left:4px solid ${sc.color};
                     ${tabCfg?.dimCards ? 'opacity:0.65;' : ''}"
-             onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';this.style.transform='translateY(-2px)'"
-             onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.06)';this.style.transform='none'">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+             onmouseover="this.style.boxShadow='0 6px 16px rgba(0,0,0,0.1)';this.style.transform='translateY(-2px)'"
+             onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)';this.style.transform='none'">
+            
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
                 <div style="flex:1;min-width:0;">
-                    <div style="font-weight:700;font-size:16px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${(p.clientName || '').toUpperCase()}${odooBadge}${completamentoBadge}
+                    <div style="font-weight:800;font-size:17px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.3px;">
+                        ${(p.clientName || '').toUpperCase()}${completamentoBadge}
+                    </div>
+                    <div style="font-size:13px;color:#6b7280;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span>${p.projectName}</span>
+                        ${odooBadge}
+                        <span style="font-family:monospace;font-size:11px;padding:1px 6px;background:#f3f4f6;border-radius:4px;color:#9ca3af;">${idFmt}</span>
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                    <button onclick="event.stopPropagation();ProjectListView.cycleStato('${p.id}')" title="Cambia stato"
-                            style="padding:4px 8px;border:1px solid ${sc.color};background:${sc.bg};border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:${sc.color};transition:all 0.15s;">
-                        ${sc.icon} ${sc.labelSingolare}
+                <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;position:relative;">
+                    <button onclick="event.stopPropagation();ProjectListView.toggleDropdown('${dropdownId}')" title="Cambia stato"
+                            style="padding:5px 10px;border:1px solid ${sc.color};background:${sc.bg};border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:${sc.color};transition:all 0.15s;display:flex;align-items:center;gap:4px;"
+                            onmouseenter="this.style.background='${sc.color}';this.style.color='white'" 
+                            onmouseleave="this.style.background='${sc.bg}';this.style.color='${sc.color}'">
+                        ${sc.icon} ${sc.labelSingolare} ▾
                     </button>
+                    <div id="${dropdownId}" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:white;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.15);border:1px solid #e5e7eb;overflow:hidden;min-width:160px;z-index:100;">
+                        ${statiOptions}
+                    </div>
                     ${deleteBtn}
                 </div>
             </div>
-            <div style="font-size:13px;color:#6b7280;margin-bottom:${ambienteRow ? '4' : '8'}px;display:flex;align-items:center;gap:6px;">
-                <span style="font-weight:500;">${p.projectName}</span>
-                <span style="font-family:monospace;font-size:11px;padding:1px 5px;background:#f3f4f6;border-radius:4px;color:#9ca3af;">${idFmt}</span>
-            </div>
             ${ambienteRow}
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#9ca3af;padding-top:6px;border-top:1px solid #f3f4f6;">
-                <span>📋 ${p.posCount} posizioni</span>
-                ${p.version ? '<span style="font-family:monospace;">v' + p.version + '</span>' : ''}
-                ${p.dateStr ? '<span>' + p.dateStr + '</span>' : ''}
-                <span style="color:#6366f1;font-weight:600;">Apri →</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#9ca3af;padding-top:10px;border-top:1px solid #f3f4f6;">
+                <span>📋 <strong style="color:#374151;">${p.posCount}</strong> posizioni</span>
+                ${p.version ? '<span style="font-family:monospace;font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:4px;">v' + p.version + '</span>' : ''}
+                ${p.dateStr ? '<span>📅 ' + p.dateStr + '</span>' : ''}
+                <span style="color:#6366f1;font-weight:700;font-size:13px;">Apri →</span>
             </div>
         </div>`;
     },
@@ -271,6 +289,63 @@ const ProjectListView = {
         if (STATI_MAP[tab]) this._currentTab = tab;
         if (typeof render === 'function') render();
         else if (this._renderCallback) this._renderCallback();
+    },
+
+    // v1.2: Toggle dropdown stato
+    toggleDropdown(dropdownId) {
+        // Chiudi tutti gli altri dropdown
+        document.querySelectorAll('[id^="stato-dd-"]').forEach(dd => {
+            if (dd.id !== dropdownId) dd.style.display = 'none';
+        });
+        const dd = document.getElementById(dropdownId);
+        if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+        
+        // Chiudi dropdown al click esterno
+        const closeHandler = (e) => {
+            if (!e.target.closest(`#${dropdownId}`) && !e.target.closest(`[onclick*="${dropdownId}"]`)) {
+                if (dd) dd.style.display = 'none';
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 10);
+    },
+
+    // v1.2: Imposta stato specifico (no ciclo)
+    setStato(projectId, newStato) {
+        if (!STATI_MAP[newStato]) return;
+        let projectName = '';
+
+        // App Rilievo
+        if (typeof state !== 'undefined' && state.projects) {
+            const p = state.projects.find(p => p.id === projectId);
+            if (p) {
+                p.stato = newStato;
+                projectName = p.name || p.client || projectId;
+                if (typeof saveState === 'function') saveState();
+            }
+        }
+
+        // Dashboard
+        if (typeof window !== 'undefined' && window.githubProjects) {
+            const p = window.githubProjects.find(p => p.id === projectId);
+            if (p) {
+                if (p.rawData) p.rawData.stato = newStato;
+                projectName = p.nome || p.cliente || projectId;
+                if (typeof saveProjectStatoToGitHub === 'function') saveProjectStatoToGitHub(projectId, newStato);
+            }
+        }
+
+        // Chiudi dropdown
+        document.querySelectorAll('[id^="stato-dd-"]').forEach(dd => dd.style.display = 'none');
+
+        if (projectName) {
+            const sc = STATI_MAP[newStato];
+            const msg = `${projectName}: ${sc?.icon || ''} ${sc?.labelSingolare || newStato}`;
+            if (typeof showNotification === 'function') showNotification(msg, 'success', 2000);
+            else if (typeof showAlert === 'function') showAlert('success', msg);
+        }
+
+        this.setTab(this._currentTab);
     },
 
     cycleStato(projectId) {
