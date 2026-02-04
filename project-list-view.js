@@ -83,6 +83,7 @@ const ProjectListView = {
     STATI: STATI_CONFIG,
     STATI_MAP: STATI_MAP,
     STATI_KEYS: STATI_KEYS,
+    STATI_CYCLE: STATI_CYCLE,
     STATI_DEFAULT: STATI_DEFAULT,
 
     // =========================================================================
