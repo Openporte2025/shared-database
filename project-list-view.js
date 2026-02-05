@@ -1,9 +1,10 @@
 /**
- * PROJECT-LIST-VIEW.js v1.2
+ * PROJECT-LIST-VIEW.js v1.3
  * Modulo condiviso per visualizzazione lista progetti
  * Usato da: App Rilievo + Dashboard Rilievi
  * Deploy: shared-database/project-list-view.js
  * 
+ * v1.3: Fix salvataggio stato su GitHub da App + aggiornamento top-level per Dashboard
  * v1.2: Card migliorate, dropdown stato (no ciclo), layout più spazioso
  */
 
@@ -322,6 +323,10 @@ const ProjectListView = {
                 p.stato = newStato;
                 projectName = p.name || p.client || projectId;
                 if (typeof saveState === 'function') saveState();
+                // 🔧 v1.3: Salva anche su GitHub (non solo localStorage)
+                if (typeof uploadSingleProjectToGitHub === 'function') {
+                    uploadSingleProjectToGitHub(projectId);
+                }
             }
         }
 
@@ -330,6 +335,7 @@ const ProjectListView = {
             const p = window.githubProjects.find(p => p.id === projectId);
             if (p) {
                 if (p.rawData) p.rawData.stato = newStato;
+                p.stato = newStato; // 🔧 v1.3: aggiorna top-level per tab conteggi
                 projectName = p.nome || p.cliente || projectId;
                 if (typeof saveProjectStatoToGitHub === 'function') saveProjectStatoToGitHub(projectId, newStato);
             }
@@ -360,6 +366,10 @@ const ProjectListView = {
                 newStato = p.stato;
                 projectName = p.name || p.client || projectId;
                 if (typeof saveState === 'function') saveState();
+                // 🔧 v1.3: Salva anche su GitHub
+                if (typeof uploadSingleProjectToGitHub === 'function') {
+                    uploadSingleProjectToGitHub(projectId);
+                }
             }
         }
 
@@ -370,6 +380,7 @@ const ProjectListView = {
                 const old = STATI_MAP[p.rawData?.stato] ? p.rawData.stato : STATI_DEFAULT;
                 const next = STATI_CYCLE[old] || STATI_DEFAULT;
                 if (p.rawData) p.rawData.stato = next;
+                p.stato = next; // 🔧 v1.3: aggiorna top-level
                 newStato = next;
                 projectName = p.nome || p.cliente || projectId;
                 if (typeof saveProjectStatoToGitHub === 'function') saveProjectStatoToGitHub(projectId, next);
