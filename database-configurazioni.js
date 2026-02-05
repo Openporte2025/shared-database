@@ -1,26 +1,26 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * 🔧 DATABASE CONFIGURAZIONI - Mapping OPZIONI → Dropdown Dashboard
+ * 🔧 DATABASE CONFIGURAZIONI - Mapping OPZIONI_PRODOTTI → Dropdown Dashboard
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
- * Questo file crea DATABASE_CONFIGURAZIONI usando le costanti da opzioni-comuni.js
- * Da caricare DOPO opzioni-comuni.js e PRIMA di app.js
+ * Questo file crea DATABASE_CONFIGURAZIONI usando OPZIONI_PRODOTTI (unica fonte)
+ * Da caricare DOPO opzioni-prodotti.js e PRIMA di app.js
  * 
- * Versione: 1.0
- * Data: 20 Gennaio 2026
+ * v2.0 (05/02/2026): Legge da OPZIONI_PRODOTTI v3.0.0 (unica fonte)
+ * v1.0 (20/01/2026): Leggeva da OPZIONI (vecchio)
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 (function() {
     'use strict';
     
-    // Verifica che OPZIONI sia disponibile
-    if (!window.OPZIONI) {
-        console.error('❌ database-configurazioni.js: window.OPZIONI non trovato! Caricare opzioni-comuni.js prima.');
+    // Verifica che OPZIONI_PRODOTTI sia disponibile
+    if (!window.OPZIONI_PRODOTTI) {
+        console.error('❌ database-configurazioni.js: window.OPZIONI_PRODOTTI non trovato! Caricare opzioni-prodotti.js prima.');
         return;
     }
     
-    const O = window.OPZIONI;
+    const P = window.OPZIONI_PRODOTTI;
     
     // ═══════════════════════════════════════════════════════════════════════════
     // 📦 DATABASE_CONFIGURAZIONI
@@ -34,44 +34,64 @@
         infissi: {
             azienda: {
                 label: '🏭 Azienda',
-                options: O.AZIENDE_INFISSI,
+                options: P.AZIENDE.infissi,
                 allowCustom: true
             },
             finituraEst: {
                 label: '🎨 Finitura Esterna',
-                options: ['PVC', 'Alluminio', 'Legno', 'Legno-Alluminio'],
+                options: P.infissi.finiture.map(f => f.charAt(0).toUpperCase() + f.slice(1)),
                 allowCustom: false
             },
             finituraInt: {
                 label: '🎨 Finitura Interna',
-                options: ['PVC', 'Alluminio', 'Legno', 'Legno-Alluminio'],
+                options: P.infissi.finiture.map(f => f.charAt(0).toUpperCase() + f.slice(1)),
                 allowCustom: false
             },
             coloreEst: {
                 label: '🌈 Colore Esterno',
-                options: O.COLORI_PVC,
-                optionsPVC: O.COLORI_PVC,
-                optionsAlluminio: O.COLORI_ALLUMINIO,
-                optionsLegno: O.COLORI_LEGNO,
+                options: P.infissi.coloriPVC,
+                optionsPVC: P.infissi.coloriPVC,
+                optionsAlluminio: P.infissi.coloriAlluminio,
+                optionsLegno: P.infissi.coloriLegno,
                 allowCustom: true
             },
             coloreInt: {
                 label: '🌈 Colore Interno',
-                options: O.COLORI_PVC,
-                optionsPVC: O.COLORI_PVC,
-                optionsAlluminio: O.COLORI_ALLUMINIO,
-                optionsLegno: O.COLORI_LEGNO,
+                options: P.infissi.coloriPVC,
+                optionsPVC: P.infissi.coloriPVC,
+                optionsAlluminio: P.infissi.coloriAlluminio,
+                optionsLegno: P.infissi.coloriLegno,
+                allowCustom: true
+            },
+            tipoAnta: {
+                label: '🚪 Tipo Anta',
+                options: P.infissi.tipiAnta,
                 allowCustom: true
             },
             vetro: {
                 label: '💎 Vetro',
-                options: ['Doppio standard', 'Triplo', 'Basso emissivo', 'Sicurezza', 'Acustico', 'Solare'],
+                options: P.infissi.vetri,
                 allowCustom: true
             },
             maniglia: {
                 label: '🔧 Maniglia',
-                options: ['Standard', 'Hoppe SecuSelect', 'Hoppe Tokyo', 'Olivari', 'Colombo'],
+                options: P.infissi.maniglie,
                 allowCustom: true
+            },
+            coloreManiglia: {
+                label: '🎨 Colore Maniglia',
+                options: P.infissi.coloriManiglia,
+                allowCustom: true
+            },
+            tagliTelaio: {
+                label: '✂️ Tagli Telaio',
+                options: P.infissi.tagliTelaio,
+                allowCustom: false
+            },
+            allarme: {
+                label: '🔔 Allarme',
+                options: P.infissi.allarme,
+                allowCustom: false
             }
         },
         
@@ -81,99 +101,49 @@
         tapparelle: {
             azienda: {
                 label: '🏭 Azienda',
-                options: O.AZIENDE_TAPPARELLE,
-                allowCustom: false
-            },
-            modello: {
-                label: '📋 Modello Telo',
-                options: O.MODELLI_TAPPARELLE['Plasticino'].map(m => m.nome),
-                allowCustom: true
-            },
-            colore: {
-                label: '🎨 Colore Telo',
-                options: [
-                    ...O.COLORI_TAPPARELLE_PLASTICINO['ALLUMINIO_UNITA'],
-                    ...O.COLORI_TAPPARELLE_PLASTICINO['ALLUMINIO_LEGNO'],
-                    ...O.COLORI_TAPPARELLE_PLASTICINO['PVC']
-                ],
-                allowCustom: true
-            },
-            guidaTipo: {
-                label: '🛤️ Tipo Guida',
-                options: O.GUIDE_PLASTICINO,
-                allowCustom: true
-            },
-            guidaColore: {
-                label: '🎨 Colore Guida',
-                options: O.getColoriGuide(),
-                allowCustom: true
-            },
-            tipoManovra: {
-                label: '⚙️ Tipo Manovra',
-                options: ['Manuale cinghia', 'Manuale manovella', 'Motorizzata'],
-                allowCustom: false
-            }
-        },
-        
-        // ─────────────────────────────────────────────────────────────────────
-        // ⚡ MOTORI
-        // ─────────────────────────────────────────────────────────────────────
-        motori: {
-            azienda: {
-                label: '🏭 Azienda',
-                options: ['Somfy', 'Nice', 'Came', 'Faac'],
-                allowCustom: true
-            },
-            modello: {
-                label: '📋 Modello',
-                options: O.MOTORI_SOMFY.map(m => m.modello),
-                allowCustom: true
-            },
-            comando: {
-                label: '🎮 Comando',
-                options: O.COMANDI_SOMFY.map(c => c.nome),
-                allowCustom: true
-            },
-            accessori: {
-                label: '🔧 Accessori',
-                options: O.ACCESSORI_MOTORE_SOMFY.map(a => a.nome),
+                options: P.AZIENDE.tapparelle,
                 allowCustom: true
             }
         },
         
         // ─────────────────────────────────────────────────────────────────────
-        // 🚪 PERSIANE
+        // 🏠 PERSIANE
         // ─────────────────────────────────────────────────────────────────────
         persiane: {
             azienda: {
                 label: '🏭 Azienda',
-                options: O.AZIENDE_PERSIANE,
+                options: P.AZIENDE.persiane,
+                allowCustom: true
+            },
+            modello: {
+                label: '📋 Modello',
+                options: P.persiane.modelli,
                 allowCustom: true
             },
             tipo: {
                 label: '📐 Tipo',
-                options: O.TIPI_PERSIANA,
+                options: P.persiane.tipiDescrittivi,
                 allowCustom: false
             },
             apertura: {
                 label: '🚪 Apertura',
-                options: O.APERTURE_PERSIANA,
+                options: P.persiane.apertureDescrittive,
                 allowCustom: false
             },
-            colore: {
-                label: '🎨 Colore',
-                options: ['Bianco', 'Avorio', 'Grigio', 'Marrone', 'Verde', 'Antracite', 'RAL a richiesta'],
+            fissaggio: {
+                label: '🔩 Fissaggio',
+                options: P.persiane.fissaggi,
+                allowCustom: false
+            },
+            tipoTelaio: {
+                label: '🪟 Tipo Telaio',
+                options: P.persiane.tipiTelaio,
                 allowCustom: true
             },
-            cardini: {
-                label: '🔩 Cardini',
-                options: O.CARDINI_PUNTO_PERSIANE.map(c => c.nome),
-                allowCustom: true
-            },
-            fermapersiane: {
-                label: '🔒 Fermapersiane',
-                options: O.FERMAPERSIANE_PUNTO_PERSIANE.map(f => f.nome),
-                allowCustom: true
+            battuta: {
+                label: '📏 Battuta',
+                options: P.persiane.battute,
+                allowCustom: false
             }
         },
         
@@ -183,29 +153,22 @@
         zanzariere: {
             azienda: {
                 label: '🏭 Azienda',
-                options: O.AZIENDE_ZANZARIERE,
-                allowCustom: false
+                options: P.AZIENDE.zanzariere,
+                allowCustom: true
             },
             linea: {
-                label: '📦 Linea',
-                options: O.LINEE_ZANZARIERE_PALAGINA,
+                label: '📋 Linea',
+                options: P.zanzariere.linee,
                 allowCustom: false
             },
-            modello: {
-                label: '📋 Modello',
-                // MODELLI_ZANZARIERE_PALAGINA è un oggetto {linea: [modelli]}
-                options: Object.values(O.MODELLI_ZANZARIERE_PALAGINA).flat(),
-                allowCustom: true
-            },
-            coloreTelaio: {
-                label: '🎨 Colore Telaio',
-                // COLORI_TELAIO_PALAGINA è un oggetto {fascia: [colori]}
-                options: Object.values(O.COLORI_TELAIO_PALAGINA).flat(),
-                allowCustom: true
+            fasciaColore: {
+                label: '🎨 Fascia Colore',
+                options: P.zanzariere.fasceColore,
+                allowCustom: false
             },
             tipoRete: {
                 label: '🕸️ Tipo Rete',
-                options: O.TIPI_RETE_PALAGINA,
+                options: P.zanzariere.tipiRete,
                 allowCustom: false
             }
         },
@@ -216,24 +179,24 @@
         cassonetti: {
             azienda: {
                 label: '🏭 Azienda',
-                options: O.AZIENDE_CASSONETTI,
+                options: P.AZIENDE.cassonetti,
                 allowCustom: true
             },
             tipo: {
                 label: '📐 Tipo',
-                options: O.TIPI_CASSONETTO,
+                options: P.cassonetti.tipi,
                 allowCustom: false
             },
             materiale: {
                 label: '🧱 Materiale',
-                options: O.MATERIALI_CASSONETTO,
+                options: P.cassonetti.materiali,
                 allowCustom: false
             },
             codice: {
                 label: '🏷️ Codice',
                 options: [
-                    ...O.CODICI_CASSONETTO_PVC.map(c => c.desc),
-                    ...O.CODICI_CASSONETTO_LEGNO.map(c => c.desc)
+                    ...P.cassonetti.codiciPVC.map(c => c.desc),
+                    ...P.cassonetti.codiciLegno.map(c => c.desc)
                 ],
                 allowCustom: true
             },
@@ -271,6 +234,6 @@
         }
     };
     
-    console.log('✅ database-configurazioni.js v1.0 caricato - DATABASE_CONFIGURAZIONI disponibile');
+    console.log('✅ database-configurazioni.js v2.0 caricato - legge da OPZIONI_PRODOTTI');
     
 })();
