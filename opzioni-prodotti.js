@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.0.0
+ * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.1.0
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * shared-database/opzioni-prodotti.js
@@ -15,14 +15,14 @@
  *   - Aggiunto: colori infissi (PVC/Alu/Legno), tapparelle complete,
  *     motori Somfy, persiane complete, zanzariere Palagina, cassonetti
  *   - Tutte le funzioni helper migrate qui
- *   - Sync retrocompatibilità con window.OPZIONI mantenuto
+ *   - Blocco sync retrocompatibilità RIMOSSO in v3.1.0 (non più necessario)
  * 
  * v2.0.0 (05/02/2026): Codici modello, ferramenta, latiDin, esecuzioni
  * v1.0.0 (02/02/2026): Versione iniziale
  * 
  * DIPENDENZE:
  * - Caricare DOPO finstral-opzioni.js (per integrazione vetri)
- * - Caricare DOPO opzioni-comuni.js (per sync retrocompatibilità)
+ * - Caricare DOPO finstral-opzioni.js (per integrazione vetri)
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -730,73 +730,6 @@
         console.log('⚠️ OPZIONI_PRODOTTI: vetri fallback (' + P.infissi.vetri.length + ')');
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // 🔄 SYNC RETROCOMPATIBILITÀ con window.OPZIONI
-    // Mantiene funzionamento di dashboard-configurazioni.js e editor-posizione.js
-    // che leggono ancora da OPZIONI.*
-    // ═══════════════════════════════════════════════════════════════════════════
-    if (typeof window.OPZIONI !== 'undefined') {
-        const O = window.OPZIONI;
-        // Aziende
-        O.AZIENDE_INFISSI = P.AZIENDE.infissi;
-        O.AZIENDE_PERSIANE = P.AZIENDE.persiane;
-        O.AZIENDE_TAPPARELLE = P.AZIENDE.tapparelle;
-        O.AZIENDE_ZANZARIERE = P.AZIENDE.zanzariere;
-        O.AZIENDE_CASSONETTI = P.AZIENDE.cassonetti;
-        // Colori infissi
-        O.COLORI_PVC = P.infissi.coloriPVC;
-        O.COLORI_ALLUMINIO = P.infissi.coloriAlluminio;
-        O.COLORI_LEGNO = P.infissi.coloriLegno;
-        // Tapparelle
-        O.MODELLI_TAPPARELLE = P.tapparelle.modelli;
-        O.COLORI_TAPPARELLE_PLASTICINO = P.tapparelle.colori;
-        O.GUIDE_PLASTICINO = P.tapparelle.guide;
-        O.COLORI_GUIDE_PLASTICINO = P.tapparelle.coloriGuide;
-        O.ACCESSORI_TAPPARELLA = P.tapparelle.accessoriManuali;
-        // Motori
-        O.MOTORI_SOMFY = P.motori.modelli;
-        O.ACCESSORI_MOTORE_SOMFY = P.motori.accessori;
-        O.COMANDI_SOMFY = P.motori.comandi;
-        // Persiane
-        O.TIPI_PERSIANA = P.persiane.tipiDescrittivi;
-        O.APERTURE_PERSIANA = P.persiane.apertureDescrittive;
-        O.CARDINI_PUNTO_PERSIANE = P.persiane.cardini;
-        O.FERMAPERSIANE_PUNTO_PERSIANE = P.persiane.fermapersiane;
-        O.MODELLI_PERSIANA = P.persiane.modelli;
-        O.FISSAGGI_PERSIANA = P.persiane.fissaggi;
-        // Zanzariere
-        O.LINEE_ZANZARIERE_PALAGINA = P.zanzariere.linee;
-        O.MODELLI_ZANZARIERE_PALAGINA = P.zanzariere.modelli;
-        O.FASCE_COLORE_PALAGINA = P.zanzariere.fasceColore;
-        O.COLORI_TELAIO_PALAGINA = P.zanzariere.coloriTelaio;
-        O.TIPI_RETE_PALAGINA = P.zanzariere.tipiRete;
-        // Cassonetti
-        O.TIPI_CASSONETTO = P.cassonetti.tipi;
-        O.MATERIALI_CASSONETTO = P.cassonetti.materiali;
-        O.CODICI_CASSONETTO_PVC = P.cassonetti.codiciPVC;
-        O.CODICI_CASSONETTO_LEGNO = P.cassonetti.codiciLegno;
-        O.GRUPPI_COLORE_CASSONETTO = P.cassonetti.gruppiColore;
-        // Helper functions
-        O.getColoriPerFinitura = P.getColoriPerFinitura;
-        O.getModelliTapparella = P.getModelliTapparella;
-        O.getColoriTapparella = P.getColoriTapparella;
-        O.getColoriGuide = P.getColoriGuide;
-        O.calcolaCardiniPersiana = P.calcolaCardiniPersiana;
-        O.calcolaFermapersiane = P.calcolaFermapersiane;
-        O.getModelliTapparellaOptions = P.getModelliTapparellaOptions;
-        // Codici/ferramenta per editor
-        O.CODICI_MODELLO = P.getCodiciModelloFlat();
-        O.FERRAMENTA_CODICI = P.infissi.ferramenta;
-        O.LATI_DIN = P.infissi.latiDin;
-        O.ESECUZIONI_DIN = P.infissi.esecuzioni;
-        O.MANIGLIE_FINSTRAL = P.infissi.maniglieFinstral.map(m => `${m.codice} - ${m.desc}`);
-        O.COLORI_MANIGLIA = P.infissi.coloriManiglia;
-        O.FINITURE_INFISSO = P.infissi.finiture;
-        O.OPZIONI_ALLARME = ['', ...P.infissi.allarme];
-
-        console.log('✅ OPZIONI_PRODOTTI v3: sincronizzato con OPZIONI (retrocompatibilità)');
-    }
-
-    console.log('✅ opzioni-prodotti.js v3.0.0 caricato - OPZIONI_PRODOTTI unica fonte');
+    console.log('✅ opzioni-prodotti.js v3.1.0 caricato - OPZIONI_PRODOTTI unica fonte');
 
 })();
