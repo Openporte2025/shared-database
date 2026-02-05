@@ -1,15 +1,16 @@
-//  ============================================================================
-// EDITOR POSIZIONE - Dashboard Rilievi v8.506
+// ============================================================================
+// EDITOR POSIZIONE - Dashboard Rilievi v8.65
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
-// Usa OPZIONI da shared-database per le liste condivise
-// 🆕 v1.7.0: Integrazione FINSTRAL_OPZIONI centralizzate
-//            Vetri, Tipi Anta, Maniglie, Colori da finstral-opzioni.js
+// Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
+// 🆕 v2.0.0: Codici Modello COMPLETI (59) da OPZIONI_PRODOTTI centralizzato
+//            Ferramenta, Lato DIN, Esecuzione allineati con App Rilievo
+//            Eliminati tutti i fallback hardcoded disallineati
+// v1.7.0: Integrazione FINSTRAL_OPZIONI centralizzate
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
-//         Allineato con App Rilievo (finestra/ingresso/porta_interna/tenda_bracci)
 // ============================================================================
 
-const EDITOR_VERSION = '1.7.0';
+const EDITOR_VERSION = '2.0.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -50,85 +51,50 @@ function getColoriManigliaFinstral() {
     return getOpt('COLORI_MANIGLIA', ['79 - Argento', '01 - Bianco', '80 - Nero']);
 }
 
-// 🆕 v1.5.4: Codici Modello Infisso (come nell'app rilievo)
+// 🆕 v2.0.0: Codici Modello Infisso da OPZIONI_PRODOTTI (59 codici completi)
 function getCodiciModelloInfisso() {
-    // Se esistono in OPZIONI, usali
+    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getCodiciModelloFlat) {
+        return OPZIONI_PRODOTTI.getCodiciModelloFlat();
+    }
+    // Fallback minimo (non dovrebbe mai servire)
     if (typeof OPZIONI !== 'undefined' && OPZIONI.CODICI_MODELLO) {
         return ['', ...OPZIONI.CODICI_MODELLO];
     }
-    // Fallback: codici standard Finstral
-    return [
-        '',
-        // 1 Campo
-        '📦 1 CAMPO',
-        '101 - anta',
-        '102 - fisso',
-        // 2 Campi Orizzontali
-        '📦📦 2 CAMPI ORIZZ.',
-        '201 - 2 ante',
-        '202 - anta+fisso',
-        '203 - fisso+anta',
-        '204 - 2 fissi',
-        // 2 Campi Verticali
-        '📦📦 2 CAMPI VERT.',
-        '205 - 2 ante vert.',
-        '206 - anta+fisso vert.',
-        '207 - fisso+anta vert.',
-        '208 - 2 fissi vert.',
-        // 3 Campi
-        '📦📦📦 3 CAMPI',
-        '301 - 3 ante',
-        '302 - a+f+a',
-        '303 - f+a+f',
-        '304 - 3 fissi',
-        '305 - f+a+f vert.',
-        '306 - f+a+a vert.',
-        // 4 Campi
-        '📦📦📦📦 4 CAMPI',
-        '401 - 4 ante',
-        '402 - a+f+f+a',
-        '403 - f+a+a+f',
-        '404 - 2a+2f',
-        '405 - 2f+2a',
-        '406 - a+2f+a',
-        '420 - 2a scorrevoli',
-        // Scorrevoli HST
-        '🚪 SCORREVOLI HST',
-        'FS600 - 1 fisso',
-        'FS601 - anta + fisso',
-        'FS602 - fisso + anta',
-        'FS610 - anta + fisso + anta',
-        'FS611 - 2 ante + 2 fissi',
-        'FS614 - 2 ante + fisso',
-        'FS615 - 2 ante coll. + fisso',
-        'FS616 - fisso + 2 ante',
-        'FS617 - anta + fisso + 2 ante',
-        'FS621 - 2 fissi'
-    ];
+    console.warn('⚠️ Editor: OPZIONI_PRODOTTI non disponibile per codici modello!');
+    return ['', '101 - anta', '102 - fisso', '201 - 2 ante'];
 }
 
-// Estrae solo i codici da FERRAMENTA_CODICI
+// 🆕 v2.0.0: Ferramenta da OPZIONI_PRODOTTI (10 codici con gruppi)
 function getFerramentaCodici() {
+    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getFerramentaFlat) {
+        return OPZIONI_PRODOTTI.getFerramentaFlat();
+    }
     if (typeof OPZIONI !== 'undefined' && OPZIONI.FERRAMENTA_CODICI) {
         return ['', ...OPZIONI.FERRAMENTA_CODICI.map(f => f.codice)];
     }
-    return ['', '99', '209', '211', '411', '409', '430', '431', '490', '491', '000'];
+    return ['', '411 - A/R vista', '211 - A/R scomp.', '430 - Anta int.', '230 - Anta scomp.'];
 }
 
-// Estrae codici lato DIN
+// 🆕 v2.0.0: Lati DIN da OPZIONI_PRODOTTI
 function getLatiDinCodici() {
+    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getLatiDinFlat) {
+        return OPZIONI_PRODOTTI.getLatiDinFlat();
+    }
     if (typeof OPZIONI !== 'undefined' && OPZIONI.LATI_DIN) {
         return ['', ...OPZIONI.LATI_DIN.map(l => l.codice)];
     }
-    return ['', '-1', '1'];
+    return ['', '-1 - SX (-1)', '-2 - DX (-2)'];
 }
 
-// Estrae codici esecuzione DIN
+// 🆕 v2.0.0: Esecuzioni DIN da OPZIONI_PRODOTTI
 function getEsecuzioniDinCodici() {
+    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getEsecuzioniFlat) {
+        return OPZIONI_PRODOTTI.getEsecuzioniFlat();
+    }
     if (typeof OPZIONI !== 'undefined' && OPZIONI.ESECUZIONI_DIN) {
         return ['', ...OPZIONI.ESECUZIONI_DIN.map(e => e.codice)];
     }
-    return ['', '0', 'M', 'B'];
+    return ['', '0 - Std', '3 - Perim+ang', '4 - Perim'];
 }
 
 // ============================================================================
