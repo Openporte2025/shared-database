@@ -1,16 +1,16 @@
- // ============================================================================
+// ============================================================================
 // EDITOR POSIZIONE - Dashboard Rilievi v8.65
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
 // Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
-// 🆕 v2.0.0: Codici Modello COMPLETI (59) da OPZIONI_PRODOTTI centralizzato
-//            Ferramenta, Lato DIN, Esecuzione allineati con App Rilievo
-//            Eliminati tutti i fallback hardcoded disallineati
+// 🆕 v2.1.0: getOpt() legge da OPZIONI_PRODOTTI (unica fonte)
+//            Rimossi tutti i fallback OPZIONI.* — sync retrocompatibilità eliminato
+// v2.0.0: Codici Modello COMPLETI (59) da OPZIONI_PRODOTTI centralizzato
 // v1.7.0: Integrazione FINSTRAL_OPZIONI centralizzate
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '2.0.0';
+const EDITOR_VERSION = '2.1.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -20,11 +20,62 @@ if (typeof DATA_MANAGER === 'undefined') {
 }
 
 // ============================================================================
-// HELPER: Ottiene opzioni da OPZIONI condiviso (con fallback)
+// HELPER: Ottiene opzioni da OPZIONI_PRODOTTI (unica fonte) con fallback
 // ============================================================================
 
+// 🆕 v2.1.0: Mapping chiavi legacy → percorsi OPZIONI_PRODOTTI
+const _OPT_MAP = (function() {
+    const P = window.OPZIONI_PRODOTTI;
+    if (!P) return {};
+    return {
+        // Aziende
+        AZIENDE_INFISSI: P.AZIENDE.infissi,
+        AZIENDE_PERSIANE: P.AZIENDE.persiane,
+        AZIENDE_TAPPARELLE: P.AZIENDE.tapparelle,
+        AZIENDE_ZANZARIERE: P.AZIENDE.zanzariere,
+        AZIENDE_CASSONETTI: P.AZIENDE.cassonetti,
+        // Infissi
+        FINITURE_INFISSO: P.infissi.finiture,
+        OPZIONI_ALLARME: ['', ...P.infissi.allarme],
+        MANIGLIE_FINSTRAL: P.infissi.maniglieFinstral.map(m => `${m.codice} - ${m.desc}`),
+        COLORI_MANIGLIA: P.infissi.coloriManiglia,
+        // Persiane
+        MODELLI_PERSIANA: P.persiane.modelli,
+        TIPI_PERSIANA: P.persiane.tipiDescrittivi,
+        APERTURE_PERSIANA: P.persiane.apertureDescrittive,
+        FISSAGGI_PERSIANA: P.persiane.fissaggi,
+        // Tapparelle
+        MODELLI_TAPPARELLE: P.tapparelle.modelli,
+        COLORI_TAPPARELLE_PLASTICINO: P.tapparelle.colori,
+        GUIDE_PLASTICINO: P.tapparelle.guide,
+        COLORI_GUIDE_PLASTICINO: P.tapparelle.coloriGuide,
+        ACCESSORI_TAPPARELLA: P.tapparelle.accessoriManuali,
+        // Motori
+        MOTORI_SOMFY: P.motori.modelli,
+        ACCESSORI_MOTORE_SOMFY: P.motori.accessori,
+        COMANDI_SOMFY: P.motori.comandi,
+        // Zanzariere
+        LINEE_ZANZARIERE_PALAGINA: P.zanzariere.linee,
+        MODELLI_ZANZARIERE_PALAGINA: P.zanzariere.modelli,
+        FASCE_COLORE_PALAGINA: P.zanzariere.fasceColore,
+        COLORI_TELAIO_PALAGINA: P.zanzariere.coloriTelaio,
+        TIPI_RETE_PALAGINA: P.zanzariere.tipiRete,
+        // Cassonetti
+        TIPI_CASSONETTO: P.cassonetti.tipi,
+        MATERIALI_CASSONETTO: P.cassonetti.materiali,
+        CODICI_CASSONETTO_PVC: P.cassonetti.codiciPVC,
+        CODICI_CASSONETTO_LEGNO: P.cassonetti.codiciLegno,
+        GRUPPI_COLORE_CASSONETTO: P.cassonetti.gruppiColore
+    };
+})();
+
 function getOpt(key, fallback = []) {
-    return (typeof OPZIONI !== 'undefined' && OPZIONI[key]) ? OPZIONI[key] : fallback;
+    // 1. OPZIONI_PRODOTTI (unica fonte prodotto)
+    if (_OPT_MAP[key] !== undefined) return _OPT_MAP[key];
+    // 2. OPZIONI (solo AMBIENTI + PIANI da opzioni-comuni.js)
+    if (typeof OPZIONI !== 'undefined' && OPZIONI[key]) return OPZIONI[key];
+    // 3. Fallback
+    return fallback;
 }
 
 // 🆕 v1.7.0: Helper per FINSTRAL_OPZIONI centralizzate
@@ -56,10 +107,6 @@ function getCodiciModelloInfisso() {
     if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getCodiciModelloFlat) {
         return OPZIONI_PRODOTTI.getCodiciModelloFlat();
     }
-    // Fallback minimo (non dovrebbe mai servire)
-    if (typeof OPZIONI !== 'undefined' && OPZIONI.CODICI_MODELLO) {
-        return ['', ...OPZIONI.CODICI_MODELLO];
-    }
     console.warn('⚠️ Editor: OPZIONI_PRODOTTI non disponibile per codici modello!');
     return ['', '101 - anta', '102 - fisso', '201 - 2 ante'];
 }
@@ -69,9 +116,6 @@ function getFerramentaCodici() {
     if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getFerramentaFlat) {
         return OPZIONI_PRODOTTI.getFerramentaFlat();
     }
-    if (typeof OPZIONI !== 'undefined' && OPZIONI.FERRAMENTA_CODICI) {
-        return ['', ...OPZIONI.FERRAMENTA_CODICI.map(f => f.codice)];
-    }
     return ['', '411 - A/R vista', '211 - A/R scomp.', '430 - Anta int.', '230 - Anta scomp.'];
 }
 
@@ -79,9 +123,6 @@ function getFerramentaCodici() {
 function getLatiDinCodici() {
     if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getLatiDinFlat) {
         return OPZIONI_PRODOTTI.getLatiDinFlat();
-    }
-    if (typeof OPZIONI !== 'undefined' && OPZIONI.LATI_DIN) {
-        return ['', ...OPZIONI.LATI_DIN.map(l => l.codice)];
     }
     return ['', '-1 - SX (-1)', '-2 - DX (-2)'];
 }
@@ -91,14 +132,11 @@ function getEsecuzioniDinCodici() {
     if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getEsecuzioniFlat) {
         return OPZIONI_PRODOTTI.getEsecuzioniFlat();
     }
-    if (typeof OPZIONI !== 'undefined' && OPZIONI.ESECUZIONI_DIN) {
-        return ['', ...OPZIONI.ESECUZIONI_DIN.map(e => e.codice)];
-    }
     return ['', '0 - Std', '3 - Perim+ang', '4 - Perim'];
 }
 
 // ============================================================================
-// CONFIGURAZIONE CAMPI PER OGNI TAB (usa OPZIONI condiviso)
+// CONFIGURAZIONE CAMPI PER OGNI TAB (usa OPZIONI_PRODOTTI unica fonte)
 // ============================================================================
 
 const EDITOR_FIELDS = {
@@ -265,8 +303,8 @@ const EDITOR_FIELDS = {
           optionsGetter: () => ['', ...getOpt('GUIDE_PLASTICINO', [])] },
         { key: 'coloreGuida', label: 'Colore Guida', type: 'select', 
           optionsGetter: () => {
-              if (typeof OPZIONI !== 'undefined' && OPZIONI.getColoriGuide) {
-                  return ['', ...OPZIONI.getColoriGuide()];
+              if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getColoriGuide) {
+                  return ['', ...OPZIONI_PRODOTTI.getColoriGuide()];
               }
               return ['', 'Argento', 'Bronzo', 'Bianco'];
           }},
