@@ -1,9 +1,13 @@
 // ============================================================================
-// FINSTRAL MODULE v1.0.0 - Modulo Calcolo Prezzi Centralizzato
+// FINSTRAL MODULE v1.1.0 - Modulo Calcolo Prezzi Centralizzato
 // ============================================================================
 // 
 // Funzioni helper per calcolo prezzi infissi e cassonetti Finstral.
 // Estratto da dashboard-app.js per condivisione tra App Rilievo e Dashboard.
+//
+// v1.1.0 (05/02/2026): Centralizzate costanti CAMPIONI, TELAI, SUPPLEMENTI_ANTE
+//   - Spostate da app.js dashboard → qui (unica fonte di verità)
+//   - Eliminate ~220 righe duplicate in app.js
 //
 // DIPENDENZE (caricare PRIMA di questo file):
 //   - finstral.js (FINSTRAL_PREZZI, FINSLIDE_PREZZI, FINSTRAL_CASSONETTI_PREZZI)
@@ -14,6 +18,185 @@
 //   - Dashboard: calcolo preventivo infissi/cassonetti
 //   - App Rilievo: validazione e preview prezzi (futuro)
 // ============================================================================
+
+// ═══════════════════════════════════════════════════════════════
+// 📊 CAMPIONI PREZZO BASE - Listino EUR 2025/3
+// ═══════════════════════════════════════════════════════════════
+
+// Tipo 101: Finestra 1 anta (PVC, telaio 961, Classic-line, doppio vetro)
+const CAMPIONI_TIPO_101 = [
+    // [L_min, L_max, A_min, A_max, prezzo_eur]
+    // Larghezza 605-730 (piccole)
+    [605, 665, 605, 665, 221],
+    [605, 665, 730, 790, 235],
+    [605, 665, 855, 915, 248],
+    [605, 665, 1040, 1105, 285],
+    [605, 665, 1230, 1290, 320],
+    [605, 665, 1415, 1480, 350],
+    // Larghezza 800-865 (medie-piccole)
+    [800, 865, 605, 665, 248],
+    [800, 865, 790, 855, 277],
+    [800, 865, 1040, 1105, 337],
+    [800, 865, 1230, 1290, 370],
+    [800, 865, 1415, 1480, 393],
+    [800, 865, 1615, 1675, 423],
+    // Larghezza 1050-1115 (medie)
+    [1050, 1115, 605, 665, 300],
+    [1050, 1115, 790, 855, 337],
+    [1050, 1115, 1040, 1105, 414],
+    [1050, 1115, 1230, 1290, 451],
+    [1050, 1115, 1415, 1480, 480],
+    [1050, 1115, 1615, 1675, 518],
+    // Larghezza 1300-1365 (medie-grandi)
+    [1300, 1365, 605, 665, 340],
+    [1300, 1365, 790, 855, 382],
+    [1300, 1365, 1040, 1105, 466],
+    [1300, 1365, 1230, 1290, 511],
+    [1300, 1365, 1415, 1480, 541],
+    [1300, 1365, 1615, 1675, 586],
+    // Larghezza 1550-1615 (grandi)
+    [1550, 1615, 605, 665, 367],
+    [1550, 1615, 790, 855, 412],
+    [1550, 1615, 1040, 1105, 505],
+    [1550, 1615, 1230, 1290, 551],
+    [1550, 1615, 1415, 1480, 585],
+    [1550, 1615, 1615, 1675, 628],
+    // Larghezza 1800-1865 (molto grandi)
+    [1800, 1865, 605, 665, 392],
+    [1800, 1865, 790, 855, 437],
+    [1800, 1865, 1040, 1105, 535],
+    [1800, 1865, 1230, 1290, 586],
+    [1800, 1865, 1415, 1480, 618],
+    [1800, 1865, 1615, 1675, 653],
+    // Larghezza 2050+ (extra large)
+    [2050, 2115, 605, 665, 422],
+    [2050, 2115, 790, 855, 474],
+    [2050, 2115, 1040, 1105, 581],
+    [2050, 2115, 1230, 1290, 636],
+    [2050, 2115, 1415, 1480, 672],
+    // Larghezza max
+    [2790, 2855, 605, 665, 541],
+    [2790, 2855, 790, 855, 650],
+    [2790, 2855, 1040, 1105, 833],
+    [2790, 2855, 1230, 1290, 872],
+    [2915, 2980, 605, 665, 552],
+    [2915, 2980, 790, 855, 661],
+    [2915, 2980, 1040, 1105, 856],
+    [2915, 2980, 1230, 1290, 891],
+    [2915, 2980, 1415, 1480, 884],
+    [2915, 2980, 1615, 1675, 907]
+];
+
+// Tipo 401: Porta-finestra 2 ante (PVC, telaio 961, Classic-line, doppio vetro)
+const CAMPIONI_TIPO_401 = [
+    // [L_min, L_max, A_min, A_max, prezzo_eur]
+    // Larghezza 990-1115 (piccole 2 ante)
+    [990, 1050, 605, 665, 378],
+    [990, 1050, 730, 790, 403],
+    [990, 1050, 855, 915, 423],
+    [990, 1050, 1040, 1105, 514],
+    [990, 1050, 1230, 1290, 566],
+    [990, 1050, 1415, 1480, 613],
+    [1115, 1175, 605, 665, 400],
+    [1115, 1175, 730, 790, 429],
+    [1115, 1175, 855, 915, 450],
+    [1115, 1175, 1040, 1105, 541],
+    [1115, 1175, 1230, 1290, 601],
+    [1115, 1175, 1415, 1480, 658],
+    // Larghezza 1300-1425 (medie 2 ante)
+    [1300, 1365, 605, 665, 432],
+    [1300, 1365, 730, 790, 457],
+    [1300, 1365, 855, 915, 488],
+    [1300, 1365, 1040, 1105, 588],
+    [1300, 1365, 1230, 1290, 653],
+    [1300, 1365, 1415, 1480, 712],
+    [1425, 1490, 605, 665, 441],
+    [1425, 1490, 730, 790, 472],
+    [1425, 1490, 855, 915, 498],
+    [1425, 1490, 1040, 1105, 604],
+    [1425, 1490, 1230, 1290, 664],
+    [1425, 1490, 1415, 1480, 725],
+    // Larghezza 1550-1675 (grandi 2 ante)
+    [1550, 1615, 605, 665, 458],
+    [1550, 1615, 730, 790, 492],
+    [1550, 1615, 855, 915, 523],
+    [1550, 1615, 1040, 1105, 633],
+    [1550, 1615, 1230, 1290, 698],
+    [1550, 1615, 1415, 1480, 762],
+    [1740, 1800, 605, 665, 487],
+    [1740, 1800, 730, 790, 526],
+    [1740, 1800, 855, 915, 560],
+    [1740, 1800, 1040, 1105, 678],
+    [1740, 1800, 1230, 1290, 744],
+    [1740, 1800, 1415, 1480, 805],
+    // Larghezza 1990-2050 (molto grandi)
+    [1990, 2050, 605, 665, 509],
+    [1990, 2050, 730, 790, 554],
+    [1990, 2050, 855, 915, 594],
+    [1990, 2050, 1040, 1105, 725],
+    [1990, 2050, 1230, 1290, 793],
+    [1990, 2050, 1415, 1480, 848],
+    // Larghezza max
+    [2790, 2855, 605, 665, 741],
+    [2790, 2855, 730, 790, 808],
+    [2790, 2855, 1040, 1105, 1016],
+    [2790, 2855, 1230, 1290, 1116],
+    [2915, 2980, 605, 665, 758],
+    [2915, 2980, 730, 790, 825],
+    [2915, 2980, 855, 915, 878],
+    [2915, 2980, 1040, 1105, 1047],
+    [2915, 2980, 1230, 1290, 1146],
+    [2915, 2980, 1415, 1480, 1233]
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 🔧 TELAI FINSTRAL - Supplementi al metro lineare
+// ═══════════════════════════════════════════════════════════════
+
+const TELAI_PVC = {
+    "961": { base_incluso: true, supplemento_ml: 5.20 },
+    "962": { base_incluso: true, supplemento_ml: 5.61 },
+    "963": { supplemento_ml_chiaro: 2.89, supplemento_ml_scuro: 9.31 },
+    "967": { base_incluso: true, supplemento_ml: 5.20 }  // Alias 961
+};
+
+const TELAI_ALLUMINIO = {
+    "961X": { supplemento_ml_chiaro: 23.6, supplemento_ml_scuro: 25.4 },
+    "962X": { supplemento_ml_chiaro: 23.6, supplemento_ml_scuro: 25.4 },
+    "963X": { supplemento_ml_chiaro: 23.6, supplemento_ml_scuro: 25.4 },
+    "961N5": { supplemento_ml_chiaro: 18.0, supplemento_ml_scuro: 19.3 },
+    "962N5": { supplemento_ml_chiaro: 18.0, supplemento_ml_scuro: 19.3 },
+    "963N5": { supplemento_ml_chiaro: 18.0, supplemento_ml_scuro: 19.3 },
+    "961N": { supplemento_ml_chiaro: 17.2, supplemento_ml_scuro: 20.4 },
+    "962N": { supplemento_ml_chiaro: 17.2, supplemento_ml_scuro: 22.4 },
+    "963N": { supplemento_ml_chiaro: 18.0, supplemento_ml_scuro: 24.9 }
+};
+
+const TELAI_INTERNI = {
+    "F961": { supplemento_ml_chiaro: 16.9, supplemento_ml_scuro: 18.2 },
+    "F962": { supplemento_ml_chiaro: 16.9, supplemento_ml_scuro: 18.2 }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 🚪 SUPPLEMENTI ANTE - al metro lineare battenti
+// ═══════════════════════════════════════════════════════════════
+
+const SUPPLEMENTI_ANTE = {
+    "classic-line": 0,        // Inclusa (standard)
+    "classicline": 0,
+    "step-line": 0,           // Inclusa (standard)
+    "stepline": 0,
+    "nova-line": 10,          // € 10/ml
+    "novaline": 10,
+    "nova-line-plus": 10,     // € 10/ml
+    "novalineplus": 10,
+    "nova-line-twin": 12,     // € 12/ml
+    "novalinetwin": 12
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 💎 SUPPLEMENTI VETRI
+// ═══════════════════════════════════════════════════════════════
 
 const SUPPLEMENTI_VETRI = {
     "doppio": 0,              // Incluso (standard)
@@ -710,6 +893,13 @@ console.log('🔩 Helper ferramenta caricati: getCodiceApertura, getSupplementoC
 // ============================================================================
 if (typeof window !== 'undefined') {
     // Costanti
+    // Costanti dati (v1.1.0 - centralizzate da app.js)
+    window.CAMPIONI_TIPO_101 = CAMPIONI_TIPO_101;
+    window.CAMPIONI_TIPO_401 = CAMPIONI_TIPO_401;
+    window.TELAI_PVC = TELAI_PVC;
+    window.TELAI_ALLUMINIO = TELAI_ALLUMINIO;
+    window.TELAI_INTERNI = TELAI_INTERNI;
+    window.SUPPLEMENTI_ANTE = SUPPLEMENTI_ANTE;
     window.SUPPLEMENTI_VETRI = SUPPLEMENTI_VETRI;
     // SUPPLEMENTI_MANIGLIE: DEPRECATO, commentato - usa MANIGLIE_FINSTRAL da finstral.js
     window.MAPPING_APERTURE_TIPI = MAPPING_APERTURE_TIPI;
