@@ -3,14 +3,17 @@
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
 // Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
-// 🆕 v2.1.0: getOpt() legge da OPZIONI_PRODOTTI (unica fonte)
-//            Rimossi tutti i fallback OPZIONI.* — sync retrocompatibilità eliminato
+// 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
+//            Supporto visibleIf per mostrare/nascondere campi condizionali
+//            Supporto formato value|label per opzioni con etichette
+//            EDITOR_FIELDS mantenuto per posizione/misure, bridge per prodotti
+// v2.1.0: getOpt() legge da OPZIONI_PRODOTTI (unica fonte)
 // v2.0.0: Codici Modello COMPLETI (59) da OPZIONI_PRODOTTI centralizzato
 // v1.7.0: Integrazione FINSTRAL_OPZIONI centralizzate
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '2.1.0';
+const EDITOR_VERSION = '3.0.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -375,8 +378,147 @@ const EDITOR_FIELDS = {
 };
 
 // ============================================================================
-// STATO EDITOR
+// 🆕 v3.0.0: BRIDGE CAMPI_PRODOTTI → EDITOR_FIELDS
 // ============================================================================
+// Converte definizioni centralizzate in formato editor-compatibile
+// Per prodotti: combina configGlobale + posizione (l'editor modifica tutto)
+// Per posizione/misure: usa EDITOR_FIELDS originale
+// ============================================================================
+
+function getFieldsForTab(tabName, posData) {
+    // Tab non-prodotto: usa EDITOR_FIELDS diretto
+    if (tabName === 'posizione' || tabName === 'misure') {
+        return EDITOR_FIELDS[tabName] || [];
+    }
+    
+    // Se CAMPI_PRODOTTI non disponibile, fallback a EDITOR_FIELDS legacy
+    if (typeof CAMPI_PRODOTTI === 'undefined' || !CAMPI_PRODOTTI[tabName]) {
+        console.warn(`⚠️ Editor v3.0: CAMPI_PRODOTTI.${tabName} non trovato, uso legacy`);
+        return EDITOR_FIELDS[tabName] || [];
+    }
+    
+    const def = CAMPI_PRODOTTI[tabName];
+    const allCampi = def.configGlobale.concat(def.posizione);
+    
+    // Deduplica per key (posizione vince su globale)
+    const seen = new Set();
+    const deduped = [];
+    // Prima posizione (hanno priorità), poi globale
+    for (const campo of [...def.posizione, ...def.configGlobale]) {
+        if (!seen.has(campo.key)) {
+            seen.add(campo.key);
+            deduped.push(campo);
+        }
+    }
+    
+    // Ordine logico: qta prima, poi campi globali, poi posizione specifici, note alla fine
+    const ordered = sortFieldsLogically(deduped, def);
+    
+    // Converti a formato EDITOR_FIELDS
+    return ordered.map(campo => convertCampoToEditorField(campo, tabName, posData));
+}
+
+/**
+ * Ordina campi: qta → globali → posizione specifici → BRM → note
+ */
+function sortFieldsLogically(fields, def) {
+    const globalKeys = new Set(def.configGlobale.map(f => f.key));
+    const posKeys = new Set(def.posizione.map(f => f.key));
+    
+    const qta = fields.filter(f => f.key === 'qta');
+    const globals = fields.filter(f => f.key !== 'qta' && f.key !== 'note' && 
+                                       !f.key.startsWith('BRM_') && globalKeys.has(f.key));
+    const posSpecific = fields.filter(f => f.key !== 'qta' && f.key !== 'note' && 
+                                           !f.key.startsWith('BRM_') && !globalKeys.has(f.key) && posKeys.has(f.key));
+    const brm = fields.filter(f => f.key.startsWith('BRM_'));
+    const notes = fields.filter(f => f.key === 'note');
+    
+    return [...qta, ...globals, ...posSpecific, ...brm, ...notes];
+}
+
+/**
+ * Converte un campo CAMPI_PRODOTTI in formato EDITOR_FIELDS
+ */
+function convertCampoToEditorField(campo, tabName, posData) {
+    const editorField = {
+        key: campo.key,
+        label: campo.label,
+        type: campo.type === 'select-dynamic' ? 'select' : 
+              campo.type === 'multi-checkbox' ? 'text' :  // fallback semplice
+              campo.type,
+        unit: campo.unit || undefined,
+        readonly: campo.readonly || false,
+        zeroDisables: campo.zeroDisables || false,
+        _visibleIf: campo.visibleIf || null,
+        _group: campo.group || null
+    };
+    
+    // Converti opzioni
+    if (campo.type === 'radio') {
+        editorField.options = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
+    } else if (campo.type === 'select' || campo.type === 'select-dynamic') {
+        editorField.optionsGetter = () => {
+            let opts = [];
+            
+            // Opzioni statiche
+            if (campo.options) {
+                opts = typeof campo.options === 'function' ? campo.options() : campo.options;
+            }
+            // Opzioni dinamiche con dependsOn
+            else if (campo.optionsFn && campo.dependsOn) {
+                const depVal = typeof campo.dependsOn === 'string'
+                    ? posData?.[campo.dependsOn]
+                    : campo.dependsOn.map(d => posData?.[d]);
+                opts = campo.optionsFn(depVal) || [];
+            }
+            // optionsFlat (per campi con optgroups)  
+            else if (campo.optionsFlat) {
+                opts = typeof campo.optionsFlat === 'function' ? campo.optionsFlat() : campo.optionsFlat;
+            }
+            
+            // Normalizza: se sono oggetti {value, label}, converti a stringhe per compatibilità
+            const normalized = opts.map(o => {
+                if (typeof o === 'object' && o !== null && o.value !== undefined) {
+                    return `${o.value}|${o.label}`;  // formato value|label
+                }
+                return o;
+            });
+            
+            // Aggiungi opzione vuota se non presente
+            if (normalized.length > 0 && normalized[0] !== '') {
+                return ['', ...normalized];
+            }
+            return normalized;
+        };
+        
+        // Optgroups support
+        if (campo.optgroups) {
+            editorField._hasOptgroups = true;
+            editorField._optgroups = campo.optgroups;
+        }
+    } else if (campo.type === 'checkbox') {
+        // checkbox: già supportato dal renderer
+    } else if (campo.type === 'textarea') {
+        // textarea: già supportato
+    }
+    // text e number: già supportati
+    
+    return editorField;
+}
+
+/**
+ * 🆕 v3.0.0: Valuta visibleIf per un campo nell'editor
+ * Ritorna true se il campo deve essere visibile
+ */
+function isEditorFieldVisible(field, productData) {
+    if (!field._visibleIf) return true;
+    if (!productData) return true;
+    
+    return CAMPI_PRODOTTI.isVisible(
+        { visibleIf: field._visibleIf }, 
+        productData
+    );
+}
 
 let editorState = {
     isOpen: false,
@@ -1024,11 +1166,13 @@ function renderTabContent(tabName) {
         return;
     }
     
-    // Renderizza campi
-    const fields = EDITOR_FIELDS[tabName] || [];
+    // Renderizza campi - 🆕 v3.0.0: usa getFieldsForTab (ponte CAMPI_PRODOTTI)
+    const fields = getFieldsForTab(tabName, dataSource);
     let html = '';
     
     fields.forEach(field => {
+        // 🆕 v3.0.0: Filtra campi non visibili (visibleIf)
+        if (!isEditorFieldVisible(field, dataSource)) return;
         const value = dataSource[field.key] !== undefined ? dataSource[field.key] : '';
         const fieldClass = field.type === 'textarea' ? 'editor-field full-width' : 
                           field.type === 'checkbox' ? 'editor-field editor-field-checkbox' : 
@@ -1099,16 +1243,27 @@ function renderTabContent(tabName) {
                 let foundMatch = false;
                 
                 options.forEach(opt => {
+                    // 🆕 v3.0.0: Supporto formato value|label da CAMPI_PRODOTTI
+                    let optValue, optLabel;
+                    if (typeof opt === 'string' && opt.includes('|')) {
+                        const parts = opt.split('|');
+                        optValue = parts[0];
+                        optLabel = parts[1];
+                    } else {
+                        optValue = opt;
+                        optLabel = opt;
+                    }
+                    
                     // 🆕 v1.5.4: Supporto header/separatori (iniziano con emoji 📦 o 🚪)
-                    const isHeader = /^[📦🚪🏠🔧⚙️🎨]/.test(opt);
+                    const isHeader = /^[📦🚪🏠🔧⚙️🎨]/.test(String(optLabel));
                     if (isHeader) {
-                        html += `<option disabled style="font-weight:bold; background:#e5e7eb;">── ${opt} ──</option>`;
+                        html += `<option disabled style="font-weight:bold; background:#e5e7eb;">── ${optLabel} ──</option>`;
                         return;
                     }
                     
-                    const optLower = String(opt).toLowerCase().trim();
+                    const optLower = String(optValue).toLowerCase().trim();
                     // 🆕 v1.5.4: Per codiceModello, estrai codice dall'opzione
-                    const optCode = isCodiceModello ? String(opt).split(' ')[0].trim() : '';
+                    const optCode = isCodiceModello ? String(optValue).split(' ')[0].trim() : '';
                     
                     // Match esatto case-insensitive O match per codice O match parziale
                     const isMatch = valueLower === optLower || 
@@ -1117,10 +1272,10 @@ function renderTabContent(tabName) {
                                     (optLower.includes(valueLower) || valueLower.includes(optLower)));
                     if (isMatch) foundMatch = true;
                     const selected = isMatch ? 'selected' : '';
-                    const label = opt === '' ? '-- Seleziona --' : opt;
+                    const displayLabel = optValue === '' ? '-- Seleziona --' : optLabel;
                     // 🆕 v1.5.4: Per codiceModello, salva solo il codice numerico
-                    const saveValue = (isCodiceModello && optCode) ? optCode : opt;
-                    html += `<option value="${saveValue}" ${selected}>${label}</option>`;
+                    const saveValue = (isCodiceModello && optCode) ? optCode : optValue;
+                    html += `<option value="${saveValue}" ${selected}>${displayLabel}</option>`;
                 });
                 
                 // v1.2.0: Se valore esiste ma non è nelle opzioni, aggiungilo come opzione custom
