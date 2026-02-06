@@ -3,6 +3,7 @@
  * 🔧 RENDER CONFIG CAMPI - Renderer generico config globale da CAMPI_PRODOTTI
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.2.1 (06/02/2026): Fix getColoriPersiane fallback chain (COLORI_PERSIANE → PERSIANE_MODULE → OPZIONI_PRODOTTI)
  * v1.2.0 (06/02/2026): Renderer posizione prodotti da CAMPI_PRODOTTI
  * v1.1.0 (06/02/2026): Supporto multi-checkbox, optionLabel/optionValue, gruppi speciali
  * v1.0.0 (05/02/2026): Creazione iniziale
@@ -202,7 +203,20 @@ function _getOptionsFromGetter(campo, project, configData) {
             }
             return [];
         case 'getColoriPersiane':
-            return typeof COLORI_PERSIANE !== 'undefined' ? COLORI_PERSIANE : [];
+            // 1. COLORI_PERSIANE (da persiane.js)
+            if (typeof COLORI_PERSIANE !== 'undefined' && COLORI_PERSIANE.length > 0) return COLORI_PERSIANE;
+            // 2. PERSIANE_MODULE (da persiane-module.js)
+            if (typeof PERSIANE_MODULE !== 'undefined' && PERSIANE_MODULE.getColoriPerCategoria) {
+                const cats = PERSIANE_MODULE.getColoriPerCategoria();
+                const all = [];
+                Object.values(cats).forEach(arr => all.push(...arr));
+                return all;
+            }
+            // 3. OPZIONI_PRODOTTI fallback
+            if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.persiane?.colori) {
+                return OPZIONI_PRODOTTI.persiane.colori;
+            }
+            return [];
         case 'getPalaginaLinee':
             if (typeof PALAGINA_ZANZARIERE !== 'undefined') {
                 return Object.entries(PALAGINA_ZANZARIERE.linee).map(([id, l]) => id);
@@ -683,4 +697,4 @@ function _renderPosNumber(campo, value, projectId, posId, productType) {
     `;
 }
 
-console.log('✅ render-config-campi.js v1.2.0 caricato');
+console.log('✅ render-config-campi.js v1.2.1 caricato');
