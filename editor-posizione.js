@@ -14,7 +14,7 @@
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '3.1.0';
+const EDITOR_VERSION = '3.2.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -149,10 +149,10 @@ const EDITOR_FIELDS = {
     posizione: [
         { key: 'name', label: 'Nome Posizione', type: 'text', placeholder: 'Pos. 1' },
         { key: 'ambiente', label: 'Ambiente', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AMBIENTI', [])] },
+          optionsGetter: () => ['', ...getOpt('AMBIENTI', ['Sala', 'Soggiorno', 'Cucina', 'Camera', 'Stanza', 'Cameretta', 'Matrimoniale', 'Disimpegno', 'Studio', 'Ufficio', 'Bagno1', 'Bagno2', 'Ripostiglio', 'Lavanderia', 'Scala', 'Cantina', 'Garage', 'Mansarda', 'Terrazzo', 'Balcone', 'Corridoio', 'Ingresso'])] },
         { key: 'piano', label: 'Piano', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('PIANI', [])] },
-        { key: 'quantita', label: 'Quantità', type: 'number', placeholder: '1' },
+          optionsGetter: () => ['', ...getOpt('PIANI', ['Interrato', 'Seminterrato', 'Piano Terra', 'Rialzato', 'Primo Piano', 'Secondo Piano', 'Terzo Piano', 'Quarto Piano', 'Quinto Piano', 'Mansarda', 'Sottotetto'])] },
+        // quantità posizione RIMOSSA: 1 posizione = 1 punto fisico, qta solo sui prodotti
         { key: 'tipoposizione', label: 'Tipo Posizione', type: 'radio', 
           options: [
             { value: 'finestra', label: '🪟 Finestra', desc: 'Infissi, persiane, tapparelle...' },
