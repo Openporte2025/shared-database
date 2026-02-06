@@ -3,6 +3,7 @@
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
 // Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
+// 🔧 v3.2.1: Fix opts.map crash — supporto campo.optionsGetter diretto + safety check
 // 🆕 v3.1.0: qta select 0-10 con zeroDisables, disattivazione prodotto, tab badge
 // 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
 //            Supporto visibleIf per mostrare/nascondere campi condizionali
@@ -14,7 +15,7 @@
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '3.2.0';
+const EDITOR_VERSION = '3.2.1';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -461,6 +462,13 @@ function convertCampoToEditorField(campo, tabName, posData) {
         editorField.optionsGetter = () => {
             let opts = [];
             
+            // 🔧 v3.2.0: Se il campo ha già un optionsGetter, usalo direttamente
+            if (campo.optionsGetter) {
+                opts = campo.optionsGetter();
+                if (!Array.isArray(opts)) opts = [];
+                return opts;
+            }
+            
             // Opzioni statiche
             if (campo.options) {
                 opts = typeof campo.options === 'function' ? campo.options() : campo.options;
@@ -478,6 +486,7 @@ function convertCampoToEditorField(campo, tabName, posData) {
             }
             
             // Normalizza: se sono oggetti {value, label}, converti a stringhe per compatibilità
+            if (!Array.isArray(opts)) opts = [];
             const normalized = opts.map(o => {
                 if (typeof o === 'object' && o !== null && o.value !== undefined) {
                     return `${o.value}|${o.label}`;  // formato value|label
