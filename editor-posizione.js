@@ -149,9 +149,9 @@ const EDITOR_FIELDS = {
     posizione: [
         { key: 'name', label: 'Nome Posizione', type: 'text', placeholder: 'Pos. 1' },
         { key: 'ambiente', label: 'Ambiente', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AMBIENTI', ['Soggiorno', 'Cucina', 'Camera', 'Bagno'])] },
+          optionsGetter: () => ['', ...getOpt('AMBIENTI', [])] },
         { key: 'piano', label: 'Piano', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('PIANI', ['Piano Terra', 'Primo Piano'])] },
+          optionsGetter: () => ['', ...getOpt('PIANI', [])] },
         { key: 'quantita', label: 'Quantità', type: 'number', placeholder: '1' },
         { key: 'tipoposizione', label: 'Tipo Posizione', type: 'radio', 
           options: [
