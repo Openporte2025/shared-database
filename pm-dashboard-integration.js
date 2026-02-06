@@ -13,7 +13,7 @@
  * @repository shared-database
  */
 
-const PM_INTEGRATION_VERSION = '1.2.0';
+const PM_INTEGRATION_VERSION = '1.3.0';
 
 // ═══════════════════════════════════════════════════════════════
 // INIZIALIZZAZIONE AL CARICAMENTO
@@ -329,33 +329,17 @@ function injectModals() {
                         <div class="pm-form-group">
                             <label class="pm-form-label">Ambiente *</label>
                             <select id="pmPosAmbiente" class="pm-form-select">
-                                <option value="">-- Seleziona --</option>
-                                <option>Soggiorno</option>
-                                <option>Cucina</option>
-                                <option>Camera</option>
-                                <option>Camera Matrimoniale</option>
-                                <option>Cameretta</option>
-                                <option>Bagno</option>
-                                <option>Studio</option>
-                                <option>Ingresso</option>
-                                <option>Corridoio</option>
-                                <option>Balcone</option>
-                                <option>Terrazzo</option>
-                                <option>Cantina</option>
-                                <option>Garage</option>
+                                ${(window.OPZIONI && window.OPZIONI.htmlOptions) 
+                                    ? window.OPZIONI.htmlOptions(window.OPZIONI.AMBIENTI, '', '-- Seleziona --')
+                                    : '<option value="">-- Seleziona --</option><option>Soggiorno</option><option>Cucina</option><option>Camera</option><option>Bagno</option>'}
                             </select>
                         </div>
                         <div class="pm-form-group">
                             <label class="pm-form-label">Piano</label>
                             <select id="pmPosPiano" class="pm-form-select">
-                                <option value="">-- Seleziona --</option>
-                                <option>Interrato</option>
-                                <option>Piano Terra</option>
-                                <option>Piano Rialzato</option>
-                                <option>Primo Piano</option>
-                                <option>Secondo Piano</option>
-                                <option>Terzo Piano</option>
-                                <option>Mansarda</option>
+                                ${(window.OPZIONI && window.OPZIONI.htmlOptions) 
+                                    ? window.OPZIONI.htmlOptions(window.OPZIONI.PIANI, '', '-- Seleziona --')
+                                    : '<option value="">-- Seleziona --</option><option>Piano Terra</option><option>Primo Piano</option>'}
                             </select>
                         </div>
                     </div>
