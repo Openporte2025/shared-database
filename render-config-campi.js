@@ -236,7 +236,9 @@ function _getOptionsFromGetter(campo, project, configData) {
         case 'getPalaginaModelli': {
             if (typeof PALAGINA_ZANZARIERE === 'undefined') return [];
             const linea = configData[campo.dependsOn] || '';
-            return (PALAGINA_ZANZARIERE.modelli[linea] || []).map(m => m.id);
+            const mods = PALAGINA_ZANZARIERE.getModelliByLinea ? 
+                PALAGINA_ZANZARIERE.getModelliByLinea(linea) : [];
+            return mods.map(m => m.id);
         }
         case 'getPalaginaColori': {
             if (typeof PALAGINA_ZANZARIERE === 'undefined') return [];
