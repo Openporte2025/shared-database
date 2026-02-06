@@ -1,8 +1,9 @@
 // ============================================================================
-// EDITOR POSIZIONE - Dashboard Rilievi v8.65
+// EDITOR POSIZIONE - Dashboard Rilievi v8.67
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
 // Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
+// 🆕 v3.1.0: qta select 0-10 con zeroDisables, disattivazione prodotto, tab badge
 // 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
 //            Supporto visibleIf per mostrare/nascondere campi condizionali
 //            Supporto formato value|label per opzioni con etichette
@@ -13,7 +14,7 @@
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '3.0.0';
+const EDITOR_VERSION = '3.1.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -883,6 +884,90 @@ function injectEditorModal() {
         background: #c2410c;
     }
     
+    /* 🆕 v3.1.0: Banner prodotto disattivato (qta=0) */
+    .editor-disabled-banner {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-top: 0.5rem;
+    }
+    .editor-disabled-icon {
+        font-size: 2rem;
+        color: #dc2626;
+        background: white;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 2px solid #dc2626;
+        flex-shrink: 0;
+    }
+    .editor-disabled-text strong {
+        font-size: 1.1rem;
+        color: #92400e;
+    }
+    .editor-disabled-text p {
+        margin: 0.25rem 0 0;
+        font-size: 0.9rem;
+        color: #78350f;
+    }
+    
+    /* 🆕 v3.1.0: Tab badges */
+    .tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.25rem;
+        height: 1.25rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        border-radius: 50%;
+        margin-left: 0.25rem;
+        vertical-align: middle;
+    }
+    .tab-badge-none {
+        background: #e5e7eb;
+        color: #9ca3af;
+    }
+    .tab-badge-off {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+    .tab-badge-qty {
+        background: #dbeafe;
+        color: #2563eb;
+        border: 1px solid #93c5fd;
+        border-radius: 9px;
+        padding: 0 0.35rem;
+    }
+    .tab-no-product {
+        opacity: 0.5;
+    }
+    .tab-disabled-product {
+        opacity: 0.7;
+        text-decoration: line-through;
+    }
+    
+    /* 🆕 v3.1.0: qta select special styling */
+    select[data-key="qta"] {
+        font-size: 1.1rem;
+        font-weight: 700;
+        padding: 0.6rem;
+    }
+    select[data-key="qta"][data-qta-zero="true"] {
+        background: #fee2e2;
+        border-color: #dc2626;
+        color: #dc2626;
+    }
+    
     /* Edit button in position list */
     .position-edit-btn {
         padding: 0.25rem 0.5rem;
@@ -1083,6 +1168,9 @@ function editorOpen(positionIndex) {
     // Aggiorna indicatori tab
     updateTabIndicators();
     
+    // 🆕 v3.1.0: Aggiorna badge tab (qta, disattivati, assenti)
+    editorUpdateTabBadges();
+    
     // Mostra primo tab
     editorSwitchTab('posizione');
     
@@ -1166,6 +1254,11 @@ function renderTabContent(tabName) {
         return;
     }
     
+    // 🆕 v3.1.0: Check qta=0 → prodotto disattivato
+    const isProduct = !['posizione', 'misure'].includes(tabName);
+    const qtaValue = isProduct ? parseInt(dataSource.qta) : -1;
+    const isDisabled = isProduct && qtaValue === 0;
+    
     // Renderizza campi - 🆕 v3.0.0: usa getFieldsForTab (ponte CAMPI_PRODOTTI)
     const fields = getFieldsForTab(tabName, dataSource);
     let html = '';
@@ -1173,6 +1266,11 @@ function renderTabContent(tabName) {
     fields.forEach(field => {
         // 🆕 v3.0.0: Filtra campi non visibili (visibleIf)
         if (!isEditorFieldVisible(field, dataSource)) return;
+        
+        // 🆕 v3.1.0: Se prodotto disattivato (qta=0), mostra solo qta
+        const isQtaField = field.key === 'qta';
+        if (isDisabled && !isQtaField) return;
+        
         const value = dataSource[field.key] !== undefined ? dataSource[field.key] : '';
         const fieldClass = field.type === 'textarea' ? 'editor-field full-width' : 
                           field.type === 'checkbox' ? 'editor-field editor-field-checkbox' : 
@@ -1230,9 +1328,12 @@ function renderTabContent(tabName) {
                 // Supporta sia options statiche che optionsGetter dinamico
                 const options = field.optionsGetter ? field.optionsGetter() : (field.options || []);
                 
+                // 🆕 v3.1.0: Attributo speciale per qta=0
+                const qtaZeroAttr = (field.key === 'qta' && String(value) === '0') ? ' data-qta-zero="true"' : '';
+                
                 html += `<select id="field_${tabName}_${field.key}" 
                                 data-tab="${tabName}" 
-                                data-key="${field.key}"
+                                data-key="${field.key}"${qtaZeroAttr}
                                 onchange="editorFieldChanged(this)">`;
                 
                 // v1.2.0: Matching case-insensitive e parziale per valori
@@ -1306,7 +1407,64 @@ function renderTabContent(tabName) {
         html += `</div>`;
     });
     
+    // 🆕 v3.1.0: Aggiungi banner disattivazione se qta=0
+    if (isDisabled) {
+        html += `
+            <div class="editor-disabled-banner">
+                <div class="editor-disabled-icon">✗</div>
+                <div class="editor-disabled-text">
+                    <strong>Prodotto disattivato</strong>
+                    <p>Quantità impostata a 0. Cambia la quantità per riattivare.</p>
+                </div>
+            </div>
+        `;
+    }
+    
     container.innerHTML = html;
+    
+    // 🆕 v3.1.0: Aggiorna badge tab dopo rendering
+    editorUpdateTabBadges();
+}
+
+// 🆕 v3.1.0: Aggiorna badge sulle tab per mostrare stato prodotti
+function editorUpdateTabBadges() {
+    const pos = editorState.currentPosition;
+    if (!pos) return;
+    
+    const productTabs = ['infisso', 'persiana', 'tapparella', 'zanzariera', 'cassonetto'];
+    
+    productTabs.forEach(tab => {
+        const btn = document.querySelector(`.editor-tab[data-tab="${tab}"]`);
+        if (!btn) return;
+        
+        const prod = pos[tab];
+        
+        // Rimuovi badge esistenti
+        const oldBadge = btn.querySelector('.tab-badge');
+        if (oldBadge) oldBadge.remove();
+        
+        if (prod === null || prod === undefined) {
+            // Prodotto non presente
+            btn.insertAdjacentHTML('beforeend', '<span class="tab-badge tab-badge-none">—</span>');
+            btn.classList.add('tab-no-product');
+            btn.classList.remove('tab-disabled-product');
+        } else {
+            const qta = parseInt(prod.qta);
+            btn.classList.remove('tab-no-product');
+            
+            if (qta === 0) {
+                // Prodotto disattivato
+                btn.insertAdjacentHTML('beforeend', '<span class="tab-badge tab-badge-off">✗</span>');
+                btn.classList.add('tab-disabled-product');
+            } else {
+                // Prodotto attivo
+                btn.classList.remove('tab-disabled-product');
+                if (qta > 1) {
+                    btn.insertAdjacentHTML('beforeend', `<span class="tab-badge tab-badge-qty">×${qta}</span>`);
+                }
+            }
+        }
+    });
 }
 
 function editorFieldChanged(element) {
@@ -1371,6 +1529,11 @@ function editorFieldChanged(element) {
     updateChangeIndicator();
     
     console.log(`✏️ Campo modificato: ${tab}.${key} = ${value}`);
+    
+    // 🆕 v3.1.0: Se cambia qta, re-renderizza tab per aggiornare stato disattivazione
+    if (key === 'qta') {
+        renderTabContent(tab);
+    }
 }
 
 function editorCreateProduct(productType) {
