@@ -3,6 +3,7 @@
  * 🔧 RENDER CONFIG CAMPI - Renderer generico config globale da CAMPI_PRODOTTI
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.1.0 (06/02/2026): Supporto multi-checkbox, optionLabel/optionValue, gruppi speciali
  * v1.0.0 (05/02/2026): Creazione iniziale
  * 
  * SCOPO: Genera HTML config globale leggendo da CAMPI_PRODOTTI
@@ -111,6 +112,11 @@ function renderConfigGlobaleFromCampi(project, productName, opts = {}) {
             fieldHtml = _renderNumberInput(campo, value, project.id, productType, label);
         } else if (campo.type === 'textarea') {
             fieldHtml = _renderTextarea(campo, value, project.id, productType, label);
+        } else if (campo.type === 'multi-checkbox') {
+            fieldHtml = _renderMultiCheckbox(campo, configData[campo.key], project.id, productType, label);
+        } else if (campo.type === 'select' && typeof campo.optionLabel === 'function') {
+            // Select con oggetti (optionLabel/optionValue) - es. SOMFY
+            fieldHtml = _renderObjectSelect(campo, value, project.id, productType, label);
         }
 
         // Wrapping con visibility condizionale
@@ -151,7 +157,8 @@ function _isLiveVisibility(campo) {
     const v = campo.visibleIf;
     // Campi che dipendono da altri campi nella stessa form
     return v.field && (v.equals !== undefined || v.notEquals !== undefined || 
-           v.equalsLower !== undefined || v.notEmpty !== undefined || v.containsLower !== undefined);
+           v.equalsLower !== undefined || v.notEmpty !== undefined || 
+           v.containsLower !== undefined || v.equalsAny !== undefined);
 }
 
 // ─── Helper: ottieni array di opzioni da un campo ────────────────────────────
@@ -313,6 +320,184 @@ function _renderTextarea(campo, value, projectId, productType, label) {
     `;
 }
 
+// ─── Renderer: Multi-Checkbox (es. accessori motore SOMFY) ──────────────────
+function _renderMultiCheckbox(campo, currentValues, projectId, productType, label) {
+    const updateFn = _getUpdateFnName(productType);
+    const options = _getOptionsArray(campo, {});
+    const values = currentValues || {};
+
+    // Se opzioni sono oggetti con optionLabel/optionValue
+    const rawOpts = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
+    const hasLabelFn = typeof campo.optionLabel === 'function';
+
+    let html = `<div class="mb-2 col-span-full">
+        ${label ? `<label class="block text-base font-bold mb-2 text-gray-800">${label}</label>` : ''}
+        <div class="grid grid-cols-2 gap-2">`;
+
+    for (const opt of rawOpts) {
+        const val = hasLabelFn ? campo.optionValue(opt) : opt;
+        const lab = hasLabelFn ? campo.optionLabel(opt) : String(opt);
+        const checked = values[val] || false;
+
+        html += `
+            <label class="flex items-center gap-2 px-3 py-2 rounded-lg border ${checked ? 'bg-indigo-100 border-indigo-400' : 'bg-white border-gray-300'} cursor-pointer hover:bg-indigo-50">
+                <input type="checkbox" 
+                       ${checked ? 'checked' : ''}
+                       onchange="${updateFn}AccessorioMotore('${projectId}', '${val}', this.checked)"
+                       class="w-4 h-4 accent-indigo-600">
+                <span class="text-sm">${lab}</span>
+            </label>`;
+    }
+
+    html += `</div></div>`;
+    return html;
+}
+
+// ─── Renderer: Select con optionLabel/optionValue (oggetti SOMFY) ───────────
+function _renderObjectSelect(campo, value, projectId, productType, label) {
+    const updateFn = _getUpdateFnName(productType);
+    const rawOpts = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
+    const isEmpty = !value || value === '';
+    const renderNeeded = campo.visibleIf ? '; render();' : '';
+
+    let optsHtml = '<option value="">▼ Seleziona...</option>';
+    for (const opt of rawOpts) {
+        const val = campo.optionValue(opt);
+        const lab = campo.optionLabel(opt);
+        optsHtml += `<option value="${val}" ${String(value) === String(val) ? 'selected' : ''}>${lab}</option>`;
+    }
+
+    return `
+        <div class="mb-2">
+            ${label ? `<label class="block text-base font-bold mb-1 text-gray-800">${label}</label>` : ''}
+            <select class="w-full px-3 py-2.5 border-2 rounded-lg text-base font-medium ${isEmpty ? 'border-orange-400 bg-orange-50' : 'border-gray-300 bg-white'}"
+                    onchange="${updateFn}('${projectId}', '${campo.key}', this.value)${renderNeeded}">
+                ${optsHtml}
+            </select>
+        </div>
+    `;
+}
+
+// ─── Renderer: Gruppo "cosa-serve" con styling speciale ─────────────────────
+function _renderCosaServeGroup(campos, configData, projectId, productType, meta) {
+    const updateFn = _getUpdateFnName(productType);
+    const colors = meta?.cosaServeColors || {
+        bg: 'from-amber-100 to-orange-100',
+        border: 'amber-400',
+        title: 'amber-800',
+        hint: 'amber-700'
+    };
+
+    let checkboxesHtml = '';
+    const icons = { serveTapparella: '🎚️', serveMotore: '🔌', serveAccessori: '🔧' };
+    const activeColors = { serveTapparella: 'amber', serveMotore: 'blue', serveAccessori: 'purple' };
+
+    for (const campo of campos) {
+        const checked = campo.key === 'serveTapparella' 
+            ? configData[campo.key] !== false  // default true
+            : configData[campo.key] || false;
+        const color = activeColors[campo.key] || 'amber';
+        const icon = icons[campo.key] || '✓';
+
+        checkboxesHtml += `
+            <label class="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-lg border-2 ${checked ? `border-${color}-500 bg-${color}-50` : 'border-gray-300'} hover:border-${color}-400 transition-all">
+                <input type="checkbox" 
+                       ${checked ? 'checked' : ''}
+                       onchange="${updateFn}('${projectId}', '${campo.key}', this.checked); render();"
+                       class="w-5 h-5 accent-${color}-600">
+                <span class="font-semibold text-gray-800">${icon} ${campo.label}</span>
+            </label>`;
+    }
+
+    return `
+        <div class="bg-gradient-to-r ${colors.bg} border-2 border-${colors.border} rounded-lg p-4 mb-4">
+            <h5 class="font-bold text-${colors.title} mb-3 flex items-center gap-2">
+                🎯 Cosa serve di default nelle nuove posizioni?
+            </h5>
+            <div class="flex flex-wrap gap-4">${checkboxesHtml}</div>
+            <p class="text-xs text-${colors.hint} mt-2">💡 Questi valori saranno pre-impostati quando aggiungi una nuova posizione</p>
+        </div>
+    `;
+}
+
+// ─── Renderer: Sezione motore con titolo e bordo ────────────────────────────
+function _renderMotoreSection(campos, configData, projectId, productType) {
+    const updateFn = _getUpdateFnName(productType);
+    let fieldsHtml = '';
+
+    for (const campo of campos) {
+        const value = configData[campo.key] || '';
+        const label = campo.label;
+
+        if (campo.type === 'multi-checkbox') {
+            fieldsHtml += _renderMultiCheckbox(campo, configData[campo.key], projectId, productType, label);
+        } else if (campo.type === 'select' && typeof campo.optionLabel === 'function') {
+            fieldsHtml += _renderObjectSelect(campo, value, projectId, productType, label);
+        } else if (campo.type === 'select') {
+            const options = _getOptionsArray(campo, configData);
+            fieldsHtml += _renderSimpleSelect(campo, value, options, projectId, productType, label);
+        }
+    }
+
+    return `
+        <div class="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-4 mt-4 mb-4">
+            <h5 class="font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                🔌 Configurazione Motore Default
+            </h5>
+            <div class="grid md:grid-cols-2 gap-4">${fieldsHtml}</div>
+            <p class="text-xs text-indigo-600 mt-2">💡 Questi valori saranno pre-impostati quando clicchi "+ Aggiungi Motore"</p>
+        </div>
+    `;
+}
+
+/**
+ * Render config globale AVANZATO con supporto gruppi speciali.
+ * Gestisce: cosa-serve (checkbox styled), motore (sezione dedicata), campi normali.
+ * 
+ * @param {Object} project
+ * @param {string} productName - es. 'tapparella'
+ * @param {Object} opts - { excludeKeys, cols }
+ * @returns {string} HTML completo
+ */
+function renderConfigGlobaleAdvanced(project, productName, opts = {}) {
+    if (typeof CAMPI_PRODOTTI === 'undefined' || !CAMPI_PRODOTTI[productName]) {
+        return renderConfigGlobaleFromCampi(project, productName, opts);
+    }
+
+    const def = CAMPI_PRODOTTI[productName];
+    const configData = project[def.configKey] || {};
+    const productType = def.productKey;
+    const campos = def.configGlobale;
+
+    // Separa per gruppo
+    const cosaServe = campos.filter(c => c.group === 'cosa-serve');
+    const motore = campos.filter(c => c.group === 'motore');
+    const normalCampos = campos.filter(c => c.group !== 'cosa-serve' && c.group !== 'motore');
+
+    let html = '';
+
+    // 1. Checkbox "cosa serve" (se presente)
+    if (cosaServe.length > 0) {
+        html += _renderCosaServeGroup(cosaServe, configData, project.id, productType);
+    }
+
+    // 2. Campi normali (solo se visibili)
+    const visibleNormal = normalCampos.filter(c => CAMPI_PRODOTTI.isVisible(c, configData));
+    if (visibleNormal.length > 0) {
+        html += renderConfigGlobaleFromCampi(project, productName, {
+            ...opts,
+            excludeGroups: ['cosa-serve', 'motore']
+        });
+    }
+
+    // 3. Sezione motore (se serveMotore)
+    if (motore.length > 0 && configData.serveMotore) {
+        html += _renderMotoreSection(motore, configData, project.id, productType);
+    }
+
+    return html;
+}
+
 // ─── Helper: nome funzione update per productType ───────────────────────────
 function _getUpdateFnName(productType) {
     const map = {
@@ -326,4 +511,4 @@ function _getUpdateFnName(productType) {
     return map[productType] || 'updateConfigInfissi';
 }
 
-console.log('✅ render-config-campi.js v1.0.0 caricato');
+console.log('✅ render-config-campi.js v1.1.0 caricato');
