@@ -1242,10 +1242,22 @@ function renderTabContent(tabName) {
     
     // Se prodotto è null, mostra opzione per crearlo
     if (dataSource === null || dataSource === undefined) {
+        // 🆕 v3.1.0: Mostra info config globale disponibile
+        const configMap = {
+            infisso: 'configInfissi', persiana: 'configPersiane',
+            tapparella: 'configTapparelle', zanzariera: 'configZanzariere',
+            cassonetto: 'configCassonetti'
+        };
+        const configKey = configMap[tabName];
+        const hasConfig = configKey && typeof currentData !== 'undefined' && currentData?.[configKey] && 
+                          Object.values(currentData[configKey]).some(v => v !== '' && v !== null && v !== undefined);
+        
         container.innerHTML = `
             <div class="editor-null-notice">
                 <h4>🚫 ${tabName.charAt(0).toUpperCase() + tabName.slice(1)} non presente</h4>
                 <p>Questa posizione non ha un ${tabName} associato.</p>
+                ${hasConfig ? `<p style="color: #059669; font-size: 0.85rem; margin-top: 0.5rem;">✅ Config globale trovata — i valori default verranno applicati automaticamente</p>` : 
+                  `<p style="color: #d97706; font-size: 0.85rem; margin-top: 0.5rem;">⚠️ Nessuna config globale — verrà creato con valori predefiniti</p>`}
                 <button onclick="editorCreateProduct('${tabName}')">
                     ➕ Aggiungi ${tabName}
                 </button>
@@ -1537,31 +1549,59 @@ function editorFieldChanged(element) {
 }
 
 function editorCreateProduct(productType) {
+    // 🆕 v3.1.0: Legge default dalla config globale del progetto
+    const pos = editorState.currentPosition;
+    let configDefaults = {};
+    
+    // Cerca il progetto corrente per leggere la config globale
+    if (typeof currentData !== 'undefined' && currentData) {
+        const configMap = {
+            infisso: 'configInfissi',
+            persiana: 'configPersiane',
+            tapparella: 'configTapparelle',
+            zanzariera: 'configZanzariere',
+            cassonetto: 'configCassonetti'
+        };
+        const configKey = configMap[productType];
+        if (configKey && currentData[configKey]) {
+            configDefaults = { ...currentData[configKey] };
+        }
+    }
+    
     // 🆕 v1.5.0: Usa DATA_MANAGER.applyCreateProduct con template unificati
     if (typeof DATA_MANAGER !== 'undefined') {
-        DATA_MANAGER.applyCreateProduct(editorState.currentPosition, productType);
+        DATA_MANAGER.applyCreateProduct(pos, productType);
+        // Sovrascrivi con config globale se disponibile
+        if (Object.keys(configDefaults).length > 0 && pos[productType]) {
+            for (const [key, val] of Object.entries(configDefaults)) {
+                if (val !== '' && val !== null && val !== undefined && !pos[productType][key]) {
+                    pos[productType][key] = val;
+                }
+            }
+        }
     } else {
-        // Fallback: template locali se DATA_MANAGER non disponibile
+        // Fallback: template locali + config globale
+        const baseQta = pos.quantita || '1';
         const templates = {
             infisso: {
                 id: `inf-${Date.now()}`,
-                qta: editorState.currentPosition.quantita || '1',
+                qta: baseQta,
                 tipo: '',
                 tipoInfissoAssociato: 'F',
                 codiceModello: '',
-                azienda: 'finstral',
-                telaio: '',
-                finituraInt: 'pvc',
-                finituraEst: 'pvc',
-                coloreInt: '',
-                coloreEst: '',
-                tipoAnta: '',
-                vetro: '',
-                allarme: '',
+                azienda: configDefaults.azienda || 'finstral',
+                telaio: configDefaults.telaio || '',
+                finituraInt: configDefaults.finituraInt || 'pvc',
+                finituraEst: configDefaults.finituraEst || 'pvc',
+                coloreInt: configDefaults.coloreInt || '',
+                coloreEst: configDefaults.coloreEst || '',
+                tipoAnta: configDefaults.tipoAnta || '',
+                vetro: configDefaults.vetro || '',
+                allarme: configDefaults.allarme || '',
                 cerniere: '',
-                maniglia: '',
-                coloreManiglia: '',
-                tagliTelaio: '',
+                maniglia: configDefaults.maniglia || '',
+                coloreManiglia: configDefaults.coloreManiglia || '',
+                tagliTelaio: configDefaults.tagliTelaio || '',
                 codTagliValues: [],
                 ferramenta1: '',
                 lato1: '',
@@ -1572,15 +1612,15 @@ function editorCreateProduct(productType) {
             },
             persiana: {
                 id: `pers-${Date.now()}`,
-                qta: editorState.currentPosition.quantita || '1',
-                azienda: 'P. Persiane',
-                modello: '',
+                qta: baseQta,
+                azienda: configDefaults.azienda || 'P. Persiane',
+                modello: configDefaults.modello || '',
                 tipo: '',
                 apertura: '',
-                fissaggio: '',
-                colorePersiana: '',
-                coloreTelaio: '',
-                battuta: '',
+                fissaggio: configDefaults.fissaggio || '',
+                colorePersiana: configDefaults.colorePersiana || '',
+                coloreTelaio: configDefaults.coloreTelaio || '',
+                battuta: configDefaults.battuta || '',
                 tipoStecca: '',
                 asolato: '',
                 BRM_L: 0,
@@ -1589,46 +1629,46 @@ function editorCreateProduct(productType) {
             },
             tapparella: {
                 id: `tapp-${Date.now()}`,
-                serveTapparella: true,
-                serveMotore: false,
-                serveAccessori: false,
-                qta: editorState.currentPosition.quantita || '1',
-                azienda: 'Plasticino',
-                modello: '',
+                serveTapparella: configDefaults.serveTapparella !== false,
+                serveMotore: configDefaults.serveMotore || false,
+                serveAccessori: configDefaults.serveAccessori || false,
+                qta: baseQta,
+                azienda: configDefaults.azienda || 'Plasticino',
+                modello: configDefaults.modello || '',
                 tipo: '',
-                colore: '',
-                guida: '',
-                coloreGuida: '',
+                colore: configDefaults.colore || '',
+                guida: configDefaults.guida || '',
+                coloreGuida: configDefaults.coloreGuida || '',
                 motoreAzienda: 'Somfy',
-                motoreModello: '',
+                motoreModello: configDefaults.motoreModelloDefault || '',
                 BRM_L: 0,
                 BRM_H: 0,
                 note: ''
             },
             zanzariera: {
                 id: `zanz-${Date.now()}`,
-                qta: editorState.currentPosition.quantita || '1',
-                azienda: 'Palagina',
+                qta: baseQta,
+                azienda: configDefaults.azienda || 'Palagina',
                 linea: '',
                 modello: '',
-                fasciaColore: '',
-                coloreTelaio: '',
-                tipoRete: '',
-                colorePlastica: '',
+                fasciaColore: configDefaults.fasciaColore || '',
+                coloreTelaio: configDefaults.coloreTelaio || '',
+                tipoRete: configDefaults.tipoRete || '',
+                colorePlastica: configDefaults.colorePlastica || '',
                 BRM_L: 0,
                 BRM_H: 0,
                 note: ''
             },
             cassonetto: {
                 id: `cass-${Date.now()}`,
-                qta: editorState.currentPosition.quantita || '1',
-                azienda: 'Finstral',
-                tipo: '',
-                codiceCass: '',
-                materialeCass: '',
-                gruppoColoreCass: '',
-                coloreCass: '',
-                codiceIsolamento: '',
+                qta: baseQta,
+                azienda: configDefaults.azienda || 'Finstral',
+                tipo: configDefaults.tipo || '',
+                codiceCass: configDefaults.codiceCass || '',
+                materialeCass: configDefaults.materialeCass || '',
+                gruppoColoreCass: configDefaults.gruppoColoreCass || '',
+                coloreCass: configDefaults.coloreCass || '',
+                codiceIsolamento: configDefaults.codiceIsolamento || '',
                 LS: 0,
                 SRSX: 0,
                 SRDX: 0,
@@ -1645,15 +1685,16 @@ function editorCreateProduct(productType) {
         };
         
         if (templates[productType]) {
-            editorState.currentPosition[productType] = templates[productType];
+            pos[productType] = templates[productType];
         }
     }
     
     editorState.hasChanges = true;
     updateChangeIndicator();
     updateTabIndicators();
+    editorUpdateTabBadges();
     editorSwitchTab(productType);
-    console.log(`✏️ Creato nuovo ${productType} (via DATA_MANAGER: ${typeof DATA_MANAGER !== 'undefined'})`);
+    console.log(`✏️ Creato nuovo ${productType} con config globale (via DATA_MANAGER: ${typeof DATA_MANAGER !== 'undefined'})`);
 }
 
 function updateChangeIndicator() {
