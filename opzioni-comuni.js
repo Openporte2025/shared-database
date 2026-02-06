@@ -12,6 +12,7 @@
  * 
  * Hosting: https://openporte2025.github.io/shared-database/opzioni-comuni.js
  * 
+ * v2.1.0 (06/02/2026): LISTA DEFINITIVA - 22 AMBIENTI + 11 PIANI (unica fonte per tutti i file)
  * v2.0.0 (05/02/2026): PULIZIA - migrato tutto prodotto → opzioni-prodotti.js
  * v1.2.0 (20/01/2026): Versione con tutti i dati (ora in opzioni-prodotti.js)
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -25,20 +26,11 @@
     // ═══════════════════════════════════════════════════════════════════════════
     
     const AMBIENTI = [
-        'Cucina',
-        'Soggiorno',
-        'Camera',
-        'Bagno',
-        'Ingresso',
-        'Corridoio',
-        'Studio',
-        'Lavanderia',
-        'Cantina',
-        'Garage',
-        'Mansarda',
-        'Terrazzo',
-        'Balcone'
-        
+        'Sala', 'Soggiorno', 'Cucina', 'Camera', 'Stanza', 'Cameretta', 
+        'Matrimoniale', 'Disimpegno', 'Studio', 'Ufficio', 
+        'Bagno1', 'Bagno2', 'Ripostiglio', 'Lavanderia', 
+        'Scala', 'Cantina', 'Garage',
+        'Mansarda', 'Terrazzo', 'Balcone', 'Corridoio', 'Ingresso'
     ];
     
     // ═══════════════════════════════════════════════════════════════════════════
@@ -46,14 +38,9 @@
     // ═══════════════════════════════════════════════════════════════════════════
     
     const PIANI = [
-        'Piano Terra',
-        'Piano 1',
-        'Piano 2',
-        'Piano 3',
-        'Piano 4',
-        'Piano 5',
-        'Seminterrato',
-        'Sottotetto'
+        'Interrato', 'Seminterrato', 'Piano Terra', 'Rialzato',
+        'Primo Piano', 'Secondo Piano', 'Terzo Piano', 'Quarto Piano',
+        'Quinto Piano', 'Mansarda', 'Sottotetto'
     ];
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -62,9 +49,17 @@
     
     window.OPZIONI = {
         AMBIENTI,
-        PIANI
+        PIANI,
+        // Helper: genera <option> HTML da una lista
+        htmlOptions: function(lista, selectedValue, placeholder) {
+            let html = placeholder ? `<option value="">${placeholder}</option>` : '';
+            lista.forEach(v => {
+                html += `<option value="${v}" ${v === selectedValue ? 'selected' : ''}>${v}</option>`;
+            });
+            return html;
+        }
     };
     
-    console.log('✅ opzioni-comuni.js v2.0.0 caricato - AMBIENTI + PIANI');
+    console.log('✅ opzioni-comuni.js v2.1.0 caricato - 22 AMBIENTI + 11 PIANI (unica fonte)');
     
 })();
