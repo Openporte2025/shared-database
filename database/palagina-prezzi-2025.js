@@ -381,4 +381,6 @@ if (typeof module !== 'undefined' && module.exports) {
 // 🔧 v1.0.1: Export globale per browser
 if (typeof window !== 'undefined') {
     window.PALAGINA_ZANZARIERE_2025 = PALAGINA_ZANZARIERE_2025;
+    // 🔧 v1.0.2: Alias senza _2025 per compatibilità app rilievo + render-config-campi
+    window.PALAGINA_ZANZARIERE = PALAGINA_ZANZARIERE_2025;
 }
