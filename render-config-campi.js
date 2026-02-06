@@ -167,6 +167,17 @@ function _isLiveVisibility(campo) {
 function _getOptionsArray(campo, configData) {
     if (!campo.options) return [];
     const raw = typeof campo.options === 'function' ? campo.options() : campo.options;
+    if (!Array.isArray(raw)) {
+        console.warn(`⚠️ _getOptionsArray: options() non ha restituito array per "${campo.key}"`, raw);
+        return [];
+    }
+    // Se campo ha optionLabel/optionValue (es. motori SOMFY), genera {value, label}
+    if (campo.optionLabel && campo.optionValue) {
+        return raw.map(o => ({
+            value: campo.optionValue(o),
+            label: campo.optionLabel(o)
+        }));
+    }
     // Se sono oggetti {value, label}, estraiamo solo value per renderSelectWithCustom
     return raw.map(o => {
         if (typeof o === 'object' && o !== null && o.value !== undefined) {
@@ -249,6 +260,12 @@ function _renderSimpleSelect(campo, value, options, projectId, productType, labe
     const isEmpty = !value || value === '';
     const updateFn = _getUpdateFnName(productType);
     const renderNeeded = campo.visibleIf ? '; render();' : '';
+    
+    // Safety: assicura che options sia array
+    if (!Array.isArray(options)) {
+        console.warn(`⚠️ _renderSimpleSelect: options non è array per campo "${campo.key}"`, options);
+        options = [];
+    }
     
     // Normalizza opzioni: possono essere stringhe o {value, label}
     const normalizedOpts = options.map(o => {
@@ -697,4 +714,4 @@ function _renderPosNumber(campo, value, projectId, posId, productType) {
     `;
 }
 
-console.log('✅ render-config-campi.js v1.2.1 caricato');
+console.log('✅ render-config-campi.js v1.3.0 caricato');
