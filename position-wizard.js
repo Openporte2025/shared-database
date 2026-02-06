@@ -13,7 +13,7 @@
 // @repository shared-database
 // ============================================================================
 
-const POSITION_WIZARD_VERSION = '1.0.0';
+const POSITION_WIZARD_VERSION = '1.1.0';
 
 (function() {
     'use strict';
@@ -21,20 +21,16 @@ const POSITION_WIZARD_VERSION = '1.0.0';
     console.log(`📍 Position Wizard v${POSITION_WIZARD_VERSION} - Caricamento...`);
     
     // ========================================================================
-    // COSTANTI
+    // COSTANTI - leggono da opzioni-comuni.js (UNICA FONTE)
     // ========================================================================
     
-    const AMBIENTI = [
-        'Sala', 'Soggiorno', 'Cucina', 'Camera', 'Stanza', 'Cameretta', 
-        'Matrimoniale', 'Disimpegno', 'Studio', 'Ufficio', 
-        'Bagno1', 'Bagno2', 'Ripostiglio', 'Lavanderia', 
-        'Scala', 'Cantina', 'Garage'
+    // ⚠️ MAI hardcodare liste qui. Usare SEMPRE window.OPZIONI da opzioni-comuni.js
+    const AMBIENTI = (window.OPZIONI && window.OPZIONI.AMBIENTI) || [
+        'Sala', 'Soggiorno', 'Cucina', 'Camera', 'Bagno', 'Studio', 'Cantina', 'Garage'
     ];
     
-    const PIANI = [
-        'Interrato', 'Seminterrato', 'Piano Terra', 'Rialzato',
-        'Primo Piano', 'Secondo Piano', 'Terzo Piano', 'Quarto Piano',
-        'Quinto Piano', 'Mansarda', 'Sottotetto'
+    const PIANI = (window.OPZIONI && window.OPZIONI.PIANI) || [
+        'Interrato', 'Piano Terra', 'Primo Piano', 'Secondo Piano', 'Mansarda'
     ];
     
     const TIPI_POSIZIONE = [
