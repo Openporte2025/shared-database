@@ -412,25 +412,47 @@
 
     const CASSONETTO_CONFIG_GLOBALE = [
         { key: 'azienda', label: 'Azienda', type: 'select', options: () => P.cassonetti.aziende, allowCustom: true },
-        { key: 'tipo', label: 'Tipo', type: 'select', options: () => P.cassonetti.tipi },
-        { key: 'materialeCass', label: 'Materiale', type: 'select', options: () => P.cassonetti.materiali },
+
+        // --- FINSTRAL specifici ---
+        { key: 'aSoffitto', label: 'A Soffitto', type: 'checkbox',
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
+        { key: 'materialeCass', label: 'Materiale', type: 'select',
+          options: () => ['PVC', 'Legno'],
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
         { key: 'codiceCass', label: 'Codice Cassonetto', type: 'select-dynamic',
           dependsOn: 'materialeCass',
           optionsFn: (mat) => {
-              if (mat === 'PVC') return P.cassonetti.codiciPVC.map(c => c.desc || c.nome);
-              if (mat === 'Legno') return P.cassonetti.codiciLegno.map(c => c.desc || c.nome);
-              return [...P.cassonetti.codiciPVC.map(c => c.desc || c.nome), ...P.cassonetti.codiciLegno.map(c => c.desc || c.nome)];
-          }},
-        { key: 'finitura', label: 'Finitura', type: 'select',
-          options: () => ['PVC', 'Alluminio', 'Legno'] },
-        { key: 'coloreDaInfisso', label: 'Colore = da Infisso', type: 'checkbox' },
+              if (!P.cassonetti) return [];
+              if (mat === 'PVC') return (P.cassonetti.codiciPVC || []).map(c => c.desc || c.nome || c);
+              if (mat === 'Legno') return (P.cassonetti.codiciLegno || []).map(c => c.desc || c.nome || c);
+              return [];
+          },
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
         { key: 'gruppoColoreCass', label: 'Gruppo Colore', type: 'text',
-          visibleIf: { field: 'coloreDaInfisso', notEquals: true } },
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
         { key: 'coloreCass', label: 'Colore Cassonetto', type: 'text',
-          visibleIf: { field: 'coloreDaInfisso', notEquals: true } },
-        { key: 'codiceIsolamento', label: 'Codice Isolamento', type: 'text' },
-        { key: 'posa', label: 'Posa', type: 'select', options: () => ['a muro', 'in luce'] },
-        { key: 'aSoffitto', label: 'A Soffitto', type: 'checkbox' }
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
+        { key: 'coloreDaInfisso', label: 'Colore = da serramento', type: 'checkbox',
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
+        { key: 'codiceIsolamento', label: 'Isolamento', type: 'select',
+          options: () => [
+              { value: '', label: '--' },
+              { value: 'posaclima', label: 'Isolamento Posaclima' },
+              { value: '40830', label: '40830 (25mm)' },
+              { value: '40831', label: '40831 (13mm)' }
+          ],
+          visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
+
+        // --- MAGÒ/ALPAC specifici ---
+        { key: 'tipo', label: 'Tipo', type: 'select',
+          options: () => ['Cassonetto', 'Monoblocco'],
+          visibleIf: { field: 'azienda', equalsAny: ['Magò', 'Alpac'] }, group: 'mago' },
+        { key: 'posa', label: 'Posa', type: 'select',
+          options: () => ['Frontale', 'Rasomuro', 'Esterna dal sotto', 'Interna dal sotto'],
+          visibleIf: { field: 'azienda', equalsAny: ['Magò', 'Alpac'] }, group: 'mago' },
+        { key: 'finitura', label: 'Finitura', type: 'select',
+          options: () => ['Grezzo da rasare', 'Mano di fondo'],
+          visibleIf: { field: 'azienda', equalsAny: ['Magò', 'Alpac'] }, group: 'mago' }
     ];
 
     const CASSONETTO_POSIZIONE = [
@@ -460,7 +482,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     window.CAMPI_PRODOTTI = {
-        version: '1.0.0',
+        version: '1.1.0',
 
         infisso: {
             configGlobale: INFISSO_CONFIG_GLOBALE,
@@ -521,7 +543,8 @@
             const val = dati?.[v.field];
 
             if (v.equals !== undefined) return val === v.equals;
-            if (v.notEquals !== undefined) return val !== v.equals;
+            if (v.notEquals !== undefined) return val !== v.notEquals;
+            if (v.equalsAny !== undefined) return Array.isArray(v.equalsAny) && v.equalsAny.includes(val);
             if (v.equalsLower !== undefined) return String(val || '').toLowerCase() === v.equalsLower;
             if (v.containsLower !== undefined) return String(val || '').toLowerCase().includes(v.containsLower);
             if (v.notEmpty !== undefined) return !!val && val !== '';
