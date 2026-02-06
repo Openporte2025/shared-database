@@ -3,6 +3,7 @@
  * 🔧 RENDER CONFIG CAMPI - Renderer generico config globale da CAMPI_PRODOTTI
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.2.0 (06/02/2026): Renderer posizione prodotti da CAMPI_PRODOTTI
  * v1.1.0 (06/02/2026): Supporto multi-checkbox, optionLabel/optionValue, gruppi speciali
  * v1.0.0 (05/02/2026): Creazione iniziale
  * 
@@ -511,4 +512,175 @@ function _getUpdateFnName(productType) {
     return map[productType] || 'updateConfigInfissi';
 }
 
-console.log('✅ render-config-campi.js v1.1.0 caricato');
+/**
+ * 🆕 v1.2.0: Render campi prodotto in posizione da CAMPI_PRODOTTI.
+ * Genera HTML per campi configGlobale + posizione di un prodotto.
+ * NON include: BRM, Foto, Accessori, Note (gestiti da sezioni dedicate).
+ * 
+ * @param {Object} project - Progetto
+ * @param {Object} pos - Posizione
+ * @param {string} productName - es. 'persiana'
+ * @param {Object} productData - Dati prodotto (pos.persiana)
+ * @param {Object} opts - { excludeKeys, excludeGroups }
+ * @returns {{ qtaHtml: string, posFieldsHtml: string, configFieldsHtml: string }}
+ */
+function renderPositionProductFromCampi(project, pos, productName, productData, opts = {}) {
+    if (typeof CAMPI_PRODOTTI === 'undefined' || !CAMPI_PRODOTTI[productName]) {
+        return null;
+    }
+    
+    const def = CAMPI_PRODOTTI[productName];
+    const productType = def.productKey;
+    const excludeKeys = new Set(opts.excludeKeys || ['BRM_L', 'BRM_H', 'note']);
+    const excludeGroups = new Set(opts.excludeGroups || ['link-prodotti']);
+    
+    // Merge config globale + product data per visibilità
+    const configData = project[def.configKey] || {};
+    const mergedData = { ...configData, ...productData };
+    
+    let qtaHtml = '';
+    let posFieldsHtml = '';
+    let configFieldsHtml = '';
+    
+    // === CAMPI POSIZIONE ===
+    for (const campo of def.posizione) {
+        if (excludeKeys.has(campo.key)) continue;
+        if (campo.group && excludeGroups.has(campo.group)) continue;
+        if (!CAMPI_PRODOTTI.isVisible(campo, mergedData)) continue;
+        
+        const value = productData[campo.key] !== undefined ? productData[campo.key] : '';
+        
+        if (campo.key === 'qta') {
+            // Qta: sempre select 0-10
+            qtaHtml = _renderPosSelect(campo, value, project.id, pos.id, productType, 'Quantità');
+            continue;
+        }
+        
+        posFieldsHtml += _renderPosField(campo, value, project.id, pos.id, productType, mergedData);
+    }
+    
+    // === CAMPI CONFIG GLOBALE (mostrati in posizione come "Configurazione") ===
+    for (const campo of def.configGlobale) {
+        if (excludeKeys.has(campo.key)) continue;
+        if (campo.group && excludeGroups.has(campo.group)) continue;
+        if (campo.group === 'cosa-serve') continue; // gestito separatamente per tapparelle
+        if (campo.group === 'motore') continue; // gestito separatamente
+        if (!CAMPI_PRODOTTI.isVisible(campo, mergedData)) continue;
+        
+        const value = productData[campo.key] !== undefined ? productData[campo.key] : '';
+        configFieldsHtml += _renderPosField(campo, value, project.id, pos.id, productType, mergedData);
+    }
+    
+    return { qtaHtml, posFieldsHtml, configFieldsHtml };
+}
+
+// ─── Renderer posizione: campo generico ─────────────────────────────────────
+function _renderPosField(campo, value, projectId, posId, productType, mergedData) {
+    if (campo.type === 'select' && campo.allowCustom) {
+        const options = _getOptionsArray(campo, mergedData);
+        return renderSelectWithCustom(
+            campo.key, value, options,
+            projectId, posId, productType, campo.label
+        );
+    }
+    if (campo.type === 'select-dynamic') {
+        let options = [];
+        if (campo.optionsFn && campo.dependsOn) {
+            const depVal = typeof campo.dependsOn === 'string'
+                ? mergedData[campo.dependsOn]
+                : campo.dependsOn.map(d => mergedData[d]);
+            options = campo.optionsFn(depVal) || [];
+        } else if (campo.customGetter) {
+            options = _getOptionsFromGetter(campo, { id: projectId }, mergedData);
+        }
+        if (campo.allowCustom !== false) {
+            return renderSelectWithCustom(
+                campo.key, value, options,
+                projectId, posId, productType, campo.label
+            );
+        }
+        return _renderPosSelect(campo, value, projectId, posId, productType, campo.label, options);
+    }
+    if (campo.type === 'select') {
+        const options = _getOptionsArray(campo, mergedData);
+        return _renderPosSelect(campo, value, projectId, posId, productType, campo.label, options);
+    }
+    if (campo.type === 'checkbox') {
+        return _renderPosCheckbox(campo, value, projectId, posId, productType);
+    }
+    if (campo.type === 'text') {
+        return _renderPosText(campo, value, projectId, posId, productType);
+    }
+    if (campo.type === 'number') {
+        return _renderPosNumber(campo, value, projectId, posId, productType);
+    }
+    return '';
+}
+
+// ─── Renderer posizione: Select semplice ────────────────────────────────────
+function _renderPosSelect(campo, value, projectId, posId, productType, label, options) {
+    if (!options) {
+        const raw = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
+        options = raw;
+    }
+    const isEmpty = !value && value !== 0 && value !== '0';
+    const isQta = campo.key === 'qta';
+    const borderClass = isEmpty && !isQta ? 'border-2 border-orange-400 bg-orange-50' : 'border';
+    
+    return `
+        <div>
+            <label class="text-xs font-medium">${label}${campo.required ? ' <span class="text-red-600">*</span>' : ''}</label>
+            <select onchange="updateProduct('${projectId}', '${posId}', '${productType}', '${campo.key}', this.value)"
+                    class="w-full compact-input ${borderClass} rounded mt-1 ${isQta ? 'font-semibold' : ''}">
+                ${!isQta ? '<option value="">-- Seleziona --</option>' : ''}
+                ${options.map(opt => {
+                    const optVal = typeof opt === 'object' && opt.value !== undefined ? opt.value : opt;
+                    const optLab = typeof opt === 'object' && opt.label !== undefined ? opt.label : opt;
+                    return `<option value="${optVal}" ${String(value) == String(optVal) ? 'selected' : ''}>${optLab}</option>`;
+                }).join('')}
+            </select>
+        </div>
+    `;
+}
+
+// ─── Renderer posizione: Checkbox ───────────────────────────────────────────
+function _renderPosCheckbox(campo, value, projectId, posId, productType) {
+    const checked = value === true || value === 'true';
+    return `
+        <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border ${checked ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-300'}">
+            <input type="checkbox" ${checked ? 'checked' : ''}
+                   onchange="updateProduct('${projectId}', '${posId}', '${productType}', '${campo.key}', this.checked)"
+                   class="w-4 h-4">
+            <span class="text-sm font-medium">${campo.label}</span>
+        </label>
+    `;
+}
+
+// ─── Renderer posizione: Text ───────────────────────────────────────────────
+function _renderPosText(campo, value, projectId, posId, productType) {
+    return `
+        <div>
+            <label class="text-xs font-medium">${campo.label}</label>
+            <input type="text" value="${value || ''}"
+                   onchange="updateProduct('${projectId}', '${posId}', '${productType}', '${campo.key}', this.value)"
+                   placeholder="${campo.placeholder || ''}"
+                   class="w-full compact-input border rounded mt-1">
+        </div>
+    `;
+}
+
+// ─── Renderer posizione: Number ─────────────────────────────────────────────
+function _renderPosNumber(campo, value, projectId, posId, productType) {
+    const unitStr = campo.unit ? ` (${campo.unit})` : '';
+    return `
+        <div>
+            <label class="text-xs font-medium">${campo.label}${unitStr}</label>
+            <input type="number" value="${value || ''}"
+                   onchange="updateProduct('${projectId}', '${posId}', '${productType}', '${campo.key}', this.value)"
+                   ${campo.readonly ? 'readonly' : ''}
+                   class="w-full compact-input border rounded mt-1 ${campo.readonly ? 'bg-gray-50' : ''}">
+        </div>
+    `;
+}
+
+console.log('✅ render-config-campi.js v1.2.0 caricato');
