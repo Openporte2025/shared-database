@@ -228,7 +228,9 @@
 
     const PERSIANA_CONFIG_GLOBALE = [
         { key: 'azienda', label: 'Azienda', type: 'select', options: () => P.persiane.aziende, allowCustom: true },
-        { key: 'modello', label: 'Modello', type: 'select', options: () => P.persiane.modelli, allowCustom: true },
+        { key: 'modello', label: 'Modello', type: 'select', 
+          options: () => (typeof PERSIANE_MODULE !== 'undefined' && PERSIANE_MODULE.OPZIONI?.modelli) 
+            ? PERSIANE_MODULE.OPZIONI.modelli : P.persiane.modelli, allowCustom: true },
         { key: 'fissaggio', label: 'Fissaggio', type: 'select', options: () => P.persiane.fissaggi, allowCustom: true },
         { key: 'tipoTelaio', label: 'Tipo Telaio', type: 'select', options: () => P.persiane.tipiTelaio, allowCustom: true,
           visibleIf: { field: 'fissaggio', equals: 'telaio' } },
