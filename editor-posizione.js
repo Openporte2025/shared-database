@@ -49,6 +49,17 @@ const _OPT_MAP = (function() {
         TIPI_PERSIANA: P.persiane.tipiDescrittivi,
         APERTURE_PERSIANA: P.persiane.apertureDescrittive,
         FISSAGGI_PERSIANA: P.persiane.fissaggi,
+        // 🔧 v3.2.1: Colori persiana (da COLORI_PERSIANE globale o PERSIANE_MODULE)
+        COLORI_PERSIANA: (function() {
+            if (typeof COLORI_PERSIANE !== 'undefined' && COLORI_PERSIANE.length > 0) return COLORI_PERSIANE;
+            if (typeof PERSIANE_MODULE !== 'undefined' && PERSIANE_MODULE.getColoriPerCategoria) {
+                var cats = PERSIANE_MODULE.getColoriPerCategoria();
+                var all = [];
+                Object.values(cats).forEach(function(arr) { all.push.apply(all, arr); });
+                return all;
+            }
+            return P.persiane?.colori || [];
+        })(),
         // Tapparelle
         MODELLI_TAPPARELLE: P.tapparelle.modelli,
         COLORI_TAPPARELLE_PLASTICINO: P.tapparelle.colori,
