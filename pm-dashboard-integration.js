@@ -13,7 +13,7 @@
  * @repository shared-database
  */
 
-const PM_INTEGRATION_VERSION = '1.3.0';
+const PM_INTEGRATION_VERSION = '1.2.1';
 
 // ═══════════════════════════════════════════════════════════════
 // INIZIALIZZAZIONE AL CARICAMENTO
@@ -329,17 +329,33 @@ function injectModals() {
                         <div class="pm-form-group">
                             <label class="pm-form-label">Ambiente *</label>
                             <select id="pmPosAmbiente" class="pm-form-select">
-                                ${(window.OPZIONI && window.OPZIONI.htmlOptions) 
-                                    ? window.OPZIONI.htmlOptions(window.OPZIONI.AMBIENTI, '', '-- Seleziona --')
-                                    : '<option value="">-- Seleziona --</option><option>Soggiorno</option><option>Cucina</option><option>Camera</option><option>Bagno</option>'}
+                                <option value="">-- Seleziona --</option>
+                                <option>Soggiorno</option>
+                                <option>Cucina</option>
+                                <option>Camera</option>
+                                <option>Camera Matrimoniale</option>
+                                <option>Cameretta</option>
+                                <option>Bagno</option>
+                                <option>Studio</option>
+                                <option>Ingresso</option>
+                                <option>Corridoio</option>
+                                <option>Balcone</option>
+                                <option>Terrazzo</option>
+                                <option>Cantina</option>
+                                <option>Garage</option>
                             </select>
                         </div>
                         <div class="pm-form-group">
                             <label class="pm-form-label">Piano</label>
                             <select id="pmPosPiano" class="pm-form-select">
-                                ${(window.OPZIONI && window.OPZIONI.htmlOptions) 
-                                    ? window.OPZIONI.htmlOptions(window.OPZIONI.PIANI, '', '-- Seleziona --')
-                                    : '<option value="">-- Seleziona --</option><option>Piano Terra</option><option>Primo Piano</option>'}
+                                <option value="">-- Seleziona --</option>
+                                <option>Interrato</option>
+                                <option>Piano Terra</option>
+                                <option>Piano Rialzato</option>
+                                <option>Primo Piano</option>
+                                <option>Secondo Piano</option>
+                                <option>Terzo Piano</option>
+                                <option>Mansarda</option>
                             </select>
                         </div>
                     </div>
@@ -364,55 +380,8 @@ function injectModals() {
 
 function overrideDashboardFunctions() {
     
-    // 1. Override updateSidebarMenu per aggiungere bottone Nuovo Progetto
-    if (typeof window.updateSidebarMenu === 'function') {
-        const originalUpdateSidebar = window.updateSidebarMenu;
-        
-        window.updateSidebarMenu = function(projects) {
-            const submenu = document.getElementById('githubProjectsList');
-            if (!submenu) return;
-            
-            // Bottone Nuovo Progetto in cima
-            let html = `
-                <a href="#" class="pm-sidebar-new-btn" onclick="openPMProjectModal(); return false;">
-                    ➕ Nuovo Progetto
-                </a>
-            `;
-            
-            if (projects.length === 0) {
-                html += '<div style="padding:1rem;text-align:center;color:#9ca3af;font-size:0.875rem;">Nessun progetto</div>';
-                submenu.innerHTML = html;
-                return;
-            }
-            
-            const MAX_VISIBLE = 8;
-            const showAll = submenu.dataset.showAll === 'true';
-            const visibleProjects = showAll ? projects : projects.slice(0, MAX_VISIBLE);
-            
-            html += visibleProjects.map(proj => {
-                // Mostra badge Odoo se presente
-                const odooBadge = proj.odoo_id ? '<span class="pm-odoo-badge">🔗 Odoo</span>' : '';
-                return `
-                    <a href="#" onclick="loadGitHubProject('${proj.id}'); closeSidebar(); return false;">
-                        👤 ${proj.cliente || proj.nome}${odooBadge}
-                    </a>
-                `;
-            }).join('');
-            
-            if (projects.length > MAX_VISIBLE) {
-                if (showAll) {
-                    html += `<a href="#" onclick="toggleProjectsList(false); return false;" style="background:#f3f4f6;color:#6b7280;font-weight:600;text-align:center;">▲ Mostra meno</a>`;
-                } else {
-                    html += `<a href="#" onclick="toggleProjectsList(true); return false;" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:600;text-align:center;">▼ Mostra tutti (${projects.length})</a>`;
-                }
-            }
-            
-            submenu.innerHTML = html;
-            console.log(`✅ PM: Sidebar aggiornata con ${projects.length} progetti + bottone Nuovo`);
-        };
-        
-        console.log('✅ PM: updateSidebarMenu overridden');
-    }
+    // 1. v1.2.1: Lista progetti rimossa dalla sidebar — non serve più override
+    console.log('ℹ️ PM v1.2.1: Lista progetti sidebar disabilitata — usa blocco-progetti');
     
     // 2. Override renderPositionsList per aggiungere bottone Nuova Posizione
     if (typeof window.renderPositionsList === 'function') {
