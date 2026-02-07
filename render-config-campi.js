@@ -3,6 +3,7 @@
  * 🔧 RENDER CONFIG CAMPI - Renderer generico config globale da CAMPI_PRODOTTI
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.3.0 (07/02/2026): Fix select con customGetter senza options (colorePersiana vuoto)
  * v1.2.1 (06/02/2026): Fix getColoriPersiane fallback chain (COLORI_PERSIANE → PERSIANE_MODULE → OPZIONI_PRODOTTI)
  * v1.2.0 (06/02/2026): Renderer posizione prodotti da CAMPI_PRODOTTI
  * v1.1.0 (06/02/2026): Supporto multi-checkbox, optionLabel/optionValue, gruppi speciali
@@ -165,6 +166,10 @@ function _isLiveVisibility(campo) {
 
 // ─── Helper: ottieni array di opzioni da un campo ────────────────────────────
 function _getOptionsArray(campo, configData) {
+    // 🔧 v1.3.0: Se ha customGetter, usa _getOptionsFromGetter
+    if (!campo.options && campo.customGetter) {
+        return _getOptionsFromGetter(campo, null, configData);
+    }
     if (!campo.options) return [];
     const raw = typeof campo.options === 'function' ? campo.options() : campo.options;
     if (!Array.isArray(raw)) {
@@ -236,9 +241,7 @@ function _getOptionsFromGetter(campo, project, configData) {
         case 'getPalaginaModelli': {
             if (typeof PALAGINA_ZANZARIERE === 'undefined') return [];
             const linea = configData[campo.dependsOn] || '';
-            const mods = PALAGINA_ZANZARIERE.getModelliByLinea ? 
-                PALAGINA_ZANZARIERE.getModelliByLinea(linea) : [];
-            return mods.map(m => m.id);
+            return (PALAGINA_ZANZARIERE.modelli[linea] || []).map(m => m.id);
         }
         case 'getPalaginaColori': {
             if (typeof PALAGINA_ZANZARIERE === 'undefined') return [];
