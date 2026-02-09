@@ -471,6 +471,9 @@ function convertCampoToEditorField(campo, tabName, posData) {
     if (campo.type === 'radio') {
         editorField.options = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
     } else if (campo.type === 'select' || campo.type === 'select-dynamic') {
+        // 🆕 v3.3.0: Salva customGetter nel campo convertito per debug
+        editorField._customGetter = campo.customGetter || null;
+        
         editorField.optionsGetter = () => {
             let opts = [];
             
@@ -481,39 +484,29 @@ function convertCampoToEditorField(campo, tabName, posData) {
                 return opts;
             }
             
-            // 🆕 v3.3.0: Supporto customGetter (es. getTelaiPerProgetto, getColoriPersiane)
+            // 🆕 v3.3.0: Supporto customGetter (es. getTelaiPerProgetto)
             if (campo.customGetter) {
+                const fnName = campo.customGetter;
+                const project = typeof currentData !== 'undefined' ? currentData : 
+                               (typeof projectData !== 'undefined' ? projectData : null);
                 try {
-                    const project = typeof currentData !== 'undefined' ? currentData : 
-                                   (typeof projectData !== 'undefined' ? projectData : null);
-                    // Cerca la funzione in vari scope
-                    let getterFn = null;
-                    if (typeof window !== 'undefined' && typeof window[campo.customGetter] === 'function') {
-                        getterFn = window[campo.customGetter];
-                    } else {
-                        // Prova accesso diretto tramite Function
-                        try { getterFn = new Function('return typeof ' + campo.customGetter + ' === "function" ? ' + campo.customGetter + ' : null')(); } catch(e) {}
-                    }
-                    if (getterFn) {
-                        opts = getterFn(project, posData) || [];
-                        if (!Array.isArray(opts)) opts = [];
-                    } else {
-                        // Fallback a FINWINDOW_TELAI_OPTIONS
-                        if (typeof getOpt === 'function') {
-                            opts = getOpt('FINWINDOW_TELAI_OPTIONS', []);
-                        }
+                    const fn = new Function('return typeof ' + fnName + ' === "function" ? ' + fnName + ' : null')();
+                    if (fn && project) {
+                        opts = fn(project) || [];
+                        console.log('🔧 customGetter ' + fnName + ' →', opts.length, 'opzioni');
+                        if (Array.isArray(opts) && opts.length > 0) return ['', ...opts];
                     }
                 } catch(e) {
-                    console.warn('⚠️ customGetter error:', campo.customGetter, e);
+                    console.warn('⚠️ customGetter error:', fnName, e);
                 }
             }
             
             // Opzioni statiche
-            if (opts.length === 0 && campo.options) {
+            if (campo.options) {
                 opts = typeof campo.options === 'function' ? campo.options() : campo.options;
             }
             // Opzioni dinamiche con dependsOn
-            else if (opts.length === 0 && campo.optionsFn && campo.dependsOn) {
+            else if (campo.optionsFn && campo.dependsOn) {
                 const depVal = typeof campo.dependsOn === 'string'
                     ? posData?.[campo.dependsOn]
                     : campo.dependsOn.map(d => posData?.[d]);
@@ -1319,7 +1312,128 @@ function renderTabContent(tabName) {
     const qtaValue = isProduct ? parseInt(dataSource.qta) : -1;
     const isDisabled = isProduct && qtaValue === 0;
     
-    // Renderizza campi - 🆕 v3.0.0: usa getFieldsForTab (ponte CAMPI_PRODOTTI)
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🆕 v3.3.0: TAB PRODOTTO → usa renderPositionProductFromCampi (UNIFICATO)
+    // Stessa funzione usata dall'App Rilievo → stessi campi, stesse opzioni
+    // ═══════════════════════════════════════════════════════════════════════
+    if (isProduct && typeof renderPositionProductFromCampi === 'function' && typeof CAMPI_PRODOTTI !== 'undefined' && CAMPI_PRODOTTI[tabName]) {
+        
+        // Registra callback UI_SELECT_CUSTOM per intercettare le modifiche
+        if (typeof UI_SELECT_CUSTOM !== 'undefined') {
+            // Callback per campi posizione (posId presente)
+            UI_SELECT_CUSTOM.onPositionChange = (projectId, posId, productType, fieldName, value) => {
+                const pos = editorState.currentPosition;
+                if (!pos) return;
+                
+                // Usa DATA_MANAGER per logica business (sync colori PVC, tipoInfisso, etc.)
+                if (typeof DATA_MANAGER !== 'undefined') {
+                    DATA_MANAGER.applyProductUpdate(pos, productType, fieldName, value);
+                } else {
+                    if (!pos[productType]) pos[productType] = {};
+                    pos[productType][fieldName] = value;
+                }
+                
+                editorState.hasChanges = true;
+                updateChangeIndicator();
+                console.log(`✏️ Campo modificato (unified): ${productType}.${fieldName} = ${value}`);
+                
+                // Re-render per visibleIf triggers
+                const VISIBILITY_TRIGGERS = [
+                    'qta', 'azienda', 'tipoAnta', 'bancaleTipo', 'antaTwinTipo',
+                    'codiceModello', 'fasciaColore', 'fissaggio', 'lineaF', 'lineaPF',
+                    'serveMotore', 'serveTapparella', 'finituraInt', 'finituraEst'
+                ];
+                if (VISIBILITY_TRIGGERS.includes(fieldName)) {
+                    renderTabContent(tabName);
+                }
+            };
+            
+            // Callback per config globale (posId vuoto) → salva comunque in posizione nell'editor
+            UI_SELECT_CUSTOM.onConfigChange = (projectId, productType, fieldName, value) => {
+                // Nell'editor, anche i campi "config globale" salvano nella posizione
+                const pos = editorState.currentPosition;
+                if (!pos) return;
+                
+                if (typeof DATA_MANAGER !== 'undefined') {
+                    DATA_MANAGER.applyProductUpdate(pos, productType, fieldName, value);
+                } else {
+                    if (!pos[productType]) pos[productType] = {};
+                    pos[productType][fieldName] = value;
+                }
+                
+                editorState.hasChanges = true;
+                updateChangeIndicator();
+                console.log(`✏️ Campo config modificato (unified): ${productType}.${fieldName} = ${value}`);
+                
+                const VISIBILITY_TRIGGERS = [
+                    'qta', 'azienda', 'tipoAnta', 'bancaleTipo', 'antaTwinTipo',
+                    'codiceModello', 'fasciaColore', 'fissaggio', 'lineaF', 'lineaPF',
+                    'serveMotore', 'serveTapparella', 'finituraInt', 'finituraEst'
+                ];
+                if (VISIBILITY_TRIGGERS.includes(fieldName)) {
+                    renderTabContent(tabName);
+                }
+            };
+            
+            // Callback post-cambio (aggiornamento colori, etc.)
+            UI_SELECT_CUSTOM.onAfterChange = (fieldName, value, projectId, posId, productType) => {
+                // Nulla di specifico per l'editor
+            };
+        }
+        
+        // Genera HTML usando render-config-campi.js (STESSO dell'App Rilievo)
+        const project = typeof currentData !== 'undefined' ? currentData : 
+                       (typeof projectData !== 'undefined' ? projectData : { id: 'editor' });
+        const pos = editorState.currentPosition;
+        
+        const result = renderPositionProductFromCampi(project, pos, tabName, dataSource, {
+            excludeKeys: ['note'],  // Note renderizzate separatamente
+            excludeGroups: []
+        });
+        
+        if (result) {
+            let html = '<div class="editor-fields-grid">';
+            
+            // Quantità
+            if (result.qtaHtml) {
+                html += result.qtaHtml;
+            }
+            
+            // Campi config globale (azienda, tipo anta, finitura, etc.)
+            if (result.configFieldsHtml) {
+                html += result.configFieldsHtml;
+            }
+            
+            // Campi posizione specifici (codice modello, ferramenta, etc.)
+            if (result.posFieldsHtml) {
+                html += result.posFieldsHtml;
+            }
+            
+            html += '</div>';
+            
+            // Note prodotto
+            const noteValue = dataSource.note || '';
+            html += `
+                <div class="editor-field full-width" style="margin-top: 1rem;">
+                    <label>Note ${tabName.charAt(0).toUpperCase() + tabName.slice(1)}</label>
+                    <textarea data-tab="${tabName}" data-key="note" 
+                              oninput="editorFieldChanged(this)"
+                              style="width:100%; min-height: 60px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;"
+                    >${noteValue}</textarea>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            console.log(`✅ v3.3.0: Tab ${tabName} renderizzato con render-config-campi.js (unificato)`);
+            return;
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FALLBACK: Renderer legacy per posizione/misure e quando render-config-campi non disponibile
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // Renderizza campi - usa getFieldsForTab (ponte CAMPI_PRODOTTI)
     const fields = getFieldsForTab(tabName, dataSource);
     let html = '';
     
