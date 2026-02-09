@@ -481,19 +481,46 @@ function convertCampoToEditorField(campo, tabName, posData) {
                 return opts;
             }
             
+            // 🆕 v3.3.0: Supporto customGetter (es. getTelaiPerProgetto, getColoriPersiane)
+            if (campo.customGetter) {
+                try {
+                    const project = typeof currentData !== 'undefined' ? currentData : 
+                                   (typeof projectData !== 'undefined' ? projectData : null);
+                    // Cerca la funzione in vari scope
+                    let getterFn = null;
+                    if (typeof window !== 'undefined' && typeof window[campo.customGetter] === 'function') {
+                        getterFn = window[campo.customGetter];
+                    } else {
+                        // Prova accesso diretto tramite Function
+                        try { getterFn = new Function('return typeof ' + campo.customGetter + ' === "function" ? ' + campo.customGetter + ' : null')(); } catch(e) {}
+                    }
+                    if (getterFn) {
+                        opts = getterFn(project, posData) || [];
+                        if (!Array.isArray(opts)) opts = [];
+                    } else {
+                        // Fallback a FINWINDOW_TELAI_OPTIONS
+                        if (typeof getOpt === 'function') {
+                            opts = getOpt('FINWINDOW_TELAI_OPTIONS', []);
+                        }
+                    }
+                } catch(e) {
+                    console.warn('⚠️ customGetter error:', campo.customGetter, e);
+                }
+            }
+            
             // Opzioni statiche
-            if (campo.options) {
+            if (opts.length === 0 && campo.options) {
                 opts = typeof campo.options === 'function' ? campo.options() : campo.options;
             }
             // Opzioni dinamiche con dependsOn
-            else if (campo.optionsFn && campo.dependsOn) {
+            else if (opts.length === 0 && campo.optionsFn && campo.dependsOn) {
                 const depVal = typeof campo.dependsOn === 'string'
                     ? posData?.[campo.dependsOn]
                     : campo.dependsOn.map(d => posData?.[d]);
                 opts = campo.optionsFn(depVal) || [];
             }
             // optionsFlat (per campi con optgroups)  
-            else if (campo.optionsFlat) {
+            else if (opts.length === 0 && campo.optionsFlat) {
                 opts = typeof campo.optionsFlat === 'function' ? campo.optionsFlat() : campo.optionsFlat;
             }
             
