@@ -3,6 +3,7 @@
 // ============================================================================
 // Permette modifica completa di una posizione dalla Dashboard
 // Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
+// 🔧 v3.3.0: Re-render tab su campi trigger visibleIf (azienda, tipoAnta, fissaggio...)
 // 🔧 v3.2.1: Fix opts.map crash — supporto campo.optionsGetter diretto + safety check
 // 🆕 v3.1.0: qta select 0-10 con zeroDisables, disattivazione prodotto, tab badge
 // 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
@@ -15,7 +16,7 @@
 // v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
 // ============================================================================
 
-const EDITOR_VERSION = '3.2.1';
+const EDITOR_VERSION = '3.3.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
@@ -1562,9 +1563,19 @@ function editorFieldChanged(element) {
     
     console.log(`✏️ Campo modificato: ${tab}.${key} = ${value}`);
     
-    // 🆕 v3.1.0: Se cambia qta, re-renderizza tab per aggiornare stato disattivazione
-    if (key === 'qta') {
-        renderTabContent(tab);
+    // 🆕 v3.3.0: Re-render tab quando cambiano campi trigger di visibleIf
+    // Questi campi controllano la visibilità di altri campi nel form
+    const isProductTab = !['posizione', 'misure'].includes(tab);
+    if (isProductTab) {
+        const VISIBILITY_TRIGGERS = [
+            'qta', 'azienda', 'tipoAnta', 'bancaleTipo', 'antaTwinTipo',
+            'codiceModello', 'fasciaColore', 'fissaggio', 'lineaF', 'lineaPF',
+            'serveMotore', 'serveTapparella', 'finituraInt', 'finituraEst'
+        ];
+        if (VISIBILITY_TRIGGERS.includes(key)) {
+            console.log(`🔄 v3.3.0: Re-render tab ${tab} (trigger: ${key})`);
+            renderTabContent(tab);
+        }
     }
 }
 
