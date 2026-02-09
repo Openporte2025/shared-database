@@ -1,9 +1,12 @@
 // ============================================================================
-// EDITOR POSIZIONE - Dashboard Rilievi v8.67
+// EDITOR POSIZIONE - Dashboard Rilievi
 // ============================================================================
-// Permette modifica completa di una posizione dalla Dashboard
-// Usa OPZIONI_PRODOTTI da shared-database per le liste condivise
-// 🔧 v3.3.0: Re-render tab su campi trigger visibleIf (azienda, tipoAnta, fissaggio...)
+// Editor modale per posizioni — usato dalla Dashboard
+// 🆕 v3.3.0: UNIFICAZIONE COMPLETA
+//   - Tab prodotto: render-config-campi.js (stesso dell'App Rilievo)
+//   - Tab posizione/misure: CAMPI_POSIZIONE da campi-posizione.js (shared)
+//   - Eliminato EDITOR_FIELDS legacy per prodotti (~200 righe)
+//   - Eliminato bridge CAMPI_PRODOTTI→EDITOR_FIELDS (convertCampoToEditorField, etc.)
 // 🔧 v3.2.1: Fix opts.map crash — supporto campo.optionsGetter diretto + safety check
 // 🆕 v3.1.0: qta select 0-10 con zeroDisables, disattivazione prodotto, tab badge
 // 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
@@ -156,36 +159,70 @@ function getEsecuzioniDinCodici() {
 // CONFIGURAZIONE CAMPI PER OGNI TAB (usa OPZIONI_PRODOTTI unica fonte)
 // ============================================================================
 
-const EDITOR_FIELDS = {
+// ============================================================================
+// CAMPI POSIZIONE/MISURE — legge da CAMPI_POSIZIONE (shared-database)
+// Se non disponibile, fallback inline per compatibilità
+// ============================================================================
+
+function getFieldsForTab(tabName) {
+    // 🆕 v3.3.0: Usa CAMPI_POSIZIONE centralizzato se disponibile
+    if (typeof CAMPI_POSIZIONE !== 'undefined' && CAMPI_POSIZIONE[tabName]) {
+        return CAMPI_POSIZIONE[tabName].map(campo => {
+            const field = { ...campo };
+            // Converti options function → optionsGetter per il renderer dell'editor
+            if (field.options && typeof field.options === 'function') {
+                field.optionsGetter = () => ['', ...field.options()];
+                delete field.options;
+            }
+            // Converti select-custom → select (editor gestisce già allowCustom)
+            if (field.type === 'select-custom') field.type = 'select';
+            // Converti select-muro → select con opzioni da OPZIONI_MURO
+            if (field.type === 'select-muro') {
+                field.type = 'select';
+                field.optionsGetter = () => {
+                    if (typeof OPZIONI_MURO !== 'undefined' && OPZIONI_MURO[field.muroKey]) {
+                        return ['', ...OPZIONI_MURO[field.muroKey].map(o => 
+                            typeof o === 'object' ? `${o.value}|${o.label}` : o
+                        )];
+                    }
+                    // Fallback per tipoApertura
+                    if (field.muroKey === 'tipoApertura') return ['', 'F|F (Finestra)', 'PF|PF (Porta Finestra)'];
+                    return [''];
+                };
+            }
+            // Label: usa labelLong se presente (per il form dell'editor)
+            if (field.labelLong) field.label = `${field.key} - ${field.labelLong}`;
+            return field;
+        });
+    }
     
-    // TAB 1: Dati Posizione
+    // Fallback: se CAMPI_POSIZIONE non caricato
+    console.warn(`⚠️ CAMPI_POSIZIONE non disponibile per tab ${tabName}, uso fallback`);
+    return EDITOR_FIELDS_FALLBACK[tabName] || [];
+}
+
+// Fallback minimo se campi-posizione.js non caricato
+const EDITOR_FIELDS_FALLBACK = {
     posizione: [
         { key: 'name', label: 'Nome Posizione', type: 'text', placeholder: 'Pos. 1' },
         { key: 'ambiente', label: 'Ambiente', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AMBIENTI', ['Sala', 'Soggiorno', 'Cucina', 'Camera', 'Stanza', 'Cameretta', 'Matrimoniale', 'Disimpegno', 'Studio', 'Ufficio', 'Bagno1', 'Bagno2', 'Ripostiglio', 'Lavanderia', 'Scala', 'Cantina', 'Garage', 'Mansarda', 'Terrazzo', 'Balcone', 'Corridoio', 'Ingresso'])] },
+          optionsGetter: () => ['', 'Sala', 'Soggiorno', 'Cucina', 'Camera', 'Bagno', 'Studio'] },
         { key: 'piano', label: 'Piano', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('PIANI', ['Interrato', 'Seminterrato', 'Piano Terra', 'Rialzato', 'Primo Piano', 'Secondo Piano', 'Terzo Piano', 'Quarto Piano', 'Quinto Piano', 'Mansarda', 'Sottotetto'])] },
-        // quantità posizione RIMOSSA: 1 posizione = 1 punto fisico, qta solo sui prodotti
+          optionsGetter: () => ['', 'Interrato', 'Piano Terra', 'Primo Piano', 'Secondo Piano'] },
         { key: 'tipoposizione', label: 'Tipo Posizione', type: 'radio', 
           options: [
-            { value: 'finestra', label: '🪟 Finestra', desc: 'Infissi, persiane, tapparelle...' },
-            { value: 'ingresso', label: '🚪 Ingresso', desc: 'Portoncino o Blindata' },
-            { value: 'porta_interna', label: '🚪 Porta Interna', desc: 'FerreroLegno, Flessya' },
-            { value: 'tenda_bracci', label: '☀️ Tenda', desc: 'Tende da sole Gibus' }
+            { value: 'finestra', label: '🪟 Finestra' },
+            { value: 'ingresso', label: '🚪 Ingresso' },
+            { value: 'porta_interna', label: '🚪 Porta Interna' },
+            { value: 'tenda_bracci', label: '☀️ Tenda' }
           ] },
-        { key: 'note', label: 'Note Posizione', type: 'textarea', placeholder: 'Note generali...' }
+        { key: 'note', label: 'Note', type: 'textarea' }
     ],
-    
-    // TAB 2: Misure
     misure: [
-        { key: 'LI', label: 'LI - Luce Interna', type: 'number', unit: 'mm' },
-        { key: 'HI', label: 'HI - Altezza Interna', type: 'number', unit: 'mm' },
-        { key: 'LF', label: 'LF - Luce Foro', type: 'number', unit: 'mm' },
-        { key: 'HF', label: 'HF - Altezza Foro', type: 'number', unit: 'mm' },
         { key: 'LVT', label: 'LVT - Luce Vano Tapparella', type: 'number', unit: 'mm' },
         { key: 'HVT', label: 'HVT - Altezza Vano Tapparella', type: 'number', unit: 'mm' },
-        { key: 'LS', label: 'LS - Luce Strutturale', type: 'number', unit: 'mm' },
-        { key: 'HS', label: 'HS - Altezza Strutturale', type: 'number', unit: 'mm' },
+        { key: 'LF', label: 'LF - Luce Foro', type: 'number', unit: 'mm' },
+        { key: 'HF', label: 'HF - Altezza Foro', type: 'number', unit: 'mm' },
         { key: 'TMV', label: 'TMV - Traverso Medio Verticale', type: 'number', unit: 'mm' },
         { key: 'HMT', label: 'HMT - Altezza Montante', type: 'number', unit: 'mm' },
         { key: 'L4', label: 'L4', type: 'number', unit: 'mm' },
@@ -193,22 +230,7 @@ const EDITOR_FIELDS = {
         { key: 'DeltaINT', label: 'Delta INT', type: 'number', unit: 'mm' },
         { key: 'DeltaEST', label: 'Delta EST', type: 'number', unit: 'mm' }
     ]
-    
-    // ═══════════════════════════════════════════════════════════════════════
-    // 🆕 v3.3.0: Tab prodotto (infisso, persiana, tapparella, etc.)
-    // ora renderizzati da render-config-campi.js (unificato con App Rilievo)
-    // EDITOR_FIELDS per prodotti ELIMINATO — unica fonte: CAMPI_PRODOTTI
-    // ═══════════════════════════════════════════════════════════════════════
 };
-
-// ============================================================================
-// CAMPI POSIZIONE/MISURE (unici tab gestiti dall'editor direttamente)
-// I tab prodotto sono renderizzati da render-config-campi.js (unificato)
-// ============================================================================
-
-function getFieldsForTab(tabName) {
-    return EDITOR_FIELDS[tabName] || [];
-}
 
 let editorState = {
     isOpen: false,
