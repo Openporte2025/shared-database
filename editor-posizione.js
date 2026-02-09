@@ -160,77 +160,28 @@ function getEsecuzioniDinCodici() {
 // ============================================================================
 
 // ============================================================================
-// CAMPI POSIZIONE/MISURE — legge da CAMPI_POSIZIONE (shared-database)
-// Se non disponibile, fallback inline per compatibilità
+// CAMPI POSIZIONE/MISURE — legge da CAMPI_PRODOTTI.posizione/.misure (shared)
 // ============================================================================
 
 function getFieldsForTab(tabName) {
-    // 🆕 v3.3.0: Usa CAMPI_POSIZIONE centralizzato se disponibile
-    if (typeof CAMPI_POSIZIONE !== 'undefined' && CAMPI_POSIZIONE[tabName]) {
-        return CAMPI_POSIZIONE[tabName].map(campo => {
+    // 🆕 v3.3.0: Usa CAMPI_PRODOTTI.posizione/.misure se disponibile
+    if (typeof CAMPI_PRODOTTI !== 'undefined' && CAMPI_PRODOTTI[tabName] && Array.isArray(CAMPI_PRODOTTI[tabName])) {
+        return CAMPI_PRODOTTI[tabName].map(campo => {
             const field = { ...campo };
             // Converti options function → optionsGetter per il renderer dell'editor
             if (field.options && typeof field.options === 'function') {
                 field.optionsGetter = () => ['', ...field.options()];
-                delete field.options;
-            }
-            // Converti select-custom → select (editor gestisce già allowCustom)
-            if (field.type === 'select-custom') field.type = 'select';
-            // Converti select-muro → select con opzioni da OPZIONI_MURO
-            if (field.type === 'select-muro') {
                 field.type = 'select';
-                field.optionsGetter = () => {
-                    if (typeof OPZIONI_MURO !== 'undefined' && OPZIONI_MURO[field.muroKey]) {
-                        return ['', ...OPZIONI_MURO[field.muroKey].map(o => 
-                            typeof o === 'object' ? `${o.value}|${o.label}` : o
-                        )];
-                    }
-                    // Fallback per tipoApertura
-                    if (field.muroKey === 'tipoApertura') return ['', 'F|F (Finestra)', 'PF|PF (Porta Finestra)'];
-                    return [''];
-                };
             }
-            // Label: usa labelLong se presente (per il form dell'editor)
+            // Label estesa per misure nell'editor
             if (field.labelLong) field.label = `${field.key} - ${field.labelLong}`;
             return field;
         });
     }
     
-    // Fallback: se CAMPI_POSIZIONE non caricato
-    console.warn(`⚠️ CAMPI_POSIZIONE non disponibile per tab ${tabName}, uso fallback`);
-    return EDITOR_FIELDS_FALLBACK[tabName] || [];
+    console.warn(`⚠️ CAMPI_PRODOTTI.${tabName} non disponibile`);
+    return [];
 }
-
-// Fallback minimo se campi-posizione.js non caricato
-const EDITOR_FIELDS_FALLBACK = {
-    posizione: [
-        { key: 'name', label: 'Nome Posizione', type: 'text', placeholder: 'Pos. 1' },
-        { key: 'ambiente', label: 'Ambiente', type: 'select', 
-          optionsGetter: () => ['', 'Sala', 'Soggiorno', 'Cucina', 'Camera', 'Bagno', 'Studio'] },
-        { key: 'piano', label: 'Piano', type: 'select', 
-          optionsGetter: () => ['', 'Interrato', 'Piano Terra', 'Primo Piano', 'Secondo Piano'] },
-        { key: 'tipoposizione', label: 'Tipo Posizione', type: 'radio', 
-          options: [
-            { value: 'finestra', label: '🪟 Finestra' },
-            { value: 'ingresso', label: '🚪 Ingresso' },
-            { value: 'porta_interna', label: '🚪 Porta Interna' },
-            { value: 'tenda_bracci', label: '☀️ Tenda' }
-          ] },
-        { key: 'note', label: 'Note', type: 'textarea' }
-    ],
-    misure: [
-        { key: 'LVT', label: 'LVT - Luce Vano Tapparella', type: 'number', unit: 'mm' },
-        { key: 'HVT', label: 'HVT - Altezza Vano Tapparella', type: 'number', unit: 'mm' },
-        { key: 'LF', label: 'LF - Luce Foro', type: 'number', unit: 'mm' },
-        { key: 'HF', label: 'HF - Altezza Foro', type: 'number', unit: 'mm' },
-        { key: 'TMV', label: 'TMV - Traverso Medio Verticale', type: 'number', unit: 'mm' },
-        { key: 'HMT', label: 'HMT - Altezza Montante', type: 'number', unit: 'mm' },
-        { key: 'L4', label: 'L4', type: 'number', unit: 'mm' },
-        { key: 'H4', label: 'H4', type: 'number', unit: 'mm' },
-        { key: 'DeltaINT', label: 'Delta INT', type: 'number', unit: 'mm' },
-        { key: 'DeltaEST', label: 'Delta EST', type: 'number', unit: 'mm' }
-    ]
-};
 
 let editorState = {
     isOpen: false,
