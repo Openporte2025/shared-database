@@ -514,350 +514,262 @@ window.FINDOOR_TAGLI_PER_TELAIO = {
     '707': ['318'], '967': ['128', '110', '115', '100', '120', '125', '130', '140', '179X', '179N'],
     'Z62': ['128', '110', '179N'], 'Z91': ['128', '110', '179N']
 };
-
-// 🆕 v5.742: LISTA COMPLETA TELAI FIN-WINDOW (listino EUR 2025/10 pag.11-24)
 // ════════════════════════════════════════════════════════════════════════════════
 // 🆕 v2.0.0: TELAI FIN-Window COMPLETI da listino EUR 2025/10
 // ════════════════════════════════════════════════════════════════════════════════
-// Fonte: PDF "Listino prezzi finestre e porte-finestre FIN-Window Ottobre 2025"
-// Formato stringa: "CODICE - DESCRIZIONE" (il codice viene estratto con split(' - ')[0])
+// CONVENZIONE ETICHETTE: ESTERNO / INTERNO (come si vede dal cantiere)
+// Finstral nel listino scrive INTERNO-ESTERNO, noi mostriamo EST/INT
 //
-// LOGICA CODICI (da pag.10 listino):
-//   Il codice è la combinazione dei componenti dall'interno all'esterno.
-//   Prefisso 9 = alluminio interno | F = filo muro | A = apertura esterno
-//   Suffisso N = rivestimento ALU std | N5 = ALU sottile | X = ALU alto | M = medio | K = listello
+// LOGICA CODICI FINSTRAL (pag.10):
+//   "Il codice d'ordine è la combinazione dei componenti dall'interno all'esterno"
+//   961 = PVC(int)-PVC(est) base | +N/N5/X/M = + rivestimento ALU esterno
+//   F861 = Filo muro INT, PVC est | 9F861 = Filo muro INT, ALU est
+//   D/H = Legno interno | G = Legno esterno
+//   Prefisso 9 = Alluminio int (su profili con legno/alu)
+//   F961/F962/F964/F965/F923 = Filo muro (soglia ribassata perimetrale)
+//   A+numero = apertura verso esterno
 // ════════════════════════════════════════════════════════════════════════════════
 
 window.FINWINDOW_TELAI_OPTIONS = [
     // ──── 961: Forma L 77mm ────
     '961 - PVC/PVC 77mm (base)',
-    '961N - PVC/ALU 77mm',
-    '961N5 - PVC/ALU 77mm prof.sottile',
-    '961X - PVC/ALU 77mm (solo lat/sup)',
+    '961N - Alluminio/PVC 77mm',
+    '961N5 - Alluminio/PVC 77mm prof.sottile',
+    '961X - Alluminio/PVC 77mm (solo lat/sup)',
     'F961 - PVC/PVC 77mm filo muro',
-    // ──── ..861: 77mm con interno variabile ────
-    '861 - PVC/PVC 77mm (riv.est.)',
-    '861N - PVC/ALU 77mm (riv.est.)',
-    '861N5 - PVC/ALU 77mm prof.sottile (riv.est.)',
-    '861X - PVC/ALU 77mm (riv.est. lat/sup)',
-    'F861 - PVC/PVC 77mm filo muro (riv.est.)',
-    'A861 - ALU/PVC 77mm',
-    '9A861 - ALU/ALU 77mm',
-    'D861 - LEGNO/PVC 77mm',
-    '9D861 - LEGNO/ALU 77mm',
-    'H861 - LEGNO/PVC 77mm sottile',
-    '9H861 - LEGNO/ALU 77mm sottile',
-    '9F861 - ALU/PVC 77mm filo muro',
-    // ──── 962: Forma L 84mm ────
+    // ──── ..861: 77mm interno variabile ────
+    '861N - Alluminio/PVC 77mm (riv.est.)',
+    '861N5 - Alluminio/PVC 77mm prof.sottile (riv.est.)',
+    '861X - Alluminio/PVC 77mm (riv.est. lat/sup)',
+    'A861 - PVC/Alluminio 77mm',
+    '9A861 - Alluminio/Alluminio 77mm',
+    'D861 - PVC/Legno 77mm',
+    'H861 - PVC/Legno 77mm sottile',
+    '9D861 - Alluminio/Legno 77mm',
+    '9H861 - Alluminio/Legno 77mm sottile',
+    'F861 - PVC/PVC 77mm filo muro',
+    '9F861 - Alluminio/PVC 77mm filo muro',
+    'G861 - Legno/PVC 77mm',
+    '9G861 - Legno/Alluminio 77mm',
+    // ──── 962/862: 84mm ────
     '962 - PVC/PVC 84mm',
-    '962N - PVC/ALU 84mm',
-    '962N5 - PVC/ALU 84mm prof.sottile',
-    '962X - PVC/ALU 84mm (solo lat/sup)',
+    '962N - Alluminio/PVC 84mm',
+    '962N5 - Alluminio/PVC 84mm prof.sottile',
+    '962X - Alluminio/PVC 84mm (solo lat/sup)',
     'F962 - PVC/PVC 84mm filo muro',
-    // ──── ..862: 84mm con interno variabile ────
-    '862 - PVC/PVC 84mm (riv.est.)',
-    '862N - PVC/ALU 84mm (riv.est.)',
-    '862N5 - PVC/ALU 84mm prof.sottile (riv.est.)',
-    '862X - PVC/ALU 84mm (riv.est. lat/sup)',
-    'B862 - LEGNO/PVC 84mm',
-    '9B862 - LEGNO/ALU 84mm',
-    'H862 - LEGNO/PVC 84mm sottile',
-    '9H862 - LEGNO/ALU 84mm sottile',
-    // ──── 963: Forma L 104mm ────
+    '862N - Alluminio/PVC 84mm (riv.est.)',
+    '862N5 - Alluminio/PVC 84mm prof.sottile (riv.est.)',
+    '862X - Alluminio/PVC 84mm (riv.est. lat/sup)',
+    'B862 - PVC/Legno 84mm',
+    '9B862 - Alluminio/Legno 84mm',
+    'H862 - PVC/Legno 84mm sottile',
+    '9H862 - Alluminio/Legno 84mm sottile',
+    'G862 - Legno/PVC 84mm',
+    '9G862 - Legno/Alluminio 84mm',
+    // ──── 963: 104mm ────
     '963 - PVC/PVC 104mm',
-    '963N - PVC/ALU 104mm',
-    '963N5 - PVC/ALU 104mm prof.sottile',
-    '963X - PVC/ALU 104mm (solo lat/sup)',
-    // ──── 964: Forma Z 54mm ────
+    '963N - Alluminio/PVC 104mm',
+    '963N5 - Alluminio/PVC 104mm prof.sottile',
+    '963X - Alluminio/PVC 104mm (solo lat/sup)',
+    // ──── 964/864: 54mm ────
     '964 - PVC/PVC 54mm',
-    '964N - PVC/ALU 54mm',
-    '964N5 - PVC/ALU 54mm prof.sottile',
-    '964M - PVC/ALU 54mm medio',
-    '964X - PVC/ALU 54mm (solo lat/sup)',
+    '964N - Alluminio/PVC 54mm',
+    '964N5 - Alluminio/PVC 54mm prof.sottile',
+    '964M - Alluminio/PVC 54mm medio',
+    '964X - Alluminio/PVC 54mm (solo lat/sup)',
     'F964 - PVC/PVC 54mm filo muro',
-    // ──── ..864: 54mm con interno variabile ────
-    '864 - PVC/PVC 54mm (riv.est.)',
-    '864N - PVC/ALU 54mm (riv.est.)',
-    '864N5 - PVC/ALU 54mm prof.sottile (riv.est.)',
-    '864M - PVC/ALU 54mm medio (riv.est.)',
-    '864X - PVC/ALU 54mm (riv.est. lat/sup)',
-    'C864 - ALU/PVC 54mm',
-    '9C864 - ALU/ALU 54mm',
-    'D864 - LEGNO/PVC 54mm',
-    '9D864 - LEGNO/ALU 54mm',
-    'E864 - LEGNO/PVC 54mm massello',
-    '9E864 - LEGNO/ALU 54mm massello',
-    'G864 - LEGNO/PVC 54mm (alt.)',
-    '9G864 - LEGNO/ALU 54mm (alt.)',
-    // ──── 965/966/967: Step-line / Door ────
+    '864N - Alluminio/PVC 54mm (riv.est.)',
+    '864N5 - Alluminio/PVC 54mm prof.sottile (riv.est.)',
+    '864M - Alluminio/PVC 54mm medio (riv.est.)',
+    '864X - Alluminio/PVC 54mm (riv.est. lat/sup)',
+    'C864 - PVC/Alluminio 54mm',
+    '9C864 - Alluminio/Alluminio 54mm',
+    'D864 - PVC/Legno 54mm',
+    '9D864 - Alluminio/Legno 54mm',
+    'E864 - PVC/Legno 54mm massello',
+    '9E864 - Alluminio/Legno 54mm massello',
+    'G864 - Legno/PVC 54mm',
+    '9G864 - Legno/Alluminio 54mm',
+    // ──── 965/966/967: Step-line ────
     '965 - PVC/PVC 62mm Step-line',
-    '965N - PVC/ALU 62mm Step-line',
-    '965N5 - PVC/ALU 62mm Step-line prof.sottile',
-    '965M - PVC/ALU 62mm Step-line medio',
-    '965X - PVC/ALU 62mm Step-line (solo lat/sup)',
+    '965N - Alluminio/PVC 62mm Step-line',
+    '965N5 - Alluminio/PVC 62mm Step-line prof.sottile',
+    '965M - Alluminio/PVC 62mm Step-line medio',
+    '965X - Alluminio/PVC 62mm Step-line (solo lat/sup)',
     'F965 - PVC/PVC 62mm Step-line filo muro',
     '966 - PVC/PVC 62mm Step-line (riv.est.)',
-    '966N - PVC/ALU 62mm Step-line (riv.est.)',
-    '966N5 - PVC/ALU 62mm Step-line prof.sottile (riv.est.)',
-    '966M - PVC/ALU 62mm Step-line medio (riv.est.)',
-    '966X - PVC/ALU 62mm Step-line (riv.est. lat/sup)',
+    '966N - Alluminio/PVC 62mm Step-line (riv.est.)',
+    '966N5 - Alluminio/PVC 62mm Step-line prof.sottile (riv.est.)',
+    '966M - Alluminio/PVC 62mm Step-line medio (riv.est.)',
+    '966X - Alluminio/PVC 62mm Step-line (riv.est. lat/sup)',
     '967 - PVC/PVC 62mm Step-line Door',
-    '967N - PVC/ALU 62mm Step-line Door',
-    '967N5 - PVC/ALU 62mm Step-line Door prof.sottile',
-    '967X - PVC/ALU 62mm Step-line Door (solo lat/sup)',
-    // ──── 924: 90mm speciale ────
+    '967N - Alluminio/PVC 62mm Step-line Door',
+    '967N5 - Alluminio/PVC 62mm Step-line Door prof.sottile',
+    '967X - Alluminio/PVC 62mm Step-line Door (solo lat/sup)',
+    // ──── 924/991/951: Speciali ────
     '924 - PVC/PVC 90mm spec.',
-    '924N - PVC/ALU 90mm spec.',
-    '924N5 - PVC/ALU 90mm spec. prof.sottile',
+    '924N - Alluminio/PVC 90mm spec.',
+    '924N5 - Alluminio/PVC 90mm spec. prof.sottile',
     '924K - PVC/PVC 90mm con listello',
-    '924K5 - PVC/ALU 90mm con listello',
+    '924K5 - Alluminio/PVC 90mm con listello',
     'F924 - PVC/PVC 90mm spec. filo muro',
-    // ──── 991: 44mm Forma Z ────
     '991 - PVC/PVC 44mm Z',
-    '991N - PVC/ALU 44mm Z',
-    '991N5 - PVC/ALU 44mm Z prof.sottile',
+    '991N - Alluminio/PVC 44mm Z',
+    '991N5 - Alluminio/PVC 44mm Z prof.sottile',
     '991K - PVC/PVC 44mm Z con listello',
-    '991K5 - PVC/ALU 44mm Z con listello',
+    '991K5 - Alluminio/PVC 44mm Z con listello',
     'F991 - PVC/PVC 44mm Z filo muro',
-    // ──── 951: 124mm Forma Z ────
     '951 - PVC/PVC 124mm Z',
     '951K - PVC/PVC 124mm Z con listello',
-    '951K5 - PVC/ALU 124mm Z con listello',
+    '951K5 - Alluminio/PVC 124mm Z con listello',
     '951L - PVC/PVC 124mm Z listello largo',
     'F951 - PVC/PVC 124mm Z filo muro',
     // ──── 923/129: Nova-line Plus ────
     '923 - PVC/PVC Nova-line Plus',
-    '923N - PVC/ALU Nova-line Plus',
+    '923N - Alluminio/PVC Nova-line Plus',
     '923K - PVC/PVC Nova-line Plus con listello',
     'F923 - PVC/PVC Nova-line Plus filo muro',
     '129 - PVC/PVC Nova-line Plus (alt.)',
-    '129N - PVC/ALU Nova-line Plus (alt.)',
+    '129N - Alluminio/PVC Nova-line Plus (alt.)',
     '129K - PVC/PVC Nova-line Plus con listello (alt.)',
-    // ──── Z62/Z82/Z91: Forme Z speciali ────
+    // ──── Z62/Z82/Z91 ────
     'Z62 - PVC/PVC Forma Z 77mm',
-    'Z62X - PVC/ALU Forma Z 77mm (solo lat/sup)',
+    'Z62X - Alluminio/PVC Forma Z 77mm (solo lat/sup)',
     'Z82 - PVC/PVC Forma Z 84mm',
-    'Z82N - PVC/ALU Forma Z 84mm',
-    'Z82X - PVC/ALU Forma Z 84mm (solo lat/sup)',
+    'Z82N - Alluminio/PVC Forma Z 84mm',
+    'Z82X - Alluminio/PVC Forma Z 84mm (solo lat/sup)',
     'Z91 - PVC/PVC Forma Z 90mm',
-    'AZ62 - ALU/PVC Forma Z 77mm',
-    'AZ63 - ALU/PVC Forma Z 90mm',
-    'AZ630K - ALU/PVC Forma Z 90mm (ap.est.)',
-    'NAZ63 - PVC/ALU Forma Z 90mm',
-    'XAZ63 - PVC/ALU Forma Z 90mm (solo lat/sup)',
+    'AZ62 - PVC/Alluminio Forma Z 77mm',
+    'AZ63 - PVC/Alluminio Forma Z 90mm',
+    'AZ630K - PVC/Alluminio Forma Z 90mm (ap.est.)',
+    'NAZ63 - Alluminio/PVC Forma Z 90mm',
+    'XAZ63 - Alluminio/PVC Forma Z 90mm (solo lat/sup)',
     // ──── Apertura verso esterno ────
     'A961 - PVC/PVC 77mm ap.esterno',
     'A962 - PVC/PVC 84mm ap.esterno',
     'A924 - PVC/PVC 90mm ap.esterno',
     'A991 - PVC/PVC 44mm ap.esterno',
     'A951 - PVC/PVC 124mm ap.esterno',
-    'A9610K - ALU/PVC 77mm ap.esterno',
-    'A9620K - ALU/PVC 84mm ap.esterno',
-    'A9240K - ALU/PVC 90mm ap.esterno',
-    'A9910K - ALU/PVC 44mm ap.esterno',
-    'A9510K - ALU/PVC 124mm ap.esterno'
+    'A9610K - PVC/Alluminio 77mm ap.esterno',
+    'A9620K - PVC/Alluminio 84mm ap.esterno',
+    'A9240K - PVC/Alluminio 90mm ap.esterno',
+    'A9910K - PVC/Alluminio 44mm ap.esterno',
+    'A9510K - PVC/Alluminio 124mm ap.esterno'
 ];
 
 // ════════════════════════════════════════════════════════════════════════════════
-// 🆕 v2.0.0: TELAI FILTRATI PER COMBINAZIONE MATERIALE (6 categorie)
+// TELAI FILTRATI PER COMBINAZIONE MATERIALE (8 categorie EST/INT)
 // ════════════════════════════════════════════════════════════════════════════════
-// Chiave = "INTERNO/ESTERNO" come da finitura selezionata nell'app
-// Ogni telaio appare SOLO nella categoria corretta
-// ════════════════════════════════════════════════════════════════════════════════
-
 window.FINWINDOW_TELAI_PER_MATERIALE = {
-    // ──── PVC interno / PVC esterno ────
+    // 1. PVC est / PVC int
     'PVC/PVC': [
-        '961 - PVC/PVC 77mm (base)',
-        'F961 - PVC/PVC 77mm filo muro',
-        '861 - PVC/PVC 77mm (riv.est.)',
-        'F861 - PVC/PVC 77mm filo muro (riv.est.)',
-        '962 - PVC/PVC 84mm',
-        'F962 - PVC/PVC 84mm filo muro',
-        '862 - PVC/PVC 84mm (riv.est.)',
+        '961 - PVC/PVC 77mm (base)', 'F961 - PVC/PVC 77mm filo muro', 'F861 - PVC/PVC 77mm filo muro',
+        '962 - PVC/PVC 84mm', 'F962 - PVC/PVC 84mm filo muro',
         '963 - PVC/PVC 104mm',
-        '964 - PVC/PVC 54mm',
-        'F964 - PVC/PVC 54mm filo muro',
-        '864 - PVC/PVC 54mm (riv.est.)',
-        '965 - PVC/PVC 62mm Step-line',
-        'F965 - PVC/PVC 62mm Step-line filo muro',
-        '966 - PVC/PVC 62mm Step-line (riv.est.)',
-        '967 - PVC/PVC 62mm Step-line Door',
-        '924 - PVC/PVC 90mm spec.',
-        '924K - PVC/PVC 90mm con listello',
-        'F924 - PVC/PVC 90mm spec. filo muro',
-        '991 - PVC/PVC 44mm Z',
-        '991K - PVC/PVC 44mm Z con listello',
-        'F991 - PVC/PVC 44mm Z filo muro',
-        '951 - PVC/PVC 124mm Z',
-        '951K - PVC/PVC 124mm Z con listello',
-        '951L - PVC/PVC 124mm Z listello largo',
-        'F951 - PVC/PVC 124mm Z filo muro',
-        '923 - PVC/PVC Nova-line Plus',
-        '923K - PVC/PVC Nova-line Plus con listello',
-        'F923 - PVC/PVC Nova-line Plus filo muro',
-        '129 - PVC/PVC Nova-line Plus (alt.)',
-        '129K - PVC/PVC Nova-line Plus con listello (alt.)',
-        'Z62 - PVC/PVC Forma Z 77mm',
-        'Z82 - PVC/PVC Forma Z 84mm',
-        'Z91 - PVC/PVC Forma Z 90mm',
-        'A961 - PVC/PVC 77mm ap.esterno',
-        'A962 - PVC/PVC 84mm ap.esterno',
-        'A924 - PVC/PVC 90mm ap.esterno',
-        'A991 - PVC/PVC 44mm ap.esterno',
-        'A951 - PVC/PVC 124mm ap.esterno'
+        '964 - PVC/PVC 54mm', 'F964 - PVC/PVC 54mm filo muro',
+        '965 - PVC/PVC 62mm Step-line', 'F965 - PVC/PVC 62mm Step-line filo muro',
+        '966 - PVC/PVC 62mm Step-line (riv.est.)', '967 - PVC/PVC 62mm Step-line Door',
+        '924 - PVC/PVC 90mm spec.', '924K - PVC/PVC 90mm con listello', 'F924 - PVC/PVC 90mm spec. filo muro',
+        '991 - PVC/PVC 44mm Z', '991K - PVC/PVC 44mm Z con listello', 'F991 - PVC/PVC 44mm Z filo muro',
+        '951 - PVC/PVC 124mm Z', '951K - PVC/PVC 124mm Z con listello', '951L - PVC/PVC 124mm Z listello largo', 'F951 - PVC/PVC 124mm Z filo muro',
+        '923 - PVC/PVC Nova-line Plus', '923K - PVC/PVC Nova-line Plus con listello', 'F923 - PVC/PVC Nova-line Plus filo muro',
+        '129 - PVC/PVC Nova-line Plus (alt.)', '129K - PVC/PVC Nova-line Plus con listello (alt.)',
+        'Z62 - PVC/PVC Forma Z 77mm', 'Z82 - PVC/PVC Forma Z 84mm', 'Z91 - PVC/PVC Forma Z 90mm',
+        'A961 - PVC/PVC 77mm ap.esterno', 'A962 - PVC/PVC 84mm ap.esterno',
+        'A924 - PVC/PVC 90mm ap.esterno', 'A991 - PVC/PVC 44mm ap.esterno', 'A951 - PVC/PVC 124mm ap.esterno'
     ],
-
-    // ──── PVC interno / ALU esterno ────
-    'PVC/ALU': [
-        '961N - PVC/ALU 77mm',
-        '961N5 - PVC/ALU 77mm prof.sottile',
-        '961X - PVC/ALU 77mm (solo lat/sup)',
-        '861N - PVC/ALU 77mm (riv.est.)',
-        '861N5 - PVC/ALU 77mm prof.sottile (riv.est.)',
-        '861X - PVC/ALU 77mm (riv.est. lat/sup)',
-        '962N - PVC/ALU 84mm',
-        '962N5 - PVC/ALU 84mm prof.sottile',
-        '962X - PVC/ALU 84mm (solo lat/sup)',
-        '862N - PVC/ALU 84mm (riv.est.)',
-        '862N5 - PVC/ALU 84mm prof.sottile (riv.est.)',
-        '862X - PVC/ALU 84mm (riv.est. lat/sup)',
-        '963N - PVC/ALU 104mm',
-        '963N5 - PVC/ALU 104mm prof.sottile',
-        '963X - PVC/ALU 104mm (solo lat/sup)',
-        '964N - PVC/ALU 54mm',
-        '964N5 - PVC/ALU 54mm prof.sottile',
-        '964M - PVC/ALU 54mm medio',
-        '964X - PVC/ALU 54mm (solo lat/sup)',
-        '864N - PVC/ALU 54mm (riv.est.)',
-        '864N5 - PVC/ALU 54mm prof.sottile (riv.est.)',
-        '864M - PVC/ALU 54mm medio (riv.est.)',
-        '864X - PVC/ALU 54mm (riv.est. lat/sup)',
-        '965N - PVC/ALU 62mm Step-line',
-        '965N5 - PVC/ALU 62mm Step-line prof.sottile',
-        '965M - PVC/ALU 62mm Step-line medio',
-        '965X - PVC/ALU 62mm Step-line (solo lat/sup)',
-        '966N - PVC/ALU 62mm Step-line (riv.est.)',
-        '966N5 - PVC/ALU 62mm Step-line prof.sottile (riv.est.)',
-        '966M - PVC/ALU 62mm Step-line medio (riv.est.)',
-        '966X - PVC/ALU 62mm Step-line (riv.est. lat/sup)',
-        '967N - PVC/ALU 62mm Step-line Door',
-        '967N5 - PVC/ALU 62mm Step-line Door prof.sottile',
-        '967X - PVC/ALU 62mm Step-line Door (solo lat/sup)',
-        '924N - PVC/ALU 90mm spec.',
-        '924N5 - PVC/ALU 90mm spec. prof.sottile',
-        '924K5 - PVC/ALU 90mm con listello',
-        '991N - PVC/ALU 44mm Z',
-        '991N5 - PVC/ALU 44mm Z prof.sottile',
-        '991K5 - PVC/ALU 44mm Z con listello',
-        '951K5 - PVC/ALU 124mm Z con listello',
-        '923N - PVC/ALU Nova-line Plus',
-        '129N - PVC/ALU Nova-line Plus (alt.)',
-        'Z62X - PVC/ALU Forma Z 77mm (solo lat/sup)',
-        'Z82N - PVC/ALU Forma Z 84mm',
-        'Z82X - PVC/ALU Forma Z 84mm (solo lat/sup)',
-        'NAZ63 - PVC/ALU Forma Z 90mm',
-        'XAZ63 - PVC/ALU Forma Z 90mm (solo lat/sup)'
+    // 2. PVC est / Legno int (Finstral: Legno-PVC → D,H,B,E)
+    'PVC/Legno': [
+        'D861 - PVC/Legno 77mm', 'H861 - PVC/Legno 77mm sottile',
+        'B862 - PVC/Legno 84mm', 'H862 - PVC/Legno 84mm sottile',
+        'D864 - PVC/Legno 54mm', 'E864 - PVC/Legno 54mm massello'
     ],
-
-    // ──── ALU interno / PVC esterno ────
-    'ALU/PVC': [
-        'A861 - ALU/PVC 77mm',
-        'C864 - ALU/PVC 54mm',
-        'AZ62 - ALU/PVC Forma Z 77mm',
-        'AZ63 - ALU/PVC Forma Z 90mm',
-        'AZ630K - ALU/PVC Forma Z 90mm (ap.est.)',
-        '9F861 - ALU/PVC 77mm filo muro',
-        'A9610K - ALU/PVC 77mm ap.esterno',
-        'A9620K - ALU/PVC 84mm ap.esterno',
-        'A9240K - ALU/PVC 90mm ap.esterno',
-        'A9910K - ALU/PVC 44mm ap.esterno',
-        'A9510K - ALU/PVC 124mm ap.esterno'
+    // 3. PVC est / Alluminio int (Finstral: Alluminio-PVC → A,C + AZ)
+    'PVC/Alluminio': [
+        'A861 - PVC/Alluminio 77mm', 'C864 - PVC/Alluminio 54mm',
+        'AZ62 - PVC/Alluminio Forma Z 77mm', 'AZ63 - PVC/Alluminio Forma Z 90mm',
+        'AZ630K - PVC/Alluminio Forma Z 90mm (ap.est.)',
+        'A9610K - PVC/Alluminio 77mm ap.esterno', 'A9620K - PVC/Alluminio 84mm ap.esterno',
+        'A9240K - PVC/Alluminio 90mm ap.esterno', 'A9910K - PVC/Alluminio 44mm ap.esterno',
+        'A9510K - PVC/Alluminio 124mm ap.esterno'
     ],
-
-    // ──── ALU interno / ALU esterno ────
-    'ALU/ALU': [
-        '9A861 - ALU/ALU 77mm',
-        '9C864 - ALU/ALU 54mm'
+    // 4. Alluminio est / PVC int (Finstral: PVC int + riv.ALU est → N,N5,X,M)
+    'Alluminio/PVC': [
+        '961N - Alluminio/PVC 77mm', '961N5 - Alluminio/PVC 77mm prof.sottile', '961X - Alluminio/PVC 77mm (solo lat/sup)',
+        '9F861 - Alluminio/PVC 77mm filo muro',
+        '861N - Alluminio/PVC 77mm (riv.est.)', '861N5 - Alluminio/PVC 77mm prof.sottile (riv.est.)', '861X - Alluminio/PVC 77mm (riv.est. lat/sup)',
+        '962N - Alluminio/PVC 84mm', '962N5 - Alluminio/PVC 84mm prof.sottile', '962X - Alluminio/PVC 84mm (solo lat/sup)',
+        '862N - Alluminio/PVC 84mm (riv.est.)', '862N5 - Alluminio/PVC 84mm prof.sottile (riv.est.)', '862X - Alluminio/PVC 84mm (riv.est. lat/sup)',
+        '963N - Alluminio/PVC 104mm', '963N5 - Alluminio/PVC 104mm prof.sottile', '963X - Alluminio/PVC 104mm (solo lat/sup)',
+        '964N - Alluminio/PVC 54mm', '964N5 - Alluminio/PVC 54mm prof.sottile', '964M - Alluminio/PVC 54mm medio', '964X - Alluminio/PVC 54mm (solo lat/sup)',
+        '864N - Alluminio/PVC 54mm (riv.est.)', '864N5 - Alluminio/PVC 54mm prof.sottile (riv.est.)', '864M - Alluminio/PVC 54mm medio (riv.est.)', '864X - Alluminio/PVC 54mm (riv.est. lat/sup)',
+        '965N - Alluminio/PVC 62mm Step-line', '965N5 - Alluminio/PVC 62mm Step-line prof.sottile', '965M - Alluminio/PVC 62mm Step-line medio', '965X - Alluminio/PVC 62mm Step-line (solo lat/sup)',
+        '966N - Alluminio/PVC 62mm Step-line (riv.est.)', '966N5 - Alluminio/PVC 62mm Step-line prof.sottile (riv.est.)', '966M - Alluminio/PVC 62mm Step-line medio (riv.est.)', '966X - Alluminio/PVC 62mm Step-line (riv.est. lat/sup)',
+        '967N - Alluminio/PVC 62mm Step-line Door', '967N5 - Alluminio/PVC 62mm Step-line Door prof.sottile', '967X - Alluminio/PVC 62mm Step-line Door (solo lat/sup)',
+        '924N - Alluminio/PVC 90mm spec.', '924N5 - Alluminio/PVC 90mm spec. prof.sottile', '924K5 - Alluminio/PVC 90mm con listello',
+        '991N - Alluminio/PVC 44mm Z', '991N5 - Alluminio/PVC 44mm Z prof.sottile', '991K5 - Alluminio/PVC 44mm Z con listello',
+        '951K5 - Alluminio/PVC 124mm Z con listello',
+        '923N - Alluminio/PVC Nova-line Plus', '129N - Alluminio/PVC Nova-line Plus (alt.)',
+        'Z62X - Alluminio/PVC Forma Z 77mm (solo lat/sup)', 'Z82N - Alluminio/PVC Forma Z 84mm', 'Z82X - Alluminio/PVC Forma Z 84mm (solo lat/sup)',
+        'NAZ63 - Alluminio/PVC Forma Z 90mm', 'XAZ63 - Alluminio/PVC Forma Z 90mm (solo lat/sup)'
     ],
-
-    // ──── LEGNO interno / PVC esterno ────
-    'LEGNO/PVC': [
-        'D861 - LEGNO/PVC 77mm',
-        'H861 - LEGNO/PVC 77mm sottile',
-        'B862 - LEGNO/PVC 84mm',
-        'H862 - LEGNO/PVC 84mm sottile',
-        'D864 - LEGNO/PVC 54mm',
-        'E864 - LEGNO/PVC 54mm massello',
-        'G864 - LEGNO/PVC 54mm (alt.)',
-        'G861 - LEGNO/PVC 77mm (PVC-LEGNO)',
-        'G862 - LEGNO/PVC 84mm (PVC-LEGNO)'
+    // 5. Alluminio est / Legno int (Finstral: Legno int + ALU est → prefisso 9 su D,H,B,E)
+    'Alluminio/Legno': [
+        '9D861 - Alluminio/Legno 77mm', '9H861 - Alluminio/Legno 77mm sottile',
+        '9B862 - Alluminio/Legno 84mm', '9H862 - Alluminio/Legno 84mm sottile',
+        '9D864 - Alluminio/Legno 54mm', '9E864 - Alluminio/Legno 54mm massello', '9G864 - Alluminio/Legno 54mm (alt.)'
     ],
-
-    // ──── LEGNO interno / ALU esterno ────
-    'LEGNO/ALU': [
-        '9D861 - LEGNO/ALU 77mm',
-        '9H861 - LEGNO/ALU 77mm sottile',
-        '9B862 - LEGNO/ALU 84mm',
-        '9H862 - LEGNO/ALU 84mm sottile',
-        '9D864 - LEGNO/ALU 54mm',
-        '9E864 - LEGNO/ALU 54mm massello',
-        '9G864 - LEGNO/ALU 54mm (alt.)',
-        '9G861 - LEGNO/ALU 77mm',
-        '9G862 - LEGNO/ALU 84mm'
+    // 6. Alluminio est / Alluminio int (Finstral: prefisso 9 su A,C)
+    'Alluminio/Alluminio': [
+        '9A861 - Alluminio/Alluminio 77mm', '9C864 - Alluminio/Alluminio 54mm'
+    ],
+    // 7. Legno est / PVC int (Finstral: PVC-Legno → G)
+    'Legno/PVC': [
+        'G861 - Legno/PVC 77mm', 'G862 - Legno/PVC 84mm', 'G864 - Legno/PVC 54mm'
+    ],
+    // 8. Legno est / Alluminio int (Finstral: Alluminio-Legno → 9G)
+    'Legno/Alluminio': [
+        '9G861 - Legno/Alluminio 77mm', '9G862 - Legno/Alluminio 84mm'
     ]
 };
 
-// Alias retrocompatibili per vecchio codice
+// Alias retrocompatibili (v1.x)
 window.FINWINDOW_TELAI_PER_MATERIALE['PVC'] = window.FINWINDOW_TELAI_PER_MATERIALE['PVC/PVC'];
-window.FINWINDOW_TELAI_PER_MATERIALE['PVC-ALU'] = window.FINWINDOW_TELAI_PER_MATERIALE['PVC/ALU'];
-window.FINWINDOW_TELAI_PER_MATERIALE['ALU'] = window.FINWINDOW_TELAI_PER_MATERIALE['ALU/ALU'];
-window.FINWINDOW_TELAI_PER_MATERIALE['LEGNO'] = window.FINWINDOW_TELAI_PER_MATERIALE['LEGNO/PVC'];
+window.FINWINDOW_TELAI_PER_MATERIALE['PVC-ALU'] = window.FINWINDOW_TELAI_PER_MATERIALE['Alluminio/PVC'];
+window.FINWINDOW_TELAI_PER_MATERIALE['ALU'] = window.FINWINDOW_TELAI_PER_MATERIALE['Alluminio/Alluminio'];
+window.FINWINDOW_TELAI_PER_MATERIALE['LEGNO'] = window.FINWINDOW_TELAI_PER_MATERIALE['PVC/Legno'];
 
 // ════════════════════════════════════════════════════════════════════════════════
 // FUNZIONI FILTRO TELAI (v2.0.0)
 // ════════════════════════════════════════════════════════════════════════════════
-
-// Ottiene telai filtrati per stringa materiale generico
 window.getTelaiPerMateriale = function(materiale) {
     if (!materiale) return FINWINDOW_TELAI_OPTIONS;
-    
-    const mat = materiale.toUpperCase();
-    if (mat.includes('LEGNO') && mat.includes('ALU')) return FINWINDOW_TELAI_PER_MATERIALE['LEGNO/ALU'];
-    if (mat.includes('LEGNO')) return FINWINDOW_TELAI_PER_MATERIALE['LEGNO/PVC'];
-    if (mat === 'ALU/ALU' || mat === 'ALLUMINIO/ALLUMINIO') return FINWINDOW_TELAI_PER_MATERIALE['ALU/ALU'];
-    if (mat === 'ALU/PVC' || mat === 'ALLUMINIO/PVC') return FINWINDOW_TELAI_PER_MATERIALE['ALU/PVC'];
-    if (mat.includes('ALU') || mat.includes('PVC-ALU') || mat.includes('PVC/ALU')) return FINWINDOW_TELAI_PER_MATERIALE['PVC/ALU'];
-    if (mat === 'PVC' || mat === 'PVC/PVC') return FINWINDOW_TELAI_PER_MATERIALE['PVC/PVC'];
-    
-    return FINWINDOW_TELAI_OPTIONS; // Default: tutti
+    const mat = materiale.trim();
+    if (FINWINDOW_TELAI_PER_MATERIALE[mat]) return FINWINDOW_TELAI_PER_MATERIALE[mat];
+    for (const key of Object.keys(FINWINDOW_TELAI_PER_MATERIALE)) {
+        if (key.toUpperCase() === mat.toUpperCase()) return FINWINDOW_TELAI_PER_MATERIALE[key];
+    }
+    return FINWINDOW_TELAI_OPTIONS;
 }
 
-// 🆕 v2.0.0: Determina chiave materiale da finiture INT/EST
+// Chiave EST/INT da finiture app (pvc, alluminio, legno, ceramica)
 window.getTipoTelaioDaFinitura = function(finituraInt, finituraEst) {
-    const fInt = (finituraInt || 'pvc').toLowerCase();
-    const fEst = (finituraEst || 'pvc').toLowerCase();
-    
-    // 6 combinazioni reali da listino EUR 2025/10
-    if (fInt === 'legno' && fEst === 'alluminio') return 'LEGNO/ALU';
-    if (fInt === 'legno' && fEst === 'pvc')       return 'LEGNO/PVC';
-    if (fInt === 'legno')                          return 'LEGNO/PVC'; // default legno
-    if (fInt === 'alluminio' && fEst === 'alluminio') return 'ALU/ALU';
-    if (fInt === 'alluminio' && fEst === 'pvc')       return 'ALU/PVC';
-    if (fInt === 'alluminio')                          return 'ALU/PVC'; // default alu int
-    if (fInt === 'pvc' && fEst === 'alluminio')       return 'PVC/ALU';
-    
-    return 'PVC/PVC'; // Default
+    const mapMat = (f) => {
+        const fl = (f || 'pvc').toLowerCase();
+        if (fl === 'alluminio') return 'Alluminio';
+        if (fl === 'legno') return 'Legno';
+        return 'PVC';
+    };
+    const key = mapMat(finituraEst) + '/' + mapMat(finituraInt);
+    return FINWINDOW_TELAI_PER_MATERIALE[key] ? key : 'PVC/PVC';
 }
 
-// Ottiene telai filtrati per progetto (usa finiture da config)
 window.getTelaiPerProgetto = function(project) {
     const finituraInt = project?.configInfissi?.finituraInt || 'pvc';
     const finituraEst = project?.configInfissi?.finituraEst || 'pvc';
     const tipoTelaio = getTipoTelaioDaFinitura(finituraInt, finituraEst);
     return FINWINDOW_TELAI_PER_MATERIALE[tipoTelaio] || FINWINDOW_TELAI_OPTIONS;
 }
-
 // 🆕 v5.743: SISTEMA 3 STATI PER FLAG RILIEVO
 // Stati: null = non verificato (○), 'si' = presente (✓), 'no' = assente (✗)
 window.ciclaStatoRilievo = function(currentValue) {
