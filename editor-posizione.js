@@ -192,374 +192,22 @@ const EDITOR_FIELDS = {
         { key: 'H4', label: 'H4', type: 'number', unit: 'mm' },
         { key: 'DeltaINT', label: 'Delta INT', type: 'number', unit: 'mm' },
         { key: 'DeltaEST', label: 'Delta EST', type: 'number', unit: 'mm' }
-    ],
-    
-    // TAB 3: Infisso
-    infisso: [
-        { key: 'qta', label: 'Quantità', type: 'number' },
-        { key: 'tipo', label: 'Tipo', type: 'select', 
-          optionsGetter: () => getOpt('TIPI_INFISSO', ['F1', 'F2', 'F3', 'PF1', 'PF2', 'PF3', 'FISSO']) },
-        { key: 'tipoInfissoAssociato', label: 'Tipo Infisso Associato', type: 'radio', 
-          options: [
-            { value: 'F', label: 'F (Finestra)' },
-            { value: 'PF', label: 'PF (Porta Finestra)' }
-          ] },
-        { key: 'codiceModello', label: 'Codice Modello', type: 'select', 
-          optionsGetter: () => getCodiciModelloInfisso() },
-        { key: 'azienda', label: 'Azienda', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AZIENDE_INFISSI', ['Finstral'])] },
-        { key: 'telaio', label: 'Telaio', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('FINWINDOW_TELAI_OPTIONS', [])] },
-        { key: 'finituraInt', label: 'Finitura Interna', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('FINITURE_INFISSO', ['pvc', 'alluminio', 'legno'])] },
-        { key: 'finituraEst', label: 'Finitura Esterna', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('FINITURE_INFISSO', ['pvc', 'alluminio', 'legno'])] },
-        { key: 'coloreInt', label: 'Colore Interno', type: 'select',
-          optionsGetter: () => ['', ...getFinstralOpt('coloriPVC', []), ...getFinstralOpt('coloriAlluminio', [])] },
-        { key: 'coloreEst', label: 'Colore Esterno', type: 'select',
-          optionsGetter: () => ['', ...getFinstralOpt('coloriPVC', []), ...getFinstralOpt('coloriAlluminio', [])] },
-        { key: 'tipoAnta', label: 'Tipo Anta', type: 'select', 
-          optionsGetter: () => ['', ...getFinstralOpt('tipiAnta', ['Classic-line', 'Step-line', 'Slim-line', 'Nova-line'])] },
-        { key: 'vetro', label: 'Vetro', type: 'select', 
-          optionsGetter: () => ['', ...getFinstralOpt('vetri', ['Doppio 33.1v-18-33.1v', 'Triplo 33.1v-14-4-14-33.1v', 'Doppio satinato', 'Triplo satinato'])] },
-        { key: 'allarme', label: 'Allarme', type: 'select', 
-          optionsGetter: () => getOpt('OPZIONI_ALLARME', ['', 'Predisposizione', 'Completo']) },
-        { key: 'cerniere', label: 'Cerniere', type: 'select', 
-          options: ['', 'a-vista', 'nascoste', 'a-scomparsa'] },
-        { key: 'maniglia', label: 'Maniglia', type: 'select', 
-          optionsGetter: () => ['', ...getManiglieFinstral()] },
-        { key: 'coloreManiglia', label: 'Colore Maniglia', type: 'select', 
-          optionsGetter: () => ['', ...getColoriManigliaFinstral()] },
-        { key: 'tagliTelaio', label: 'Tagli Telaio', type: 'text' },
-        // Ferramenta (usa codici estratti)
-        { key: 'ferramenta1', label: 'Ferramenta 1', type: 'select', 
-          optionsGetter: () => getFerramentaCodici() },
-        { key: 'lato1', label: 'Lato 1', type: 'select', 
-          optionsGetter: () => getLatiDinCodici() },
-        { key: 'esecuzione1', label: 'Esecuzione 1', type: 'select', 
-          optionsGetter: () => getEsecuzioniDinCodici() },
-        { key: 'ferramenta2', label: 'Ferramenta 2', type: 'select', 
-          optionsGetter: () => getFerramentaCodici() },
-        { key: 'lato2', label: 'Lato 2', type: 'select', 
-          optionsGetter: () => getLatiDinCodici() },
-        { key: 'esecuzione2', label: 'Esecuzione 2', type: 'select', 
-          optionsGetter: () => getEsecuzioniDinCodici() },
-        { key: 'ferramenta3', label: 'Ferramenta 3', type: 'select', 
-          optionsGetter: () => getFerramentaCodici() },
-        { key: 'lato3', label: 'Lato 3', type: 'select', 
-          optionsGetter: () => getLatiDinCodici() },
-        { key: 'esecuzione3', label: 'Esecuzione 3', type: 'select', 
-          optionsGetter: () => getEsecuzioniDinCodici() },
-        // Bancale
-        { key: 'bancaleTipo', label: 'Bancale Tipo', type: 'select', 
-          options: ['', 'PVC', 'LEGNO_95000', 'LEGNO_96000'] },
-        { key: 'bancaleBordo', label: 'Bancale Bordo', type: 'text' },
-        { key: 'bancaleProfondita', label: 'Bancale Profondità', type: 'number', unit: 'mm' },
-        // Anta Twin
-        { key: 'antaTwinTipo', label: 'Anta Twin Tipo', type: 'select', 
-          options: ['', 'veneziana', 'plissettata'] },
-        { key: 'antaTwinModello', label: 'Anta Twin Modello', type: 'select', 
-          options: ['', 'SLIM_TWIN', 'SLIM_TWIN_90', 'SLIM_CRISTAL_TWIN', 'SLIM_CRISTAL_TWIN_90', 'NOVA_TWIN', 'NOVA_TWIN_90'] },
-        { key: 'antaTwinColore', label: 'Anta Twin Colore', type: 'text' },
-        { key: 'antaTwinComando', label: 'Anta Twin Comando', type: 'select', 
-          options: ['27', '30', '30-1'] },
-        // BRM calcolati
-        { key: 'BRM_L', label: 'BRM Larghezza', type: 'number', unit: 'mm', readonly: false },
-        { key: 'BRM_H', label: 'BRM Altezza', type: 'number', unit: 'mm', readonly: false },
-        { key: 'note', label: 'Note Infisso', type: 'textarea' }
-    ],
-    
-    // TAB 4: Persiana
-    persiana: [
-        { key: 'qta', label: 'Quantità', type: 'number' },
-        { key: 'azienda', label: 'Azienda', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AZIENDE_PERSIANE', ['P. Persiane'])] },
-        { key: 'modello', label: 'Modello', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('MODELLI_PERSIANA', [])] },
-        { key: 'tipo', label: 'Tipo', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('TIPI_PERSIANA', ['F1', 'F2', 'PF1', 'PF2'])] },
-        { key: 'apertura', label: 'Apertura', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('APERTURE_PERSIANA', [])] },
-        { key: 'fissaggio', label: 'Fissaggio', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('FISSAGGI_PERSIANA', ['Muro', 'Telaio'])] },
-        { key: 'colorePersiana', label: 'Colore Persiana', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('COLORI_PERSIANA', [])] },
-        { key: 'coloreTelaio', label: 'Colore Telaio', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('COLORI_PERSIANA', [])] },
-        { key: 'battuta', label: 'Battuta', type: 'select', 
-          options: ['', '3 LATI', '4 LATI'] },
-        { key: 'tipoStecca', label: 'Tipo Stecca', type: 'text' },
-        { key: 'asolato', label: 'Asolato', type: 'text' },
-        { key: 'BRM_L', label: 'BRM Larghezza', type: 'number', unit: 'mm' },
-        { key: 'BRM_H', label: 'BRM Altezza', type: 'number', unit: 'mm' },
-        { key: 'note', label: 'Note Persiana', type: 'textarea' }
-    ],
-    
-    // TAB 5: Tapparella
-    tapparella: [
-        { key: 'serveTapparella', label: 'Serve Tapparella', type: 'checkbox' },
-        { key: 'serveMotore', label: 'Serve Motore', type: 'checkbox' },
-        { key: 'serveAccessori', label: 'Serve Accessori', type: 'checkbox' },
-        { key: 'qta', label: 'Quantità', type: 'number' },
-        { key: 'azienda', label: 'Azienda', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AZIENDE_TAPPARELLE', ['Plasticino'])] },
-        { key: 'modello', label: 'Modello', type: 'select', 
-          optionsGetter: () => {
-              const modelli = getOpt('MODELLI_TAPPARELLE', {})['Plasticino'] || [];
-              return ['', ...modelli.map(m => `${m.cod} - ${m.nome}`)];
-          }},
-        { key: 'tipo', label: 'Tipo', type: 'text' },
-        { key: 'colore', label: 'Colore', type: 'select', 
-          optionsGetter: () => {
-              const colori = getOpt('COLORI_TAPPARELLE_PLASTICINO', {});
-              let all = [''];
-              Object.values(colori).forEach(arr => all = all.concat(arr));
-              return all;
-          }},
-        { key: 'guida', label: 'Guida', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('GUIDE_PLASTICINO', [])] },
-        { key: 'coloreGuida', label: 'Colore Guida', type: 'select', 
-          optionsGetter: () => {
-              if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getColoriGuide) {
-                  return ['', ...OPZIONI_PRODOTTI.getColoriGuide()];
-              }
-              return ['', 'Argento', 'Bronzo', 'Bianco'];
-          }},
-        { key: 'manualeMot', label: 'Manuale/Motorizzata', type: 'select', 
-          options: ['', 'Manuale', 'Motorizzata'] },
-        { key: 'motoreAzienda', label: 'Motore Azienda', type: 'text', placeholder: 'Somfy' },
-        { key: 'motoreModello', label: 'Motore Modello', type: 'select', 
-          optionsGetter: () => {
-              const motori = getOpt('MOTORI_SOMFY', []);
-              return ['', ...motori.map(m => m.modello)];
-          }},
-        { key: 'BRM_L', label: 'BRM Larghezza', type: 'number', unit: 'mm' },
-        { key: 'BRM_H', label: 'BRM Altezza', type: 'number', unit: 'mm' },
-        { key: 'note', label: 'Note Tapparella', type: 'textarea' }
-    ],
-    
-    // TAB 6: Zanzariera
-    zanzariera: [
-        { key: 'qta', label: 'Quantità', type: 'number' },
-        { key: 'azienda', label: 'Azienda', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AZIENDE_ZANZARIERE', ['Palagina'])] },
-        { key: 'linea', label: 'Linea', type: 'text' },
-        { key: 'modello', label: 'Modello', type: 'text' },
-        { key: 'fasciaColore', label: 'Fascia Colore', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('FASCE_COLORE_PALAGINA', [])] },
-        { key: 'coloreTelaio', label: 'Colore Telaio', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('COLORI_TELAIO_PALAGINA', [])] },
-        { key: 'tipoRete', label: 'Tipo Rete', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('TIPI_RETE_PALAGINA', [])] },
-        { key: 'colorePlastica', label: 'Colore Plastica', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('COLORI_PLASTICA_PALAGINA', [])] },
-        { key: 'BRM_L', label: 'BRM Larghezza', type: 'number', unit: 'mm' },
-        { key: 'BRM_H', label: 'BRM Altezza', type: 'number', unit: 'mm' },
-        { key: 'note', label: 'Note Zanzariera', type: 'textarea' }
-    ],
-    
-    // TAB 7: Cassonetto
-    cassonetto: [
-        { key: 'qta', label: 'Quantità', type: 'number' },
-        { key: 'azienda', label: 'Azienda', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('AZIENDE_CASSONETTI', ['Finstral'])] },
-        { key: 'tipo', label: 'Tipo', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('TIPI_CASSONETTO', [])] },
-        { key: 'codiceCass', label: 'Codice Cassonetto', type: 'select', 
-          optionsGetter: () => {
-              const pvc = getOpt('CODICI_CASSONETTO_PVC', []);
-              const legno = getOpt('CODICI_CASSONETTO_LEGNO', []);
-              return ['', ...pvc.map(c => c.nome), ...legno.map(c => c.nome)];
-          }},
-        { key: 'materialeCass', label: 'Materiale', type: 'select', 
-          optionsGetter: () => ['', ...getOpt('MATERIALI_CASSONETTO', ['PVC', 'Legno'])] },
-        { key: 'gruppoColoreCass', label: 'Gruppo Colore', type: 'text' },
-        { key: 'coloreCass', label: 'Colore Cassonetto', type: 'text' },
-        { key: 'codiceIsolamento', label: 'Codice Isolamento', type: 'text' },
-        { key: 'LS', label: 'LS', type: 'number', unit: 'mm' },
-        { key: 'SRSX', label: 'SRSX', type: 'number', unit: 'mm' },
-        { key: 'SRDX', label: 'SRDX', type: 'number', unit: 'mm' },
-        { key: 'ZSX', label: 'ZSX', type: 'number', unit: 'mm' },
-        { key: 'ZDX', label: 'ZDX', type: 'number', unit: 'mm' },
-        { key: 'HCASS', label: 'HCASS', type: 'number', unit: 'mm' },
-        { key: 'B', label: 'B', type: 'number', unit: 'mm' },
-        { key: 'C', label: 'C', type: 'number', unit: 'mm' },
-        { key: 'BSuperiore', label: 'B Superiore', type: 'number', unit: 'mm' },
-        { key: 'BRM_L', label: 'BRM Larghezza', type: 'number', unit: 'mm' },
-        { key: 'BRM_H', label: 'BRM Altezza', type: 'number', unit: 'mm' },
-        { key: 'note', label: 'Note Cassonetto', type: 'textarea' }
     ]
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🆕 v3.3.0: Tab prodotto (infisso, persiana, tapparella, etc.)
+    // ora renderizzati da render-config-campi.js (unificato con App Rilievo)
+    // EDITOR_FIELDS per prodotti ELIMINATO — unica fonte: CAMPI_PRODOTTI
+    // ═══════════════════════════════════════════════════════════════════════
 };
 
 // ============================================================================
-// 🆕 v3.0.0: BRIDGE CAMPI_PRODOTTI → EDITOR_FIELDS
-// ============================================================================
-// Converte definizioni centralizzate in formato editor-compatibile
-// Per prodotti: combina configGlobale + posizione (l'editor modifica tutto)
-// Per posizione/misure: usa EDITOR_FIELDS originale
+// CAMPI POSIZIONE/MISURE (unici tab gestiti dall'editor direttamente)
+// I tab prodotto sono renderizzati da render-config-campi.js (unificato)
 // ============================================================================
 
-function getFieldsForTab(tabName, posData) {
-    // Tab non-prodotto: usa EDITOR_FIELDS diretto
-    if (tabName === 'posizione' || tabName === 'misure') {
-        return EDITOR_FIELDS[tabName] || [];
-    }
-    
-    // Se CAMPI_PRODOTTI non disponibile, fallback a EDITOR_FIELDS legacy
-    if (typeof CAMPI_PRODOTTI === 'undefined' || !CAMPI_PRODOTTI[tabName]) {
-        console.warn(`⚠️ Editor v3.0: CAMPI_PRODOTTI.${tabName} non trovato, uso legacy`);
-        return EDITOR_FIELDS[tabName] || [];
-    }
-    
-    const def = CAMPI_PRODOTTI[tabName];
-    const allCampi = def.configGlobale.concat(def.posizione);
-    
-    // Deduplica per key (posizione vince su globale)
-    const seen = new Set();
-    const deduped = [];
-    // Prima posizione (hanno priorità), poi globale
-    for (const campo of [...def.posizione, ...def.configGlobale]) {
-        if (!seen.has(campo.key)) {
-            seen.add(campo.key);
-            deduped.push(campo);
-        }
-    }
-    
-    // Ordine logico: qta prima, poi campi globali, poi posizione specifici, note alla fine
-    const ordered = sortFieldsLogically(deduped, def);
-    
-    // Converti a formato EDITOR_FIELDS
-    return ordered.map(campo => convertCampoToEditorField(campo, tabName, posData));
-}
-
-/**
- * Ordina campi: qta → globali → posizione specifici → BRM → note
- */
-function sortFieldsLogically(fields, def) {
-    const globalKeys = new Set(def.configGlobale.map(f => f.key));
-    const posKeys = new Set(def.posizione.map(f => f.key));
-    
-    const qta = fields.filter(f => f.key === 'qta');
-    const globals = fields.filter(f => f.key !== 'qta' && f.key !== 'note' && 
-                                       !f.key.startsWith('BRM_') && globalKeys.has(f.key));
-    const posSpecific = fields.filter(f => f.key !== 'qta' && f.key !== 'note' && 
-                                           !f.key.startsWith('BRM_') && !globalKeys.has(f.key) && posKeys.has(f.key));
-    const brm = fields.filter(f => f.key.startsWith('BRM_'));
-    const notes = fields.filter(f => f.key === 'note');
-    
-    return [...qta, ...globals, ...posSpecific, ...brm, ...notes];
-}
-
-/**
- * Converte un campo CAMPI_PRODOTTI in formato EDITOR_FIELDS
- */
-function convertCampoToEditorField(campo, tabName, posData) {
-    const editorField = {
-        key: campo.key,
-        label: campo.label,
-        type: campo.type === 'select-dynamic' ? 'select' : 
-              campo.type === 'multi-checkbox' ? 'text' :  // fallback semplice
-              campo.type,
-        unit: campo.unit || undefined,
-        readonly: campo.readonly || false,
-        zeroDisables: campo.zeroDisables || false,
-        _visibleIf: campo.visibleIf || null,
-        _group: campo.group || null
-    };
-    
-    // Converti opzioni
-    if (campo.type === 'radio') {
-        editorField.options = typeof campo.options === 'function' ? campo.options() : (campo.options || []);
-    } else if (campo.type === 'select' || campo.type === 'select-dynamic') {
-        // 🆕 v3.3.0: Salva customGetter nel campo convertito per debug
-        editorField._customGetter = campo.customGetter || null;
-        
-        editorField.optionsGetter = () => {
-            let opts = [];
-            
-            // 🔧 v3.2.0: Se il campo ha già un optionsGetter, usalo direttamente
-            if (campo.optionsGetter) {
-                opts = campo.optionsGetter();
-                if (!Array.isArray(opts)) opts = [];
-                return opts;
-            }
-            
-            // 🆕 v3.3.0: Supporto customGetter (es. getTelaiPerProgetto)
-            if (campo.customGetter) {
-                const fnName = campo.customGetter;
-                const project = typeof currentData !== 'undefined' ? currentData : 
-                               (typeof projectData !== 'undefined' ? projectData : null);
-                try {
-                    const fn = new Function('return typeof ' + fnName + ' === "function" ? ' + fnName + ' : null')();
-                    if (fn && project) {
-                        opts = fn(project) || [];
-                        console.log('🔧 customGetter ' + fnName + ' →', opts.length, 'opzioni');
-                        if (Array.isArray(opts) && opts.length > 0) return ['', ...opts];
-                    }
-                } catch(e) {
-                    console.warn('⚠️ customGetter error:', fnName, e);
-                }
-            }
-            
-            // Opzioni statiche
-            if (campo.options) {
-                opts = typeof campo.options === 'function' ? campo.options() : campo.options;
-            }
-            // Opzioni dinamiche con dependsOn
-            else if (campo.optionsFn && campo.dependsOn) {
-                const depVal = typeof campo.dependsOn === 'string'
-                    ? posData?.[campo.dependsOn]
-                    : campo.dependsOn.map(d => posData?.[d]);
-                opts = campo.optionsFn(depVal) || [];
-            }
-            // optionsFlat (per campi con optgroups)  
-            else if (opts.length === 0 && campo.optionsFlat) {
-                opts = typeof campo.optionsFlat === 'function' ? campo.optionsFlat() : campo.optionsFlat;
-            }
-            
-            // Normalizza: se sono oggetti {value, label}, converti a stringhe per compatibilità
-            if (!Array.isArray(opts)) opts = [];
-            const normalized = opts.map(o => {
-                if (typeof o === 'object' && o !== null && o.value !== undefined) {
-                    return `${o.value}|${o.label}`;  // formato value|label
-                }
-                return o;
-            });
-            
-            // Aggiungi opzione vuota se non presente
-            if (normalized.length > 0 && normalized[0] !== '') {
-                return ['', ...normalized];
-            }
-            return normalized;
-        };
-        
-        // Optgroups support
-        if (campo.optgroups) {
-            editorField._hasOptgroups = true;
-            editorField._optgroups = campo.optgroups;
-        }
-    } else if (campo.type === 'checkbox') {
-        // checkbox: già supportato dal renderer
-    } else if (campo.type === 'textarea') {
-        // textarea: già supportato
-    }
-    // text e number: già supportati
-    
-    return editorField;
-}
-
-/**
- * 🆕 v3.0.0: Valuta visibleIf per un campo nell'editor
- * Ritorna true se il campo deve essere visibile
- */
-function isEditorFieldVisible(field, productData) {
-    if (!field._visibleIf) return true;
-    if (!productData) return true;
-    
-    return CAMPI_PRODOTTI.isVisible(
-        { visibleIf: field._visibleIf }, 
-        productData
-    );
+function getFieldsForTab(tabName) {
+    return EDITOR_FIELDS[tabName] || [];
 }
 
 let editorState = {
@@ -796,6 +444,53 @@ function injectEditorModal() {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 1rem;
+    }
+    
+    /* 🆕 v3.3.0: Adatta campi render-config-campi.js al grid dell'editor */
+    #editorTabContent .editor-fields-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem 1rem;
+        grid-column: 1 / -1;
+    }
+    
+    #editorTabContent .editor-fields-grid .mb-2,
+    #editorTabContent .editor-fields-grid > div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    
+    #editorTabContent .editor-fields-grid label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #475569;
+    }
+    
+    #editorTabContent .editor-fields-grid select,
+    #editorTabContent .editor-fields-grid input[type="text"],
+    #editorTabContent .editor-fields-grid input[type="number"] {
+        padding: 0.6rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        background: white;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    #editorTabContent .editor-fields-grid select:focus,
+    #editorTabContent .editor-fields-grid input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* Note su riga intera */
+    #editorTabContent .editor-fields-grid + .editor-field.full-width,
+    #editorTabContent > .editor-field.full-width {
+        grid-column: 1 / -1;
     }
     
     .editor-field {
@@ -1433,18 +1128,11 @@ function renderTabContent(tabName) {
     // FALLBACK: Renderer legacy per posizione/misure e quando render-config-campi non disponibile
     // ═══════════════════════════════════════════════════════════════════════
     
-    // Renderizza campi - usa getFieldsForTab (ponte CAMPI_PRODOTTI)
-    const fields = getFieldsForTab(tabName, dataSource);
+    // Renderizza campi posizione/misure
+    const fields = getFieldsForTab(tabName);
     let html = '';
     
     fields.forEach(field => {
-        // 🆕 v3.0.0: Filtra campi non visibili (visibleIf)
-        if (!isEditorFieldVisible(field, dataSource)) return;
-        
-        // 🆕 v3.1.0: Se prodotto disattivato (qta=0), mostra solo qta
-        const isQtaField = field.key === 'qta';
-        if (isDisabled && !isQtaField) return;
-        
         const value = dataSource[field.key] !== undefined ? dataSource[field.key] : '';
         const fieldClass = field.type === 'textarea' ? 'editor-field full-width' : 
                           field.type === 'checkbox' ? 'editor-field editor-field-checkbox' : 
