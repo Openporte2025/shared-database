@@ -3,6 +3,7 @@
  * 📋 CAMPI PRODOTTI - Definizione centralizzata campi per tutti i prodotti
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.1.0 (09/02/2026): Aggiunti CAMPI_PRODOTTI.posizione e .misure (unificati App Rilievo + Dashboard)
  * v1.0.0 (05/02/2026): Creazione iniziale
  * 
  * SCOPO: UN file definisce i campi → entrambe le app lo leggono
@@ -599,6 +600,65 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 📍 POSIZIONE (dati posizione: nome, ambiente, piano, tipo)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    window.CAMPI_PRODOTTI.posizione = [
+        { key: 'name', label: 'Nome Posizione', type: 'text', placeholder: 'Pos. 1' },
+        { key: 'ambiente', label: 'Ambiente', type: 'select',
+          options: () => {
+              if (window.OPZIONI?.AMBIENTI) return window.OPZIONI.AMBIENTI;
+              return ['Sala', 'Soggiorno', 'Cucina', 'Camera', 'Stanza', 'Cameretta', 
+                      'Matrimoniale', 'Disimpegno', 'Studio', 'Ufficio', 'Bagno1', 'Bagno2',
+                      'Ripostiglio', 'Lavanderia', 'Scala', 'Cantina', 'Garage', 'Mansarda',
+                      'Terrazzo', 'Balcone', 'Corridoio', 'Ingresso'];
+          },
+          allowCustom: true, required: true
+        },
+        { key: 'piano', label: 'Piano', type: 'select',
+          options: () => {
+              if (window.OPZIONI?.PIANI) return window.OPZIONI.PIANI;
+              return ['Interrato', 'Seminterrato', 'Piano Terra', 'Rialzato', 
+                      'Primo Piano', 'Secondo Piano', 'Terzo Piano', 'Quarto Piano',
+                      'Quinto Piano', 'Mansarda', 'Sottotetto'];
+          },
+          allowCustom: true
+        },
+        { key: 'tipoposizione', label: 'Tipo Posizione', type: 'radio',
+          options: [
+              { value: 'finestra', label: '🪟 Finestra', desc: 'Infissi, persiane, tapparelle...' },
+              { value: 'ingresso', label: '🚪 Ingresso', desc: 'Portoncino o Blindata' },
+              { value: 'porta_interna', label: '🚪 Porta Interna', desc: 'FerreroLegno, Flessya' },
+              { value: 'tenda_bracci', label: '☀️ Tenda a Bracci', desc: 'Tende da sole Gibus' }
+          ],
+          default: 'finestra'
+        },
+        { key: 'note', label: 'Note Posizione', type: 'textarea', placeholder: 'Note generali...' }
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 📐 MISURE (misure posizione: LVT, HVT, LF, HF, TMV, HMT, L4, H4, Delta)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    window.CAMPI_PRODOTTI.misure = [
+        // Misure principali (grid 2x4 nell'App Rilievo)
+        { key: 'LVT', label: 'LVT', labelLong: 'Luce Vano Tapparella', type: 'number', unit: 'mm', controllable: true },
+        { key: 'HVT', label: 'HVT', labelLong: 'Altezza Vano Tapparella', type: 'number', unit: 'mm', controllable: true },
+        { key: 'LF',  label: 'LF',  labelLong: 'Luce Foro', type: 'number', unit: 'mm', controllable: true },
+        { key: 'HF',  label: 'HF',  labelLong: 'Altezza Foro', type: 'number', unit: 'mm', controllable: true },
+        { key: 'TMV', label: 'TMV', labelLong: 'Traverso Medio Verticale', type: 'number', unit: 'mm', controllable: true },
+        { key: 'HMT', label: 'HMT', labelLong: 'Altezza Montante', type: 'number', unit: 'mm', controllable: true },
+        { key: 'L4',  label: 'L4',  type: 'number', unit: 'mm' },
+        { key: 'H4',  label: 'H4',  type: 'number', unit: 'mm' },
+        // Delta
+        { key: 'DeltaINT', label: 'Delta INT', type: 'number', unit: 'mm' },
+        { key: 'DeltaEST', label: 'Delta EST', type: 'number', unit: 'mm' }
+    ];
+
+    // Helper: lista misure controllate (per validazione)
+    window.CAMPI_PRODOTTI.MISURE_CONTROLLATE = ['LVT', 'HVT', 'LF', 'HF', 'TMV', 'HMT'];
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 📊 STATISTICHE
     // ═══════════════════════════════════════════════════════════════════════════
     const stats = {};
@@ -609,8 +669,10 @@
                 posizione: val.posizione.length,
                 totale: val.configGlobale.length + val.posizione.length
             };
+        } else if (Array.isArray(val)) {
+            stats[key] = { campi: val.length };
         }
     }
-    console.log('✅ campi-prodotti.js v1.0.0 caricato', stats);
+    console.log('✅ campi-prodotti.js v1.1.0 caricato', stats);
 
 })();
