@@ -1,163 +1,24 @@
 // ============================================================================
-// EDITOR POSIZIONE - Dashboard Rilievi
+// EDITOR POSIZIONE v3.3.0
 // ============================================================================
 // Editor modale per posizioni — usato dalla Dashboard
 // 🆕 v3.3.0: UNIFICAZIONE COMPLETA
 //   - Tab prodotto: render-config-campi.js (stesso dell'App Rilievo)
-//   - Tab posizione/misure: CAMPI_POSIZIONE da campi-posizione.js (shared)
-//   - Eliminato EDITOR_FIELDS legacy per prodotti (~200 righe)
-//   - Eliminato bridge CAMPI_PRODOTTI→EDITOR_FIELDS (convertCampoToEditorField, etc.)
-// 🔧 v3.2.1: Fix opts.map crash — supporto campo.optionsGetter diretto + safety check
-// 🆕 v3.1.0: qta select 0-10 con zeroDisables, disattivazione prodotto, tab badge
-// 🆕 v3.0.0: Legge campi prodotto da CAMPI_PRODOTTI centralizzato
-//            Supporto visibleIf per mostrare/nascondere campi condizionali
-//            Supporto formato value|label per opzioni con etichette
-//            EDITOR_FIELDS mantenuto per posizione/misure, bridge per prodotti
-// v2.1.0: getOpt() legge da OPZIONI_PRODOTTI (unica fonte)
-// v2.0.0: Codici Modello COMPLETI (59) da OPZIONI_PRODOTTI centralizzato
-// v1.7.0: Integrazione FINSTRAL_OPZIONI centralizzate
-// v1.6.0: Tipo Posizione e Tipo Infisso Associato come radio buttons
+//   - Tab posizione/misure: CAMPI_PRODOTTI.posizione/.misure (shared)
+//   - Eliminato EDITOR_FIELDS legacy, _OPT_MAP, helper getOpt/getFinstral*
 // ============================================================================
 
 const EDITOR_VERSION = '3.3.0';
 
 console.log(`✏️ Editor Posizione v${EDITOR_VERSION} - Caricato`);
 
-// Verifica DATA_MANAGER disponibile
+// Verifica dipendenze
 if (typeof DATA_MANAGER === 'undefined') {
-    console.warn('⚠️ Editor: DATA_MANAGER non trovato! Assicurati di caricare data-manager.js PRIMA di editor-posizione.js');
+    console.warn('⚠️ Editor: DATA_MANAGER non trovato!');
 }
-
-// ============================================================================
-// HELPER: Ottiene opzioni da OPZIONI_PRODOTTI (unica fonte) con fallback
-// ============================================================================
-
-// 🆕 v2.1.0: Mapping chiavi legacy → percorsi OPZIONI_PRODOTTI
-const _OPT_MAP = (function() {
-    const P = window.OPZIONI_PRODOTTI;
-    if (!P) return {};
-    return {
-        // Aziende
-        AZIENDE_INFISSI: P.AZIENDE.infissi,
-        AZIENDE_PERSIANE: P.AZIENDE.persiane,
-        AZIENDE_TAPPARELLE: P.AZIENDE.tapparelle,
-        AZIENDE_ZANZARIERE: P.AZIENDE.zanzariere,
-        AZIENDE_CASSONETTI: P.AZIENDE.cassonetti,
-        // Infissi
-        FINITURE_INFISSO: P.infissi.finiture,
-        OPZIONI_ALLARME: ['', ...P.infissi.allarme],
-        MANIGLIE_FINSTRAL: P.infissi.maniglieFinstral.map(m => `${m.codice} - ${m.desc}`),
-        COLORI_MANIGLIA: P.infissi.coloriManiglia,
-        // Persiane
-        MODELLI_PERSIANA: P.persiane.modelli,
-        TIPI_PERSIANA: P.persiane.tipiDescrittivi,
-        APERTURE_PERSIANA: P.persiane.apertureDescrittive,
-        FISSAGGI_PERSIANA: P.persiane.fissaggi,
-        // 🔧 v3.2.1: Colori persiana (da COLORI_PERSIANE globale o PERSIANE_MODULE)
-        COLORI_PERSIANA: (function() {
-            if (typeof COLORI_PERSIANE !== 'undefined' && COLORI_PERSIANE.length > 0) return COLORI_PERSIANE;
-            if (typeof PERSIANE_MODULE !== 'undefined' && PERSIANE_MODULE.getColoriPerCategoria) {
-                var cats = PERSIANE_MODULE.getColoriPerCategoria();
-                var all = [];
-                Object.values(cats).forEach(function(arr) { all.push.apply(all, arr); });
-                return all;
-            }
-            return P.persiane?.colori || [];
-        })(),
-        // Tapparelle
-        MODELLI_TAPPARELLE: P.tapparelle.modelli,
-        COLORI_TAPPARELLE_PLASTICINO: P.tapparelle.colori,
-        GUIDE_PLASTICINO: P.tapparelle.guide,
-        COLORI_GUIDE_PLASTICINO: P.tapparelle.coloriGuide,
-        ACCESSORI_TAPPARELLA: P.tapparelle.accessoriManuali,
-        // Motori
-        MOTORI_SOMFY: P.motori.modelli,
-        ACCESSORI_MOTORE_SOMFY: P.motori.accessori,
-        COMANDI_SOMFY: P.motori.comandi,
-        // Zanzariere
-        LINEE_ZANZARIERE_PALAGINA: P.zanzariere.linee,
-        MODELLI_ZANZARIERE_PALAGINA: P.zanzariere.modelli,
-        FASCE_COLORE_PALAGINA: P.zanzariere.fasceColore,
-        COLORI_TELAIO_PALAGINA: P.zanzariere.coloriTelaio,
-        TIPI_RETE_PALAGINA: P.zanzariere.tipiRete,
-        // Cassonetti
-        TIPI_CASSONETTO: P.cassonetti.tipi,
-        MATERIALI_CASSONETTO: P.cassonetti.materiali,
-        CODICI_CASSONETTO_PVC: P.cassonetti.codiciPVC,
-        CODICI_CASSONETTO_LEGNO: P.cassonetti.codiciLegno,
-        GRUPPI_COLORE_CASSONETTO: P.cassonetti.gruppiColore
-    };
-})();
-
-function getOpt(key, fallback = []) {
-    // 1. OPZIONI_PRODOTTI (unica fonte prodotto)
-    if (_OPT_MAP[key] !== undefined) return _OPT_MAP[key];
-    // 2. OPZIONI (solo AMBIENTI + PIANI da opzioni-comuni.js)
-    if (typeof OPZIONI !== 'undefined' && OPZIONI[key]) return OPZIONI[key];
-    // 3. Fallback
-    return fallback;
+if (typeof CAMPI_PRODOTTI === 'undefined') {
+    console.warn('⚠️ Editor: CAMPI_PRODOTTI non trovato!');
 }
-
-// 🆕 v1.7.0: Helper per FINSTRAL_OPZIONI centralizzate
-function getFinstralOpt(key, fallback = []) {
-    if (typeof FINSTRAL_OPZIONI !== 'undefined' && FINSTRAL_OPZIONI[key]) {
-        return FINSTRAL_OPZIONI[key].map(item => item.nome || item.codice || item);
-    }
-    return fallback;
-}
-
-// 🆕 v1.7.0: Combina codice + nome per maniglie
-function getManiglieFinstral() {
-    if (typeof FINSTRAL_OPZIONI !== 'undefined' && FINSTRAL_OPZIONI.maniglie) {
-        return FINSTRAL_OPZIONI.maniglie.map(m => m.codice + ' - ' + m.nome);
-    }
-    return getOpt('MANIGLIE_FINSTRAL', ['7120 - Maniglia standard', '7121 - Maniglia con chiave']);
-}
-
-// 🆕 v1.7.0: Combina codice + nome per colori maniglia
-function getColoriManigliaFinstral() {
-    if (typeof FINSTRAL_OPZIONI !== 'undefined' && FINSTRAL_OPZIONI.coloriManiglia) {
-        return FINSTRAL_OPZIONI.coloriManiglia.map(c => c.codice + ' - ' + c.nome);
-    }
-    return getOpt('COLORI_MANIGLIA', ['79 - Argento', '01 - Bianco', '80 - Nero']);
-}
-
-// 🆕 v2.0.0: Codici Modello Infisso da OPZIONI_PRODOTTI (59 codici completi)
-function getCodiciModelloInfisso() {
-    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getCodiciModelloFlat) {
-        return OPZIONI_PRODOTTI.getCodiciModelloFlat();
-    }
-    console.warn('⚠️ Editor: OPZIONI_PRODOTTI non disponibile per codici modello!');
-    return ['', '101 - anta', '102 - fisso', '201 - 2 ante'];
-}
-
-// 🆕 v2.0.0: Ferramenta da OPZIONI_PRODOTTI (10 codici con gruppi)
-function getFerramentaCodici() {
-    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getFerramentaFlat) {
-        return OPZIONI_PRODOTTI.getFerramentaFlat();
-    }
-    return ['', '411 - A/R vista', '211 - A/R scomp.', '430 - Anta int.', '230 - Anta scomp.'];
-}
-
-// 🆕 v2.0.0: Lati DIN da OPZIONI_PRODOTTI
-function getLatiDinCodici() {
-    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getLatiDinFlat) {
-        return OPZIONI_PRODOTTI.getLatiDinFlat();
-    }
-    return ['', '-1 - SX (-1)', '-2 - DX (-2)'];
-}
-
-// 🆕 v2.0.0: Esecuzioni DIN da OPZIONI_PRODOTTI
-function getEsecuzioniDinCodici() {
-    if (typeof OPZIONI_PRODOTTI !== 'undefined' && OPZIONI_PRODOTTI.getEsecuzioniFlat) {
-        return OPZIONI_PRODOTTI.getEsecuzioniFlat();
-    }
-    return ['', '0 - Std', '3 - Perim+ang', '4 - Perim'];
-}
-
-// ============================================================================
-// CONFIGURAZIONE CAMPI PER OGNI TAB (usa OPZIONI_PRODOTTI unica fonte)
-// ============================================================================
 
 // ============================================================================
 // CAMPI POSIZIONE/MISURE — legge da CAMPI_PRODOTTI.posizione/.misure (shared)
