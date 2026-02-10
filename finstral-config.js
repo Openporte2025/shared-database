@@ -20,29 +20,48 @@
 window.CODICI_TAGLIO_PER_TELAIO = {
     // Telai forma L
     '961': ['127', '107', '163', '162', '164', '165', '5N', '179N'],
+    '861': ['127', '107', '163', '162', '164', '165', '5N', '179N'],  // = 961
     '962': ['127', '107', '161', '118', '163', '164', '165', '116', '167', '129', '132', '153', '5N', '179N', '172', '162', '166', '169'],
+    '862': ['127', '107', '161', '118', '163', '164', '165', '116', '167', '129', '132', '153', '5N', '179N', '172', '162', '166', '169'],  // = 962
     '963': ['127', '107', '161', '162', '163', '164', '165', '105', '166', '170', '118', '134', '149', '172', '116', '129', '132', '167', '147', '148', '5N', '179N'],
     '924': ['127', '107', '163', '162', '164', '165', '5N', '179N'],
     '991': ['127', '107', '161', '118', '163', '164', '165', '116', '167', '129', '132', '5N', '179N', '172', '162', '166', '153', '133', '176'],
     '951': ['151', '156', '157', '119', '124', '152', '127', '121', '179N', '191', '192', '153'],
     // Telai forma Z
     '964': ['128', '110', '136', '179N', '5N'],
+    '864': ['128', '110', '136', '179N', '5N'],  // = 964
     '965': ['128', '110', '115', '100', '120', '125', '130', '140', '178', '179N', '5N'],
     '966': ['128', '110', '115', '100', '120', '125', '130', '135', '140', '145', '150', '160', '178', '179N', '5N'],
     '967': ['128', '131', '110', '179N', '5N'],
-    // Telai Z62/Z91
+    // Telai Z62/Z82/Z91
     'Z62': ['128', '110', '179N', '5N'],
-    'Z91': ['128', '110', '179N', '5N']
+    'Z82': ['128', '110', '179N', '5N'],
+    'Z91': ['128', '110', '179N', '5N'],
+    // Nova-line Plus
+    '923': ['127', '107', '163', '162', '164', '165', '5N', '179N'],
+    '129': ['127', '107', '163', '162', '164', '165', '5N', '179N']
 };
 
 // Funzione helper per ottenere codici disponibili
 window.getCodiciTaglioPerTelaio = function(telaio) {
     if (!telaio) return [];
-    // Estrai codice base: "965 - PVC-PVC Step-line" → "965"
-    const codice = telaio.split(' - ')[0].replace(/^[A-Z]*/, '').trim() || telaio.split(' - ')[0].trim();
-    // Prova match diretto, poi solo numerico
-    return CODICI_TAGLIO_PER_TELAIO[telaio] || CODICI_TAGLIO_PER_TELAIO[codice] || 
-           CODICI_TAGLIO_PER_TELAIO[telaio.split(' - ')[0].trim()] || [];
+    const raw = telaio.split(' - ')[0].trim(); // "965N" o "9A861" o "F964" o "Z62X"
+    // Match diretto
+    if (CODICI_TAGLIO_PER_TELAIO[raw]) return CODICI_TAGLIO_PER_TELAIO[raw];
+    // Estrai codice base numerico: rimuovi tutti i prefissi/suffissi per trovare il numero serie
+    // 965N → 965 | F964 → 964 | 9A861 → 861 | 861N5 → 861 | Z62X → Z62 | 951K5 → 951
+    // Strategia: cerca il match più lungo in CODICI_TAGLIO_PER_TELAIO
+    const keys = Object.keys(CODICI_TAGLIO_PER_TELAIO);
+    // Prova: raw senza suffisso (N,N5,M,X,K,K5,L,0K)
+    const senzaSuffisso = raw.replace(/(N5|K5|0K|[NMXKL])$/i, '');
+    if (CODICI_TAGLIO_PER_TELAIO[senzaSuffisso]) return CODICI_TAGLIO_PER_TELAIO[senzaSuffisso];
+    // Prova: estrai solo le cifre di serie (3 cifre: 961, 965, 964, 862, ecc.)
+    const match3 = raw.match(/(\d{3})/);
+    if (match3 && CODICI_TAGLIO_PER_TELAIO[match3[1]]) return CODICI_TAGLIO_PER_TELAIO[match3[1]];
+    // Prova: Z + 2 cifre
+    const matchZ = raw.match(/(Z\d{2})/);
+    if (matchZ && CODICI_TAGLIO_PER_TELAIO[matchZ[1]]) return CODICI_TAGLIO_PER_TELAIO[matchZ[1]];
+    return [];
 }
 
 // 🆕 v4.81: Genera array posizioni tagli da tagliTelaio (non serve più salvare codTagli)
