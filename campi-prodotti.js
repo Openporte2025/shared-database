@@ -275,11 +275,14 @@
           visibleIf: { field: 'serveTapparella', equals: true }, group: 'tapparella' },
         { key: 'modello', label: 'Modello', type: 'select-dynamic',
           dependsOn: 'azienda',
-          optionsFn: (azienda) => P.getModelliTapparellaOptions ? P.getModelliTapparellaOptions(azienda) : [],
+          optionsFn: (azienda) => {
+              const modelli = P.getModelliTapparella ? P.getModelliTapparella(azienda) : [];
+              return modelli.map(m => `${m.cod} - ${m.nome}`);
+          },
           visibleIf: { field: 'serveTapparella', equals: true }, group: 'tapparella' },
         { key: 'colore', label: 'Colore Telo', type: 'select-dynamic',
           dependsOn: 'modello',
-          optionsFn: (modello) => P.getColoriTapparella ? P.getColoriTapparella(modello) : [],
+          optionsFn: (modello) => typeof getColoriTapparella === 'function' ? getColoriTapparella(modello) : [],
           visibleIf: { field: 'serveTapparella', equals: true }, group: 'tapparella' },
         { key: 'guida', label: 'Guida', type: 'select', options: () => P.tapparelle.guide,
           visibleIf: { field: 'serveTapparella', equals: true }, group: 'tapparella' },
