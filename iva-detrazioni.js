@@ -618,6 +618,437 @@ function calcolaIVAProfessionale(importo) {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// UI WIZARD CONDIVISA (App Rilievo + Dashboard Ufficio)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * CSS per il wizard IVA - iniettato una sola volta
+ */
+function _injectCSS() {
+    if (document.getElementById('iva-wizard-css')) return;
+    const style = document.createElement('style');
+    style.id = 'iva-wizard-css';
+    style.textContent = `
+        .iva-wizard {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .iva-wizard-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .iva-wizard-step {
+            margin-bottom: 10px;
+        }
+        .iva-wizard-step label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .iva-wizard-step select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            color: #212529;
+            appearance: auto;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .iva-wizard-step select:focus {
+            border-color: #4361ee;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67,97,238,0.15);
+        }
+        .iva-wizard-step select:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        .iva-wizard-step .step-desc {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 2px;
+            font-style: italic;
+        }
+        .iva-wizard-result {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid;
+            display: none;
+        }
+        .iva-wizard-result.iva-4 { 
+            background: #d4edda; border-color: #28a745; 
+        }
+        .iva-wizard-result.iva-10 { 
+            background: #d1ecf1; border-color: #17a2b8; 
+        }
+        .iva-wizard-result.iva-22 { 
+            background: #f8d7da; border-color: #dc3545; 
+        }
+        .iva-wizard-result.iva-mista { 
+            background: #fff3cd; border-color: #ffc107; 
+        }
+        .iva-result-aliquota {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .iva-result-note {
+            font-size: 12px;
+            color: #333;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+        .iva-result-docs {
+            font-size: 11px;
+            color: #555;
+            padding-left: 16px;
+            margin: 4px 0;
+        }
+        .iva-result-docs li {
+            margin-bottom: 2px;
+        }
+        .iva-wizard-detrazione {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #eef;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        .iva-wizard-detrazione strong {
+            font-size: 14px;
+        }
+        .iva-wizard-compact .iva-wizard-step {
+            margin-bottom: 6px;
+        }
+        .iva-wizard-compact .iva-wizard-step select {
+            padding: 6px 8px;
+            font-size: 13px;
+        }
+        .iva-wizard-compact .iva-wizard-step label {
+            font-size: 11px;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Genera le <option> HTML per una lista di tipologie
+ */
+function _options(lista, selectedId, placeholder) {
+    let html = `<option value="">${placeholder || '-- Seleziona --'}</option>`;
+    lista.forEach(item => {
+        const sel = item.id === selectedId ? ' selected' : '';
+        html += `<option value="${item.id}" title="${item.desc || ''}"${sel}>${item.label}</option>`;
+    });
+    return html;
+}
+
+/**
+ * Renderizza il Wizard IVA in un container HTML.
+ * Utilizzabile sia da App Rilievo (scheda cliente) che da Dashboard (gestione cantiere + preventivo).
+ * 
+ * @param {string} containerId - ID del div container
+ * @param {object} [datiSalvati] - Dati pre-salvati { intervento, edificio, servizio, cliente, bonus, primaCasa }
+ * @param {object} [opzioni] - { compact: bool, soloLettura: bool, mostraRiepilogo: bool, onChange: fn }
+ * @returns {object} API: { getDati(), setDati(obj), getResultIVA(), destroy() }
+ */
+function renderWizardIVA(containerId, datiSalvati, opzioni) {
+    _injectCSS();
+    
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error('❌ IVA Wizard: container #' + containerId + ' non trovato');
+        return null;
+    }
+    
+    const opts = Object.assign({
+        compact: false,
+        soloLettura: false,
+        mostraRiepilogo: true,
+        onChange: null
+    }, opzioni || {});
+    
+    const saved = datiSalvati || {};
+    const prefix = 'ivaWiz_' + containerId + '_';
+    
+    // --- HTML ---
+    container.innerHTML = `
+        <div class="iva-wizard ${opts.compact ? 'iva-wizard-compact' : ''}">
+            <div class="iva-wizard-title">📋 IVA e Detrazioni Fiscali</div>
+            
+            <div class="iva-wizard-step">
+                <label>1. Tipo Intervento</label>
+                <select id="${prefix}intervento" ${opts.soloLettura ? 'disabled' : ''}>
+                    ${_options(TIPOLOGIE_INTERVENTO, saved.intervento, '-- Tipo intervento --')}
+                </select>
+                <div class="step-desc" id="${prefix}intervento_desc"></div>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>2. Tipo Edificio</label>
+                <select id="${prefix}edificio" ${opts.soloLettura ? 'disabled' : ''}>
+                    <option value="">-- Seleziona prima l'intervento --</option>
+                </select>
+                <div class="step-desc" id="${prefix}edificio_desc"></div>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>3. Tipo Servizio</label>
+                <select id="${prefix}servizio" ${opts.soloLettura ? 'disabled' : ''}>
+                    ${_options(TIPOLOGIE_SERVIZIO, saved.servizio, '-- Tipo servizio --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>4. Tipo Cliente</label>
+                <select id="${prefix}cliente" ${opts.soloLettura ? 'disabled' : ''}>
+                    ${_options(TIPOLOGIE_CLIENTE, saved.cliente, '-- Tipo cliente --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>5. Detrazione Fiscale</label>
+                <select id="${prefix}bonus" ${opts.soloLettura ? 'disabled' : ''}>
+                    ${_options(TIPOLOGIE_BONUS, saved.bonus, '-- Seleziona detrazione --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step" id="${prefix}primacasa_wrap" style="display:none;">
+                <label>Abitazione principale?</label>
+                <select id="${prefix}primacasa" ${opts.soloLettura ? 'disabled' : ''}>
+                    <option value="si" ${saved.primaCasa === 'si' ? 'selected' : ''}>Sì - Abitazione principale</option>
+                    <option value="no" ${saved.primaCasa === 'no' ? 'selected' : ''}>No - Seconda casa / altro</option>
+                </select>
+            </div>
+            
+            <div class="iva-wizard-result" id="${prefix}result"></div>
+        </div>
+    `;
+    
+    // --- Elementi DOM ---
+    const elIntervento = document.getElementById(prefix + 'intervento');
+    const elEdificio = document.getElementById(prefix + 'edificio');
+    const elServizio = document.getElementById(prefix + 'servizio');
+    const elCliente = document.getElementById(prefix + 'cliente');
+    const elBonus = document.getElementById(prefix + 'bonus');
+    const elPrimaCasa = document.getElementById(prefix + 'primacasa');
+    const elPrimaCasaWrap = document.getElementById(prefix + 'primacasa_wrap');
+    const elResult = document.getElementById(prefix + 'result');
+    const elIntDesc = document.getElementById(prefix + 'intervento_desc');
+    const elEdDesc = document.getElementById(prefix + 'edificio_desc');
+    
+    // --- Cascading Logic ---
+    
+    function aggiornaEdificio() {
+        const int = elIntervento.value;
+        if (!int) {
+            elEdificio.innerHTML = '<option value="">-- Seleziona prima l\'intervento --</option>';
+            elEdificio.disabled = true;
+            return;
+        }
+        
+        // Nuova costruzione → lista specifica
+        const lista = (int === 'nuova_costruzione') 
+            ? TIPOLOGIE_EDIFICIO_NUOVA_COSTRUZIONE 
+            : TIPOLOGIE_EDIFICIO;
+        
+        elEdificio.innerHTML = _options(lista, saved.edificio, '-- Tipo edificio --');
+        elEdificio.disabled = opts.soloLettura;
+        
+        // Desc intervento
+        const found = TIPOLOGIE_INTERVENTO.find(t => t.id === int);
+        if (found && elIntDesc) {
+            elIntDesc.textContent = found.desc + (found.titolo ? ' | Titolo: ' + found.titolo : '');
+        }
+    }
+    
+    function aggiornaPrimaCasa() {
+        const bonus = elBonus.value;
+        if (bonus && bonus !== 'nessuna') {
+            elPrimaCasaWrap.style.display = '';
+        } else {
+            elPrimaCasaWrap.style.display = 'none';
+        }
+    }
+    
+    function aggiornaRiepilogo() {
+        if (!opts.mostraRiepilogo) { elResult.style.display = 'none'; return; }
+        
+        const int = elIntervento.value;
+        const ed = elEdificio.value;
+        const serv = elServizio.value;
+        const cl = elCliente.value;
+        const bon = elBonus.value;
+        const pc = elPrimaCasa.value;
+        
+        // Desc edificio
+        if (ed && elEdDesc) {
+            const allEd = (int === 'nuova_costruzione') ? TIPOLOGIE_EDIFICIO_NUOVA_COSTRUZIONE : TIPOLOGIE_EDIFICIO;
+            const foundEd = allEd.find(t => t.id === ed);
+            elEdDesc.textContent = foundEd ? foundEd.desc : '';
+        } else if (elEdDesc) {
+            elEdDesc.textContent = '';
+        }
+        
+        // Serve almeno intervento + edificio + servizio per calcolare
+        if (!int || !ed || !serv) {
+            elResult.style.display = 'none';
+            return;
+        }
+        
+        // Calcola IVA
+        const risultato = determinaIVA(int, ed, serv, cl || 'persona_fisica');
+        
+        // CSS class
+        let cssClass = 'iva-22';
+        if (risultato.ivaMista) cssClass = 'iva-mista';
+        else if (risultato.aliquota === 4) cssClass = 'iva-4';
+        else if (risultato.aliquota === 10) cssClass = 'iva-10';
+        
+        // Aliquota display
+        let aliquotaDisplay = risultato.ivaMista 
+            ? '📊 IVA MISTA 10% / 22%' 
+            : `📊 IVA ${risultato.aliquota}%`;
+        
+        // Detrazione display
+        let detrazioneHTML = '';
+        if (bon && bon !== 'nessuna') {
+            const bonusObj = TIPOLOGIE_BONUS.find(b => b.id === bon);
+            if (bonusObj) {
+                const anno = new Date().getFullYear();
+                const key = pc === 'si' 
+                    ? `percentuale${anno}_primaCasa` 
+                    : `percentuale${anno}_altraCasa`;
+                const perc = bonusObj[key] || bonusObj.percentuale2026_primaCasa || 0;
+                const maxLabel = bonusObj.massimoSpesa 
+                    ? `max spesa €${bonusObj.massimoSpesa.toLocaleString('it')}` 
+                    : bonusObj.massimoDetrazione 
+                        ? `max detrazione €${bonusObj.massimoDetrazione.toLocaleString('it')}` 
+                        : '';
+                
+                detrazioneHTML = `
+                    <div class="iva-wizard-detrazione">
+                        🏷️ <strong>${bonusObj.label}: ${perc}%</strong> 
+                        ${pc === 'si' ? '(abitaz. principale)' : '(altra abitazione)'}
+                        ${maxLabel ? ' — ' + maxLabel : ''}
+                        ${bonusObj.rate ? ' — ' + bonusObj.rate + ' rate annuali' : ''}
+                        ${bonusObj.causaleBonifico ? '<br>Causale bonifico: <em>' + bonusObj.causaleBonifico + '</em>' : ''}
+                        ${bonusObj.richiedeENEA ? '<br>⚠️ Richiede pratica ENEA entro 90gg' : ''}
+                    </div>
+                `;
+            }
+        }
+        
+        // Documenti
+        let docsHTML = '';
+        if (risultato.documentazione && risultato.documentazione.length > 0) {
+            docsHTML = '<div style="margin-top:6px;font-size:11px;color:#555;">📄 Documentazione richiesta:<ul class="iva-result-docs">';
+            risultato.documentazione.forEach(d => docsHTML += `<li>${d}</li>`);
+            docsHTML += '</ul></div>';
+        }
+        
+        elResult.className = 'iva-wizard-result ' + cssClass;
+        elResult.style.display = '';
+        elResult.innerHTML = `
+            <div class="iva-result-aliquota">${aliquotaDisplay}</div>
+            <div class="iva-result-note">${risultato.note}</div>
+            ${docsHTML}
+            ${detrazioneHTML}
+        `;
+        
+        // Callback
+        if (typeof opts.onChange === 'function') {
+            opts.onChange(_getDati(), risultato);
+        }
+    }
+    
+    // --- Event Listeners ---
+    elIntervento.addEventListener('change', () => {
+        aggiornaEdificio();
+        aggiornaRiepilogo();
+    });
+    elEdificio.addEventListener('change', aggiornaRiepilogo);
+    elServizio.addEventListener('change', aggiornaRiepilogo);
+    elCliente.addEventListener('change', aggiornaRiepilogo);
+    elBonus.addEventListener('change', () => {
+        aggiornaPrimaCasa();
+        aggiornaRiepilogo();
+    });
+    elPrimaCasa.addEventListener('change', aggiornaRiepilogo);
+    
+    // --- Init con dati salvati ---
+    if (saved.intervento) {
+        aggiornaEdificio();
+        // Ri-seleziona edificio dopo che le opzioni sono state generate
+        if (saved.edificio) {
+            elEdificio.value = saved.edificio;
+        }
+    }
+    aggiornaPrimaCasa();
+    aggiornaRiepilogo();
+    
+    // --- API pubblica ---
+    
+    function _getDati() {
+        return {
+            intervento: elIntervento.value || null,
+            edificio: elEdificio.value || null,
+            servizio: elServizio.value || null,
+            cliente: elCliente.value || null,
+            bonus: elBonus.value || null,
+            primaCasa: elPrimaCasa.value || 'si'
+        };
+    }
+    
+    function _setDati(obj) {
+        if (obj.intervento) { elIntervento.value = obj.intervento; aggiornaEdificio(); }
+        if (obj.edificio) elEdificio.value = obj.edificio;
+        if (obj.servizio) elServizio.value = obj.servizio;
+        if (obj.cliente) elCliente.value = obj.cliente;
+        if (obj.bonus) { elBonus.value = obj.bonus; aggiornaPrimaCasa(); }
+        if (obj.primaCasa) elPrimaCasa.value = obj.primaCasa;
+        aggiornaRiepilogo();
+    }
+    
+    function _getResultIVA() {
+        const d = _getDati();
+        if (!d.intervento || !d.edificio || !d.servizio) return null;
+        return determinaIVA(d.intervento, d.edificio, d.servizio, d.cliente || 'persona_fisica');
+    }
+    
+    function _destroy() {
+        container.innerHTML = '';
+    }
+    
+    const api = {
+        getDati: _getDati,
+        setDati: _setDati,
+        getResultIVA: _getResultIVA,
+        destroy: _destroy
+    };
+    
+    return api;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -639,15 +1070,18 @@ const IVA_DETRAZIONI = {
     calcolaIVAMista,
     calcolaIVAProfessionale,
     
+    // UI Wizard condivisa
+    renderWizardIVA,
+    
     // Versione
-    versione: '1.0.0'
+    versione: '1.1.0'
 };
 
-// Per uso standalone (test)
+// Per uso standalone (test) e browser
 if (typeof window !== 'undefined') {
     if (!window.OPZIONI) window.OPZIONI = {};
     window.OPZIONI.IVA_DETRAZIONI = IVA_DETRAZIONI;
-    console.log('✅ IVA_DETRAZIONI v1.0.0 caricato - Wizard IVA + Detrazioni disponibile');
+    console.log('✅ IVA_DETRAZIONI v1.1.0 caricato - Wizard IVA + Detrazioni + UI condivisa');
 }
 
 // Per uso Node.js (test)
