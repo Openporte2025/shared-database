@@ -3,7 +3,7 @@
  * 📦 PALAGINA - Database Zanzariere Unificato
  * ═══════════════════════════════════════════════════════════════
  * 
- * v2.0 (06/02/2026) - Unificato per app rilievo + dashboard
+ * v2.1 (10/02/2026) - Prezzi +3.50€/m² F1 allineati a configuratore Palagina
  * Fonte: Catalogo Zanzariere_2025_IT_128_Web-cm.pdf
  * 
  * ESPORTA:
@@ -25,26 +25,26 @@ var _PAL_LINEE = {
 
 var _PAL_MODELLI = {
     // ----- LINEA SINTESI -----
-    'EXTREMA':                  { linea: 'SINTESI', cassonetti: null,     maxH: 230, prezzi: { F1: 164.00, F2: 172.20, F3: 196.80 }, minMq: 2.00 },
-    'EXTREMA_CENTRALE':         { linea: 'SINTESI', cassonetti: null,     maxH: 230, prezzi: { F1: 173.50, F2: 182.18, F3: 208.20 }, minMq: 2.00 },
-    'EXTREMA_SR':               { linea: 'SINTESI', cassonetti: null,     maxH: 460, prezzi: { F1: 173.50, F2: 182.18, F3: 208.20 }, minMq: 4.00 },
-    'EXTREMA_INCASSO':          { linea: 'SINTESI', cassonetti: [46, 50], maxH: 230, prezzi: { F1: 173.50, F2: 182.18, F3: 208.20 }, minMq: 2.00 },
-    'EXTREMA_INCASSO_CENTRALE': { linea: 'SINTESI', cassonetti: [46, 50], maxH: 460, prezzi: { F1: 173.50, F2: 182.18, F3: 208.20 }, minMq: 4.00 },
-    'EXTREMA_INCASSO_SR':       { linea: 'SINTESI', cassonetti: [46, 50], maxH: 460, prezzi: { F1: 173.50, F2: 182.18, F3: 208.20 }, minMq: 4.00 },
-    'NANO_SINTESI':             { linea: 'SINTESI', cassonetti: [22],     maxH: 180, prezzi: { F1: 148.00, F2: 155.40, F3: 177.60 }, minMq: 2.00 },
-    'MICRO_SINTESI':            { linea: 'SINTESI', cassonetti: [36],     maxH: 200, prezzi: { F1: 157.00, F2: 164.85, F3: 188.40 }, minMq: 4.00 },
-    'MICRO_SINTESI_CENTRALE':   { linea: 'SINTESI', cassonetti: [36],     maxH: 200, prezzi: { F1: 157.00, F2: 164.85, F3: 188.40 }, minMq: 4.00 },
-    'SINTESI':                  { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 157.00, F2: 164.85, F3: 188.40 }, minMq: 2.00 },
-    'SINTESI_CENTRALE':         { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 166.00, F2: 174.30, F3: 199.20 }, minMq: 2.00 },
-    'SINTESI_INCASSO':          { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 166.00, F2: 174.30, F3: 199.20 }, minMq: 2.00 },
-    'SINTESI_INCASSO_CENTRALE': { linea: 'SINTESI', cassonetti: [46, 50], maxH: 420, prezzi: { F1: 166.00, F2: 174.30, F3: 199.20 }, minMq: 4.00 },
+    'EXTREMA':                  { linea: 'SINTESI', cassonetti: null,     maxH: 230, prezzi: { F1: 167.50, F2: 175.88, F3: 201.00 }, minMq: 2.00 },
+    'EXTREMA_CENTRALE':         { linea: 'SINTESI', cassonetti: null,     maxH: 230, prezzi: { F1: 177.00, F2: 185.85, F3: 212.40 }, minMq: 2.00 },
+    'EXTREMA_SR':               { linea: 'SINTESI', cassonetti: null,     maxH: 460, prezzi: { F1: 177.00, F2: 185.85, F3: 212.40 }, minMq: 4.00 },
+    'EXTREMA_INCASSO':          { linea: 'SINTESI', cassonetti: [46, 50], maxH: 230, prezzi: { F1: 177.00, F2: 185.85, F3: 212.40 }, minMq: 2.00 },
+    'EXTREMA_INCASSO_CENTRALE': { linea: 'SINTESI', cassonetti: [46, 50], maxH: 460, prezzi: { F1: 177.00, F2: 185.85, F3: 212.40 }, minMq: 4.00 },
+    'EXTREMA_INCASSO_SR':       { linea: 'SINTESI', cassonetti: [46, 50], maxH: 460, prezzi: { F1: 177.00, F2: 185.85, F3: 212.40 }, minMq: 4.00 },
+    'NANO_SINTESI':             { linea: 'SINTESI', cassonetti: [22],     maxH: 180, prezzi: { F1: 151.50, F2: 159.08, F3: 181.80 }, minMq: 2.00 },
+    'MICRO_SINTESI':            { linea: 'SINTESI', cassonetti: [36],     maxH: 200, prezzi: { F1: 160.50, F2: 168.53, F3: 192.60 }, minMq: 4.00 },
+    'MICRO_SINTESI_CENTRALE':   { linea: 'SINTESI', cassonetti: [36],     maxH: 200, prezzi: { F1: 160.50, F2: 168.53, F3: 192.60 }, minMq: 4.00 },
+    'SINTESI':                  { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 160.50, F2: 168.53, F3: 192.60 }, minMq: 2.00 },
+    'SINTESI_CENTRALE':         { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 169.50, F2: 177.97, F3: 203.40 }, minMq: 2.00 },
+    'SINTESI_INCASSO':          { linea: 'SINTESI', cassonetti: [46, 50], maxH: 210, prezzi: { F1: 169.50, F2: 177.97, F3: 203.40 }, minMq: 2.00 },
+    'SINTESI_INCASSO_CENTRALE': { linea: 'SINTESI', cassonetti: [46, 50], maxH: 420, prezzi: { F1: 169.50, F2: 177.97, F3: 203.40 }, minMq: 4.00 },
     // ----- LINEA SV (NEW 2025) -----
-    'SV_700':    { linea: 'SV',      cassonetti: [45, 50], maxH: 250, prezzi: { F1: 84.00, F2: 92.40, F3: 109.20 }, minMq: 1.50, reteDiSerie: 'HC' },
+    'SV_700':    { linea: 'SV',      cassonetti: [45, 50], maxH: 250, prezzi: { F1: 87.50, F2: 91.88, F3: 105.00 }, minMq: 1.50, reteDiSerie: 'HC' },
     // ----- LINEA EVO (NEW 2025) -----
-    'EVO_ROOF':  { linea: 'EVO',     cassonetti: [40],     maxH: 150, prezzi: { F1: 126.00, F2: null, F3: 176.40 }, minMq: 1.50, tipo: 'Lucernario' },
+    'EVO_ROOF':  { linea: 'EVO',     cassonetti: [40],     maxH: 150, prezzi: { F1: 129.50, F2: null, F3: 155.40 }, minMq: 1.50, tipo: 'Lucernario' },
     // ----- SERIE X - COMPATTO -----
-    'X1_INCASSO':{ linea: 'COMPATTO', cassonetti: [50],    maxH: 200, prezzi: { F1: 113.50, F2: 124.85, F3: 141.88 }, minMq: 1.50 },
-    'X3_LUCE':   { linea: 'COMPATTO', cassonetti: [53],    maxH: 200, prezzi: { F1: 144.50, F2: 158.95, F3: 180.63 }, minMq: 1.50 }
+    'X1_INCASSO':{ linea: 'COMPATTO', cassonetti: [50],    maxH: 200, prezzi: { F1: 117.00, F2: 122.85, F3: 140.40 }, minMq: 1.50 },
+    'X3_LUCE':   { linea: 'COMPATTO', cassonetti: [53],    maxH: 200, prezzi: { F1: 148.00, F2: 155.40, F3: 177.60 }, minMq: 1.50 }
 };
 
 var _PAL_COLORI = {
@@ -237,7 +237,7 @@ var PALAGINA_ZANZARIERE_2025 = {
 };
 
 
-console.log('✅ database/palagina.js v2.0 caricato');
+console.log('✅ database/palagina.js v2.1 caricato — prezzi +3.50 allineati configuratore');
 console.log('   📦 PALAGINA_ZANZARIERE (dropdown cascading)');
 console.log('   📦 PALAGINA_ZANZARIERE_2025 (pricing)');
 
