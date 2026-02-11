@@ -1,7 +1,11 @@
 // ============================================================================
-// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.505
+// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.506
 // ============================================================================
 // 
+// 🆕 v8.506 (11 FEB 2026): FIX TIPO 101 FATTORE CORREZIONE
+// - Tipo 101: fattore 1.0 (i prezzi nella tabella devono essere EUR 2025/10)
+// - ⚠️ ATTENZIONE: Tabella tipo101.prezzi[] ancora da aggiornare con valori PDF!
+//
 // 🆕 v8.505 (27 GEN 2026): GRUPPI COLORE A/B
 // 
 // IMPORTANTE - I supplementi telaio e anta ora distinguono GRUPPO COLORE:
@@ -69,11 +73,9 @@ if (tipo === "420" || tipo === "421") {
     return altezza > 2200 ? 1.22 : 1.21;
 }
 
-// TIPO 101 (1 anta)
+// TIPO 101 (1 anta): prezzi EUR 2025/10 diretti
 if (tipo === "101") {
-    if (altezza <= 1600) return 1.2075;
-    if (altezza <= 2200) return 1.22;
-    return 1.27;  // H>2200: verificato Pos.2,6
+    return 1.0;  // ✅ v8.506: Prezzi aggiornati a EUR 2025/10
 }
 
 // Altri tipi (default)
