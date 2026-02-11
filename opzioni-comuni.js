@@ -111,6 +111,101 @@
                 html += `<option value="${item.id}" ${item.id === selectedId ? 'selected' : ''}>${item.nome}</option>`;
             });
             return html;
+        },
+
+        // 🆕 v2.2.0: Oggetto IVA_DETRAZIONI con renderWizardIVA per App Rilievo
+        IVA_DETRAZIONI: {
+            /**
+             * Renderizza i 5 dropdown IVA/Detrazioni dentro un container
+             * @param {string} containerId - ID del div container
+             * @param {object} saved - Dati salvati {tipoIntervento, tipoEdificio, tipoServizio, tipoCliente, tipoBonus}
+             * @param {object} opts - {compact, onChange: function(dati)}
+             */
+            renderWizardIVA: function(containerId, saved, opts) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                saved = saved || {};
+                opts = opts || {};
+                const O = window.OPZIONI;
+                
+                const selectStyle = 'width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff;';
+                const labelStyle = 'display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:4px;';
+                const descStyle = 'font-size:11px;color:#6b7280;margin-top:2px;';
+                
+                function renderSelect(id, label, lista, savedVal) {
+                    let options = `<option value="">-- ${label} --</option>`;
+                    lista.forEach(item => {
+                        options += `<option value="${item.id}" ${item.id === savedVal ? 'selected' : ''}>${item.nome}</option>`;
+                    });
+                    return `
+                        <div style="margin-bottom:8px;">
+                            <label style="${labelStyle}">${label}</label>
+                            <select id="${containerId}-${id}" style="${selectStyle}" 
+                                    onchange="window.OPZIONI.IVA_DETRAZIONI._onFieldChange('${containerId}')">
+                                ${options}
+                            </select>
+                            <div id="${containerId}-${id}-desc" style="${descStyle}"></div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = `
+                    <div style="margin-top:8px;">
+                        <h4 style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                            <span>🏛️</span> IVA e Detrazioni Fiscali
+                        </h4>
+                        ${renderSelect('tipoIntervento', '1. Tipo Intervento', O.TIPI_INTERVENTO, saved.tipoIntervento)}
+                        ${renderSelect('tipoEdificio', '2. Tipo Edificio', O.TIPI_EDIFICIO, saved.tipoEdificio)}
+                        ${renderSelect('tipoServizio', '3. Tipo Servizio', O.TIPI_SERVIZIO, saved.tipoServizio)}
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            ${renderSelect('tipoCliente', '4. Tipo Cliente', O.TIPI_CLIENTE, saved.tipoCliente)}
+                            ${renderSelect('tipoBonus', '5. Tipo Bonus', O.TIPI_BONUS, saved.tipoBonus)}
+                        </div>
+                    </div>
+                `;
+                
+                // Salva riferimento al callback onChange
+                container._ivaOnChange = opts.onChange || null;
+                
+                // Aggiorna descrizioni iniziali
+                this._updateDescs(containerId);
+            },
+            
+            _onFieldChange: function(containerId) {
+                this._updateDescs(containerId);
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                const dati = {
+                    tipoIntervento: document.getElementById(containerId + '-tipoIntervento')?.value || '',
+                    tipoEdificio: document.getElementById(containerId + '-tipoEdificio')?.value || '',
+                    tipoServizio: document.getElementById(containerId + '-tipoServizio')?.value || '',
+                    tipoCliente: document.getElementById(containerId + '-tipoCliente')?.value || '',
+                    tipoBonus: document.getElementById(containerId + '-tipoBonus')?.value || ''
+                };
+                
+                if (container._ivaOnChange) {
+                    container._ivaOnChange(dati);
+                }
+            },
+            
+            _updateDescs: function(containerId) {
+                const O = window.OPZIONI;
+                const tipoInt = document.getElementById(containerId + '-tipoIntervento')?.value;
+                const descEl = document.getElementById(containerId + '-tipoIntervento-desc');
+                if (descEl && tipoInt) {
+                    const item = O.TIPI_INTERVENTO.find(t => t.id === tipoInt);
+                    descEl.textContent = item ? item.descrizione : '';
+                } else if (descEl) { descEl.textContent = ''; }
+                
+                const tipoEd = document.getElementById(containerId + '-tipoEdificio')?.value;
+                const descEdEl = document.getElementById(containerId + '-tipoEdificio-desc');
+                if (descEdEl && tipoEd) {
+                    const item = O.TIPI_EDIFICIO.find(t => t.id === tipoEd);
+                    descEdEl.textContent = item ? item.descrizione : '';
+                } else if (descEdEl) { descEdEl.textContent = ''; }
+            }
         }
     };
     
