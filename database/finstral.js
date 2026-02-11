@@ -1,7 +1,13 @@
 // ============================================================================
-// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.506
+// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.507
 // ============================================================================
 // 
+// 🆕 v8.507 (11 FEB 2026): CALCOLO PREZZI ANTA TWIN
+// - Aggiunta funzione `calcolaPrezzoAntaTwin()` per veneziana/plissettata
+// - Supporto comandi: catenella (gratis), motore 2.5m (+€345), motore 10m (+€356)
+// - Interpolazione griglia prezzi 18×8 (altezze 600-2300mm × larghezze 400-1100mm)
+// - Fix: Dashboard ora calcola correttamente oscuranti Twin (~€840 per posizione)
+//
 // 🆕 v8.506 (11 FEB 2026): FIX TIPO 101 FATTORE CORREZIONE
 // - Tipo 101: fattore 1.0 (i prezzi nella tabella devono essere EUR 2025/10)
 // - ⚠️ ATTENZIONE: Tabella tipo101.prezzi[] ancora da aggiornare con valori PDF!
@@ -2730,6 +2736,81 @@ return {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🆕 v8.507: CALCOLO PREZZO ANTA TWIN (Veneziana/Plissettata)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Calcola prezzo oscurante Twin (veneziana o plissettata) + supplemento comando
+ * @param {Object} config - Configurazione anta Twin
+ * @param {string} config.antaTwinTipo - 'veneziana' | 'plissettata' | ''
+ * @param {string} config.antaTwinModello - 'NOVA_TWIN' | 'SLIM_TWIN' | etc.
+ * @param {string} config.antaTwinComando - '27' (catenella) | '30' (2.5m) | '30-1' (10m)
+ * @param {number} config.BRM_L - Larghezza BRM in mm
+ * @param {number} config.BRM_H - Altezza BRM in mm
+ * @returns {number} Prezzo totale oscurante + comando in €
+ */
+function calcolaPrezzoAntaTwin(config) {
+    const { antaTwinTipo, antaTwinModello, antaTwinComando, BRM_L, BRM_H } = config;
+    
+    // Se non c'è Twin, prezzo = 0
+    if (!antaTwinTipo || antaTwinTipo === '') return 0;
+    
+    // Verifica esistenza database Twin
+    if (typeof FINSTRAL_ANTA_TWIN === 'undefined') {
+        console.error('❌ FINSTRAL_ANTA_TWIN non definito!');
+        return 0;
+    }
+    
+    const twin = FINSTRAL_ANTA_TWIN;
+    
+    // 1. PREZZO BASE OSCURANTE (da griglia dimensionale)
+    const grigliaPrezzi = antaTwinTipo === 'veneziana' ? 
+        twin.prezziVeneziana : twin.prezziPlissettata;
+    
+    const prezzoBase = interpolaPrezzoGrigliaTwin(grigliaPrezzi, BRM_L, BRM_H);
+    
+    // 2. SUPPLEMENTO COMANDO
+    const comando = twin.comandi[antaTwinComando] || twin.comandi['27']; // Default catenella
+    const supplementoComando = comando.supplemento || 0;
+    
+    const totale = prezzoBase + supplementoComando;
+    
+    console.log(`🔷 Twin ${antaTwinTipo}: €${prezzoBase.toFixed(2)} + comando ${antaTwinComando} €${supplementoComando} = €${totale.toFixed(2)}`);
+    
+    return totale;
+}
+
+/**
+ * Interpola prezzo da griglia Twin (18 altezze × 8 larghezze)
+ * @param {Object} griglia - { larghezze: [], altezze: [], prezzi: [[]] }
+ * @param {number} L - Larghezza in mm
+ * @param {number} H - Altezza in mm
+ * @returns {number} Prezzo interpolato in €
+ */
+function interpolaPrezzoGrigliaTwin(griglia, L, H) {
+    const { larghezze, altezze, prezzi } = griglia;
+    
+    // Trova indici nella griglia
+    let idxL = larghezze.findIndex(l => L <= l);
+    let idxH = altezze.findIndex(h => H <= h);
+    
+    // Se fuori range, usa ultimo valore
+    if (idxL === -1) idxL = larghezze.length - 1;
+    if (idxH === -1) idxH = altezze.length - 1;
+    
+    // Prezzo dalla griglia
+    const prezzo = prezzi[idxH][idxL];
+    
+    return prezzo;
+}
+
+// Export per window
+if (typeof window !== 'undefined') {
+    window.calcolaPrezzoAntaTwin = calcolaPrezzoAntaTwin;
+    window.interpolaPrezzoGrigliaTwin = interpolaPrezzoGrigliaTwin;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🆕 v8.505: FUNZIONE HELPER PER GRUPPO COLORE
 // ═══════════════════════════════════════════════════════════════════════════
 function getGruppoColoreFinstral(colorePVC) {
@@ -2741,4 +2822,4 @@ if (typeof window !== 'undefined') {
     window.getGruppoColoreFinstral = getGruppoColoreFinstral;
 }
 
-console.log('✅ FINSTRAL_PREZZI v8.505 caricato (gruppi colore A/B)');
+console.log('✅ FINSTRAL_PREZZI v8.507 caricato (gruppi colore A/B + Twin)');
