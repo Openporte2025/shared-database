@@ -2,13 +2,17 @@
 // LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.509
 // ============================================================================
 // 
-// 🆕 v8.509 (11 FEB 2026): CALCOLO BRM CON FALLBACK AUTOMATICO
+// 🆕 v8.509 (11 FEB 2026): CALCOLO BRM CON FALLBACK + HELPER TWIN
 // - Aggiunta funzione `getBRMConFallback()` centralizzata
 // - Se BRM_L/BRM_H sono null → calcola automaticamente da misure vano
 // - REGOLA FALLBACK (priorità): BRM → LF/HF (+100/+50) → LVT/HVT (+100/+50) → TMV/HMT (-40/-20)
 // - Applicato in `calcolaPrezzoFinstral()` → Twin ora funziona anche con BRM null
 // - Fix: Dashboard calcola preventivi anche con BRM non compilati
 // - ✅ UNICA FUNZIONE DA MODIFICARE: `getBRMConFallback()` per aggiornare logica ovunque
+// - 🆕 Aggiunti helper Twin: `getTwinModelDescription()` e `getTwinModelKey()`
+//   - Conversione chiave interna ↔ descrizione completa (es. "SLIM_TWIN" ↔ "C788 - Slim-line Twin 77mm")
+//   - Dashboard deve usare `getTwinModelDescription(key)` per visualizzare
+//   - Calcoli usano chiave interna, visualizzazione usa descrizione
 //
 // 🆕 v8.508 (11 FEB 2026): FIX FATTORE TIPO 101 → 1.0
 // 
@@ -1293,6 +1297,69 @@ window.getBRMConFallback = function(config) {
     return { L: 0, H: 0, source: 'nessuno' };
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 v8.509: HELPER CONVERSIONE MODELLO TWIN
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Converte chiave interna modello Twin → descrizione completa
+ * 
+ * @param {string} modelKey - Chiave interna (es. "SLIM_TWIN", "NOVA_TWIN")
+ * @returns {string} Descrizione completa (es. "C788 - Slim-line Twin 77mm")
+ * 
+ * @example
+ * getTwinModelDescription("SLIM_TWIN") → "C788 - Slim-line Twin 77mm"
+ * getTwinModelDescription("NOVA_TWIN") → "N989 - Nova-line Twin"
+ */
+window.getTwinModelDescription = function(modelKey) {
+    if (!modelKey) return '';
+    
+    if (typeof FINSTRAL_ANTA_TWIN === 'undefined') {
+        console.warn('⚠️ FINSTRAL_ANTA_TWIN non caricato!');
+        return modelKey;
+    }
+    
+    const model = FINSTRAL_ANTA_TWIN.tipiAnta[modelKey];
+    
+    if (model) {
+        return `${model.cod} - ${model.desc}`;
+    }
+    
+    // Fallback: ritorna chiave se non trovata
+    console.warn(`⚠️ Modello Twin "${modelKey}" non trovato in database`);
+    return modelKey;
+};
+
+/**
+ * Converte descrizione completa → chiave interna (reverse)
+ * 
+ * @param {string} description - Descrizione (es. "C788 - Slim-line Twin 77mm")
+ * @returns {string} Chiave interna (es. "SLIM_TWIN")
+ * 
+ * @example
+ * getTwinModelKey("C788 - Slim-line Twin 77mm") → "SLIM_TWIN"
+ */
+window.getTwinModelKey = function(description) {
+    if (!description) return '';
+    
+    if (typeof FINSTRAL_ANTA_TWIN === 'undefined') {
+        return description;
+    }
+    
+    // Estrae codice dalla descrizione (es. "C788" da "C788 - Slim-line Twin 77mm")
+    const codice = description.split(' - ')[0].trim();
+    
+    // Cerca modello per codice
+    for (const [key, model] of Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta)) {
+        if (model.cod === codice) {
+            return key;
+        }
+    }
+    
+    // Fallback: ritorna descrizione
+    return description;
+};
+
 // Funzione calcolo prezzo anta twin
 window.calcolaPrezzoAntaTwin = function(tipoOscurante, larghezza, altezza, comando = '27') {
     const tabella = tipoOscurante === 'veneziana' ? 
@@ -2327,7 +2394,7 @@ console.log(`🪟 Bancale ${config.bancaleTipo}: P=${config.bancaleProfondita}mm
     if (config.antaTwinTipo && (config.antaTwinTipo === 'veneziana' || config.antaTwinTipo === 'plissettata')) {
 risultato.dettaglio.antaTwin = {
     tipo: config.antaTwinTipo,
-    modello: config.antaTwinModello,
+    modello: config.antaTwinModello,  // ⚠️ Chiave interna (es. "SLIM_TWIN"). Usa getTwinModelDescription() per visualizzare
     colore: config.antaTwinColore,
     comando: config.antaTwinComando || '27',
     prezzo: calcolaPrezzoAntaTwin(config.antaTwinTipo, larghezza, altezza, config.antaTwinComando || '27')
@@ -2829,4 +2896,4 @@ if (typeof window !== 'undefined') {
     window.getGruppoColoreFinstral = getGruppoColoreFinstral;
 }
 
-console.log('✅ FINSTRAL_PREZZI v8.509 caricato (BRM fallback + fix tipo 101)');
+console.log('✅ FINSTRAL_PREZZI v8.509 caricato (BRM fallback + Twin helpers + fix tipo 101)');
