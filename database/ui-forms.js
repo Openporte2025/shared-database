@@ -1,7 +1,7 @@
 // ============================================================================
-// UI-FORMS v1.0.1 - Componenti UI Centralizzati
+// UI-FORMS v1.1.0 - Componenti UI Centralizzati
 // ============================================================================
-// 
+// 🆕 v1.1.0: Rimosso select detrazione → div placeholder per wizard IVA (iva-detrazioni.js) 
 // Modulo condiviso per: App Rilievo + Dashboard + App Posa
 // 
 // Genera HTML per form comuni, leggendo opzioni da JSON_MANAGER.CONFIG
@@ -161,15 +161,9 @@ const UI_FORMS = {
                         ${this._renderOptions('zonaClimatica', immobile.zonaClimatica || 'E')}
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">💰 Detrazione</label>
-                    <select id="${prefix}-tipoDetrazione"
-                            onchange="${cb}('tipoDetrazione', this.value, 'immobile')"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                        ${this._renderOptions('tipoDetrazione', immobile.tipoDetrazione || '50')}
-                    </select>
-                </div>
             </div>
+            <!-- 🆕 v1.1.0: Wizard IVA/Detrazioni (sostituisce select hardcoded) -->
+            <div id="${prefix}-wizardIVA" style="margin-top: 8px;"></div>
         </div>
         `;
     },
