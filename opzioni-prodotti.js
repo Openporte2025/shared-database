@@ -50,9 +50,9 @@
 
             tipiAnta: [
                 'Classic-line', 'Slim-line', 'Slim-line Cristal',
-                'Slim-line Twin', 'Slim-line Cristal Twin',
+                'Anta Twin',
                 'Step-line', 'Step-line Door',
-                'Nova-line', 'Nova-line Plus', 'Nova-line Twin', 'Nova-line Cristal Twin'
+                'Nova-line', 'Nova-line Plus'
             ],
 
             finiture: ['pvc', 'legno', 'alluminio', 'ceramica'],
