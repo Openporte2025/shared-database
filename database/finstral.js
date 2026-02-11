@@ -1,13 +1,16 @@
 // ============================================================================
-// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.508
+// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.509
 // ============================================================================
 // 
-// 🆕 v8.508 (11 FEB 2026): FIX FATTORE TIPO 101 → 1.0
-// - Tipo 101: fattore correzione 1.0 (prezzi tabella già EUR 2025/10)
-// - Fix: Preventivi tipo 101 ora corretti (prima sovrastimati 20-27%)
-// - ⚠️ Twin, cerniere, ferramenta: già implementati e funzionanti in v8.505
+// 🆕 v8.509 (11 FEB 2026): CALCOLO BRM CON FALLBACK AUTOMATICO
+// - Aggiunta funzione `getBRMConFallback()` centralizzata
+// - Se BRM_L/BRM_H sono null → calcola automaticamente da misure vano
+// - REGOLA FALLBACK (priorità): BRM → LF/HF (+100/+50) → LVT/HVT (+100/+50) → TMV/HMT (-40/-20)
+// - Applicato in `calcolaPrezzoFinstral()` → Twin ora funziona anche con BRM null
+// - Fix: Dashboard calcola preventivi anche con BRM non compilati
+// - ✅ UNICA FUNZIONE DA MODIFICARE: `getBRMConFallback()` per aggiornare logica ovunque
 //
-// 🆕 v8.505 (27 GEN 2026): GRUPPI COLORE A/B
+// 🆕 v8.508 (11 FEB 2026): FIX FATTORE TIPO 101 → 1.0
 // 
 // IMPORTANTE - I supplementi telaio e anta ora distinguono GRUPPO COLORE:
 // - Gruppo A = tonalità bianco (01, 42, 45, 07, 27) → usa pvcA/aluA
@@ -1216,6 +1219,80 @@ idxL = i;
     return bancale.prezzi[idxP]?.[idxL] || 0;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 v8.509: FUNZIONE CENTRALIZZATA CALCOLO BRM CON FALLBACK
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Calcola BRM con fallback automatico da misure vano quando BRM è null/vuoto
+ * 
+ * REGOLA FALLBACK (definita insieme):
+ * - Se BRM_L/BRM_H esistono → usa quelli
+ * - Altrimenti usa misure vano con questi offset:
+ *   - LF/HF (Luce Foro): +100mm / +50mm
+ *   - LVT/HVT (Luce Vano Totale): +100mm / +50mm
+ *   - TMV/HMT (Telaio Muratura Vano): -40mm / -20mm
+ * 
+ * PRIORITÀ: BRM → LF/HF → LVT/HVT → TMV/HMT
+ * 
+ * @param {Object} config - Configurazione con BRM e/o misure
+ * @param {number} config.BRM_L - Larghezza BRM (se presente)
+ * @param {number} config.BRM_H - Altezza BRM (se presente)
+ * @param {Object} config.misure - Oggetto misure vano (opzionale)
+ * @param {number} config.misure.LF - Luce Foro larghezza
+ * @param {number} config.misure.HF - Altezza Foro
+ * @param {number} config.misure.LVT - Luce Vano Totale larghezza
+ * @param {number} config.misure.HVT - Altezza Vano Totale
+ * @param {number} config.misure.TMV - Telaio Muratura Vano larghezza
+ * @param {number} config.misure.HMT - Altezza Muratura Telaio
+ * @returns {Object} { L: number, H: number, source: string }
+ */
+window.getBRMConFallback = function(config) {
+    const { BRM_L, BRM_H, misure } = config;
+    
+    // 1. Se BRM già presente, usalo
+    if (BRM_L && BRM_H) {
+        return { 
+            L: parseInt(BRM_L), 
+            H: parseInt(BRM_H), 
+            source: 'BRM diretto'
+        };
+    }
+    
+    if (!misure) {
+        console.warn('⚠️ getBRMConFallback: né BRM né misure disponibili!');
+        return { L: 0, H: 0, source: 'nessuno' };
+    }
+    
+    // 2. Fallback LF/HF (Luce Foro) - PRIORITÀ 1
+    if (misure.LF && misure.HF) {
+        const L = parseInt(misure.LF) + 100;
+        const H = parseInt(misure.HF) + 50;
+        console.log(`📐 BRM calcolato da LF/HF: ${L}×${H} (LF=${misure.LF} +100, HF=${misure.HF} +50)`);
+        return { L, H, source: 'LF/HF +100/+50' };
+    }
+    
+    // 3. Fallback LVT/HVT (Luce Vano Totale) - PRIORITÀ 2
+    if (misure.LVT && misure.HVT) {
+        const L = parseInt(misure.LVT) + 100;
+        const H = parseInt(misure.HVT) + 50;
+        console.log(`📐 BRM calcolato da LVT/HVT: ${L}×${H} (LVT=${misure.LVT} +100, HVT=${misure.HVT} +50)`);
+        return { L, H, source: 'LVT/HVT +100/+50' };
+    }
+    
+    // 4. Fallback TMV/HMT (Telaio Muratura) - PRIORITÀ 3
+    if (misure.TMV && misure.HMT) {
+        const L = parseInt(misure.TMV) - 40;
+        const H = parseInt(misure.HMT) - 20;
+        console.log(`📐 BRM calcolato da TMV/HMT: ${L}×${H} (TMV=${misure.TMV} -40, HMT=${misure.HMT} -20)`);
+        return { L, H, source: 'TMV/HMT -40/-20' };
+    }
+    
+    // 5. Nessuna misura utilizzabile
+    console.warn('⚠️ getBRMConFallback: nessuna misura valida trovata!');
+    return { L: 0, H: 0, source: 'nessuno' };
+};
+
 // Funzione calcolo prezzo anta twin
 window.calcolaPrezzoAntaTwin = function(tipoOscurante, larghezza, altezza, comando = '27') {
     const tabella = tipoOscurante === 'veneziana' ? 
@@ -2033,7 +2110,17 @@ return prezzoCorretto;
 }
 
 window.calcolaPrezzoFinstral = function(config) {
-    const { tipo = "101", larghezza, altezza, telaio = "961", materiale = "pvc", vetro = "standard",
+    // 🆕 v8.509: Usa BRM con fallback automatico da misure vano
+    const brmCalcolato = window.getBRMConFallback(config);
+    const larghezza = brmCalcolato.L;
+    const altezza = brmCalcolato.H;
+    
+    // Log se BRM è stato calcolato con fallback
+    if (brmCalcolato.source !== 'BRM diretto') {
+        console.log(`📐 BRM calcolato con fallback: ${larghezza}×${altezza} (${brmCalcolato.source})`);
+    }
+    
+    const { tipo = "101", telaio = "961", materiale = "pvc", vetro = "standard",
     tipoAnta = "step-line", colorePVC = "01", coloreAlluminio = null } = config;
     
     // ✅ v7.73: DEBUG - Mostra parametri ricevuti
@@ -2742,4 +2829,4 @@ if (typeof window !== 'undefined') {
     window.getGruppoColoreFinstral = getGruppoColoreFinstral;
 }
 
-console.log('✅ FINSTRAL_PREZZI v8.508 caricato (fix fattore 101 + Twin già presente)');
+console.log('✅ FINSTRAL_PREZZI v8.509 caricato (BRM fallback + fix tipo 101)');
