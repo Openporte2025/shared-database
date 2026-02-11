@@ -1,7 +1,22 @@
 // ============================================================================
-// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.509
+// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.510
 // ============================================================================
 // 
+// 🆕 v8.510 (11 FEB 2026): ARCHITETTURA "CODICI DENTRO, NOMI FUORI"
+// - ♻️ **RISTRUTTURATO DATABASE TWIN**: codici Finstral come chiavi primarie
+//   - PRIMA: chiavi interne ('SLIM_TWIN', 'NOVA_TWIN') → ❌ non standard
+//   - DOPO: codici ufficiali ('C788', 'N989') → ✅ pattern corretto
+// - 🔄 **HELPER RINOMINATI** (logica coerente con tutti i prodotti):
+//   - `getTwinModelName(code)`: "C788" → "Slim-line Twin 77mm" (visualizzazione)
+//   - `getTwinModelCode(name)`: "Slim-line Twin 77mm" → "C788" (reverse)
+//   - `migrateTwinModelKey(oldKey)`: "SLIM_TWIN" → "C788" (retrocompatibilità)
+// - 📐 **PATTERN UNIVERSALE** applicato:
+//   - JSON salva: codice ("C788", "965", "2113", "7120")
+//   - Calcoli usano: codice (univoco, veloce, stabile)
+//   - Ordini inviano: codice (formato ufficiale Finstral)
+//   - Cliente vede: nome ("Slim-line Twin 77mm", "PVC/PVC 62mm")
+// - ✅ Coerenza totale: telaio, vetro, maniglia, Twin usano stesso pattern
+//
 // 🆕 v8.509 (11 FEB 2026): CALCOLO BRM CON FALLBACK + HELPER TWIN
 // - Aggiunta funzione `getBRMConFallback()` centralizzata
 // - Se BRM_L/BRM_H sono null → calcola automaticamente da misure vano
@@ -1077,13 +1092,16 @@ prezzi: [
 
 // ANTA TWIN - Veneziana e Plissettata (listino 10/2025 pag. 146-147)
 window.FINSTRAL_ANTA_TWIN = {
+    // 🆕 v8.510: CODICI COME CHIAVI (pattern "codici dentro, nomi fuori")
+    // Chiave = Codice Finstral ufficiale (C788, N989, etc.)
+    // Usato per: JSON, calcoli, ordini
     tipiAnta: {
-'SLIM_TWIN': { cod: 'C788', desc: 'Slim-line Twin 77mm', codVeneziana: 'WS25' },
-'SLIM_TWIN_90': { cod: 'C988', desc: 'Slim-line Twin 90/124mm', codVeneziana: 'WS25' },
-'SLIM_CRISTAL_TWIN': { cod: 'C779', desc: 'Slim-line Cristal Twin', codVeneziana: 'WSC25' },
-'SLIM_CRISTAL_TWIN_90': { cod: 'C979', desc: 'Slim-line Cristal Twin 90/124', codVeneziana: 'WSC25' },
-'NOVA_TWIN': { cod: 'N989', desc: 'Nova-line Twin', codVeneziana: 'WN25' },
-'NOVA_CRISTAL_TWIN': { cod: 'N979', desc: 'Nova-line Cristal Twin', codVeneziana: 'WNC25' }
+        'C788': { desc: 'Slim-line Twin 77mm', codVeneziana: 'WS25' },
+        'C988': { desc: 'Slim-line Twin 90/124mm', codVeneziana: 'WS25' },
+        'C779': { desc: 'Slim-line Cristal Twin', codVeneziana: 'WSC25' },
+        'C979': { desc: 'Slim-line Cristal Twin 90/124', codVeneziana: 'WSC25' },
+        'N989': { desc: 'Nova-line Twin', codVeneziana: 'WN25' },
+        'N979': { desc: 'Nova-line Cristal Twin', codVeneziana: 'WNC25' }
     },
     coloriVeneziana: {
 '0717': { nome: 'Silver', gtot: 0.09, classe: 4, riflessione: 64, trasmissione: 4, assorbimento: 32 },
@@ -1298,66 +1316,98 @@ window.getBRMConFallback = function(config) {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🆕 v8.509: HELPER CONVERSIONE MODELLO TWIN
+// 🆕 v8.510: HELPER CONVERSIONE TWIN (pattern "codici dentro, nomi fuori")
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Converte chiave interna modello Twin → descrizione completa
+ * Converte CODICE Twin → NOME descrittivo (per visualizzazione cliente)
  * 
- * @param {string} modelKey - Chiave interna (es. "SLIM_TWIN", "NOVA_TWIN")
- * @returns {string} Descrizione completa (es. "C788 - Slim-line Twin 77mm")
+ * PATTERN: "Codici dentro, nomi fuori"
+ * - JSON salva codice: "C788"
+ * - Dashboard mostra nome: "Slim-line Twin 77mm"
+ * - Calcoli usano codice: "C788"
+ * - Ordini inviano codice: "C788"
+ * 
+ * @param {string} code - Codice Finstral (es. "C788", "N989")
+ * @returns {string} Nome descrittivo (es. "Slim-line Twin 77mm")
  * 
  * @example
- * getTwinModelDescription("SLIM_TWIN") → "C788 - Slim-line Twin 77mm"
- * getTwinModelDescription("NOVA_TWIN") → "N989 - Nova-line Twin"
+ * getTwinModelName("C788") → "Slim-line Twin 77mm"
+ * getTwinModelName("N989") → "Nova-line Twin"
  */
-window.getTwinModelDescription = function(modelKey) {
-    if (!modelKey) return '';
+window.getTwinModelName = function(code) {
+    if (!code) return '';
     
     if (typeof FINSTRAL_ANTA_TWIN === 'undefined') {
         console.warn('⚠️ FINSTRAL_ANTA_TWIN non caricato!');
-        return modelKey;
+        return code;
     }
     
-    const model = FINSTRAL_ANTA_TWIN.tipiAnta[modelKey];
+    const model = FINSTRAL_ANTA_TWIN.tipiAnta[code];
     
     if (model) {
-        return `${model.cod} - ${model.desc}`;
+        return model.desc;  // Solo descrizione (senza codice ripetuto)
     }
     
-    // Fallback: ritorna chiave se non trovata
-    console.warn(`⚠️ Modello Twin "${modelKey}" non trovato in database`);
-    return modelKey;
+    // Fallback: ritorna codice se non trovato
+    console.warn(`⚠️ Codice Twin "${code}" non trovato in database`);
+    return code;
 };
 
 /**
- * Converte descrizione completa → chiave interna (reverse)
+ * Converte NOME → CODICE (reverse, per import/conversione)
  * 
- * @param {string} description - Descrizione (es. "C788 - Slim-line Twin 77mm")
- * @returns {string} Chiave interna (es. "SLIM_TWIN")
+ * @param {string} name - Nome descrittivo (es. "Slim-line Twin 77mm")
+ * @returns {string} Codice Finstral (es. "C788")
  * 
  * @example
- * getTwinModelKey("C788 - Slim-line Twin 77mm") → "SLIM_TWIN"
+ * getTwinModelCode("Slim-line Twin 77mm") → "C788"
+ * getTwinModelCode("Nova-line Twin") → "N989"
  */
-window.getTwinModelKey = function(description) {
-    if (!description) return '';
+window.getTwinModelCode = function(name) {
+    if (!name) return '';
     
     if (typeof FINSTRAL_ANTA_TWIN === 'undefined') {
-        return description;
+        return name;
     }
     
-    // Estrae codice dalla descrizione (es. "C788" da "C788 - Slim-line Twin 77mm")
-    const codice = description.split(' - ')[0].trim();
-    
-    // Cerca modello per codice
-    for (const [key, model] of Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta)) {
-        if (model.cod === codice) {
-            return key;
+    // Cerca per descrizione esatta
+    for (const [code, model] of Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta)) {
+        if (model.desc.toLowerCase() === name.toLowerCase()) {
+            return code;
         }
     }
     
-    // Fallback: ritorna descrizione
-    return description;
+    // Fallback: cerca per match parziale
+    for (const [code, model] of Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta)) {
+        if (name.toLowerCase().includes(model.desc.toLowerCase()) || 
+            model.desc.toLowerCase().includes(name.toLowerCase())) {
+            return code;
+        }
+    }
+    
+    // Se non trovato, ritorna il nome (potrebbe essere già un codice)
+    return name;
+};
+
+/**
+ * Helper per retrocompatibilità con vecchi JSON (chiavi interne tipo "SLIM_TWIN")
+ * Converte vecchia chiave → nuovo codice
+ * 
+ * @param {string} oldKey - Vecchia chiave (es. "SLIM_TWIN", "NOVA_TWIN")
+ * @returns {string} Codice nuovo (es. "C788", "N989")
+ */
+window.migrateTwinModelKey = function(oldKey) {
+    const mapping = {
+        'SLIM_TWIN': 'C788',
+        'SLIM_TWIN_90': 'C988',
+        'SLIM_CRISTAL_TWIN': 'C779',
+        'SLIM_CRISTAL_TWIN_90': 'C979',
+        'NOVA_TWIN': 'N989',
+        'NOVA_CRISTAL_TWIN': 'N979'
+    };
+    
+    return mapping[oldKey] || oldKey;
 };
 
 // Funzione calcolo prezzo anta twin
@@ -2394,7 +2444,7 @@ console.log(`🪟 Bancale ${config.bancaleTipo}: P=${config.bancaleProfondita}mm
     if (config.antaTwinTipo && (config.antaTwinTipo === 'veneziana' || config.antaTwinTipo === 'plissettata')) {
 risultato.dettaglio.antaTwin = {
     tipo: config.antaTwinTipo,
-    modello: config.antaTwinModello,  // ⚠️ Chiave interna (es. "SLIM_TWIN"). Usa getTwinModelDescription() per visualizzare
+    modello: config.antaTwinModello,  // ⚠️ v8.510: CODICE Finstral (es. "C788"). Usa getTwinModelName() per visualizzare nome
     colore: config.antaTwinColore,
     comando: config.antaTwinComando || '27',
     prezzo: calcolaPrezzoAntaTwin(config.antaTwinTipo, larghezza, altezza, config.antaTwinComando || '27')
@@ -2896,4 +2946,4 @@ if (typeof window !== 'undefined') {
     window.getGruppoColoreFinstral = getGruppoColoreFinstral;
 }
 
-console.log('✅ FINSTRAL_PREZZI v8.509 caricato (BRM fallback + Twin helpers + fix tipo 101)');
+console.log('✅ FINSTRAL_PREZZI v8.510 caricato (codici dentro/nomi fuori + BRM fallback + fix tipo 101)');
