@@ -35,18 +35,18 @@
         // 🏭 AZIENDE
         // ═══════════════════════════════════════════════════════════════════════
         AZIENDE: {
-            infissi: ['Finstral', 'Essepi'],
-            persiane: ['P. Persiane','Erreci'],
-            tapparelle: ['Plasticino', 'Estella'],
-            zanzariere: ['Palagina', 'Finstral'],
-            cassonetti: ['Finstral', 'Alpac', 'Magò']
+            infissi: ['Finstral', 'Essepi', 'Schüco', 'Oknoplast', 'Internorm'],
+            persiane: ['P. Persiane', 'Pail', 'Gibus', 'Schenker'],
+            tapparelle: ['Plasticino', 'New Solar', 'Estella'],
+            zanzariere: ['Palagina', 'MV Line', 'Bettio'],
+            cassonetti: ['Finstral', 'Alpac', 'Elicent']
         },
 
         // ═══════════════════════════════════════════════════════════════════════
         // 🪟 INFISSI
         // ═══════════════════════════════════════════════════════════════════════
         infissi: {
-            aziende: ['Finstral', 'Essepi'],
+            aziende: ['Finstral', 'Essepi', 'Schüco', 'Oknoplast', 'Internorm'],
 
             tipiAnta: [
                 'Classic-line', 'Slim-line', 'Slim-line Cristal',
