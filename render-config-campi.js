@@ -3,6 +3,7 @@
  * 🔧 RENDER CONFIG CAMPI - Renderer generico config globale da CAMPI_PRODOTTI
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
+ * v1.4.0 (11/02/2026): Fix Twin v8.510 - getAntaTwinModelli usa model.desc (no model.cod)
  * v1.3.0 (07/02/2026): Fix select con customGetter senza options (colorePersiana vuoto)
  * v1.2.1 (06/02/2026): Fix getColoriPersiane fallback chain (COLORI_PERSIANE → PERSIANE_MODULE → OPZIONI_PRODOTTI)
  * v1.2.0 (06/02/2026): Renderer posizione prodotti da CAMPI_PRODOTTI
@@ -202,7 +203,8 @@ function _getOptionsFromGetter(campo, project, configData) {
             return typeof getTelaiPerProgetto === 'function' ? getTelaiPerProgetto(project) : [];
         case 'getAntaTwinModelli':
             if (typeof FINSTRAL_ANTA_TWIN !== 'undefined') {
-                return Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta).map(([k,v]) => `${v.cod} - ${v.desc}`);
+                // v8.510: tipiAnta usa codici come chiavi, v.desc è il nome
+                return Object.entries(FINSTRAL_ANTA_TWIN.tipiAnta).map(([code, model]) => model.desc);
             }
             return [];
         case 'getAntaTwinColori': {
@@ -719,4 +721,48 @@ function _renderPosNumber(campo, value, projectId, posId, productType) {
     `;
 }
 
-console.log('✅ render-config-campi.js v1.3.0 caricato');
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🆕 v1.4.0: FUNZIONI HELPER PUBBLICHE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Genera HTML <option> per dropdown Twin da FINSTRAL_ANTA_TWIN
+ * @param {string} getter - Nome getter ('getAntaTwinModelli', 'getAntaTwinColori', 'getAntaTwinComandi')
+ * @param {object} configData - Dati config per getter dinamici (es. antaTwinTipo)
+ * @param {string} selectedValue - Valore selezionato
+ * @returns {string} HTML options
+ */
+window.generateTwinOptions = function(getter, configData = {}, selectedValue = '') {
+    const options = _getOptionsFromGetter({ customGetter: getter }, null, configData);
+    
+    if (getter === 'getAntaTwinModelli') {
+        // Modelli: valore = codice (C788), testo = descrizione
+        return Object.entries(FINSTRAL_ANTA_TWIN?.tipiAnta || {})
+            .map(([code, model]) => 
+                `<option value="${code}" ${selectedValue === code ? 'selected' : ''}>${model.desc}</option>`
+            ).join('');
+    }
+    
+    if (getter === 'getAntaTwinColori') {
+        // Colori: formato "cod - nome"
+        const tipo = configData.antaTwinTipo;
+        const colori = tipo === 'veneziana' ? FINSTRAL_ANTA_TWIN?.coloriVeneziana :
+                       tipo === 'plissettata' ? FINSTRAL_ANTA_TWIN?.coloriPlissettata : {};
+        return Object.entries(colori || {})
+            .map(([cod, info]) => 
+                `<option value="${cod}" ${selectedValue === cod ? 'selected' : ''}>${cod} - ${info.nome}</option>`
+            ).join('');
+    }
+    
+    if (getter === 'getAntaTwinComandi') {
+        // Comandi: formato "cod (supplemento)"
+        return Object.entries(FINSTRAL_ANTA_TWIN?.comandi || {})
+            .map(([cod, info]) => 
+                `<option value="${cod}" ${selectedValue === cod ? 'selected' : ''}>${info.desc}${info.supplemento > 0 ? ' (+€' + info.supplemento + ')' : ''}</option>`
+            ).join('');
+    }
+    
+    return '';
+};
+
+console.log('✅ render-config-campi.js v1.4.0 caricato');
