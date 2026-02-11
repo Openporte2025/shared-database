@@ -102,10 +102,10 @@ window.FINSTRAL_OPZIONI = {
         { codice: "974", nome: "Step-line", key: "step-line" },
         { codice: "970", nome: "Slim-line", key: "slim-line" },
         { codice: "935", nome: "Slim-line Cristal", key: "slim-line-cristal" },
-        { codice: "TWIN", nome: "Anta Twin", key: "anta-twin" },  // 🆕 v8.510: Voce unica generica
+        { codice: "TWIN", nome: "Anta Twin", key: "anta-twin" },
         { codice: "971", nome: "Nova-line", key: "nova-line" },
         { codice: "953", nome: "Nova-line 40", key: "nova-line-40" },
-        { codice: "941", nome: "Nova-line Plus", key: "nova-line-plus" },
+        { codice: "941", nome: "Nova-line Plus", key: "nova-line-plus" }
     ],
 
     // ═══════════════════════════════════════════════════════════════════════
