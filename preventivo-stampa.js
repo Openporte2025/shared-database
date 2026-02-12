@@ -1,7 +1,12 @@
 // ============================================================================
-// PREVENTIVO-STAMPA.js v1.1.0 - Modulo Stampa Preventivo Centralizzato
+// PREVENTIVO-STAMPA.js v1.2.0 - Modulo Stampa Preventivo Centralizzato
 // ============================================================================
 // 
+// CHANGELOG v1.2.0:
+// - NUOVO: esportaListaProdottiPDF() - Export PDF lista prodotti dettagliata
+// - NUOVO: getConfigurazioneCompleta() - Stringa configurazione per ogni prodotto
+// - NUOVO: generaHTMLListaProdotti() - Generazione HTML tabella prodotti
+//
 // CHANGELOG v1.1.0:
 // - FIX: Quando "IVA Esclusa" (tipoIntervento='nessuna'), la colonna/sezione IVA
 //   viene completamente nascosta invece di mostrare "Nessuna IVA applicata"
@@ -17,12 +22,13 @@
 // Funzioni esportate:
 // - generaDocumentoPremium(tipo, cliente, doc, righe, totali)
 // - generaHTMLDocumentoStampa(tipo, cliente, doc, righe, totali)
+// - esportaListaProdottiPDF(projectData, cliente)
 // - PREVENTIVO_STAMPA.getSVGFinestra(tipo)
 //
 // ============================================================================
 
 const PREVENTIVO_STAMPA = {
-    version: '1.1.0',
+    version: '1.2.0',
     
     // Helper per ottenere quantità normalizzata
     getQuantita: function(prodotto) {
@@ -586,6 +592,283 @@ function generaHTMLDocumentoStampa(tipo, cliente, doc, righe, totali) {
 }
 
 // ============================================================================
+// 🆕 v1.2.0: EXPORT LISTA PRODOTTI DETTAGLIATA
+// ============================================================================
+
+/**
+ * Estrae stringa configurazione completa per un prodotto
+ * @param {Object} prodotto - Oggetto prodotto (infisso, persiana, ecc.)
+ * @param {string} tipoProdotto - Tipo: 'infisso','persiana','tapparella','zanzariera','cassonetto'
+ * @returns {string} Configurazione leggibile
+ */
+function getConfigurazioneCompleta(prodotto, tipoProdotto) {
+    if (!prodotto) return '';
+    var config = [];
+    
+    // Profilo / Modello sistema
+    if (prodotto.profilo) config.push('Profilo: ' + prodotto.profilo);
+    if (prodotto.sistema) config.push('Sistema: ' + prodotto.sistema);
+    
+    // Colore
+    if (prodotto.colore) config.push('Colore: ' + prodotto.colore);
+    if (prodotto.coloreEsterno && prodotto.coloreEsterno !== prodotto.colore) {
+        config.push('Colore Est.: ' + prodotto.coloreEsterno);
+    }
+    
+    // Tipologia apertura
+    if (prodotto.tipoApertura) config.push('Apertura: ' + prodotto.tipoApertura);
+    if (prodotto.tipo && !prodotto.tipoApertura) config.push('Tipo: ' + prodotto.tipo);
+    
+    // Vetro
+    if (prodotto.vetro) config.push('Vetro: ' + prodotto.vetro);
+    
+    // Maniglia
+    if (prodotto.maniglia) config.push('Maniglia: ' + prodotto.maniglia);
+    
+    // Anta Twin (Finstral)
+    if (prodotto.antaTwinModello) {
+        var twinDesc = prodotto.antaTwinModello;
+        // Se è un codice, prova a convertire in nome leggibile
+        if (typeof window !== 'undefined' && window.FINSTRAL_DB && window.FINSTRAL_DB.getTwinModelName) {
+            var nome = window.FINSTRAL_DB.getTwinModelName(prodotto.antaTwinModello);
+            if (nome) twinDesc = nome;
+        }
+        config.push('Anta Twin: ' + twinDesc);
+        if (prodotto.antaTwinTipo) config.push('Twin tipo: ' + prodotto.antaTwinTipo);
+        if (prodotto.antaTwinColore) config.push('Twin colore: ' + prodotto.antaTwinColore);
+    }
+    
+    // Cerniere
+    if (prodotto.cerniera) config.push('Cerniera: ' + prodotto.cerniera);
+    
+    // Cassonetto specifico
+    if (tipoProdotto === 'cassonetto') {
+        if (prodotto.tipoIsolamento) config.push('Isolamento: ' + prodotto.tipoIsolamento);
+    }
+    
+    // Tapparella specifico
+    if (tipoProdotto === 'tapparella') {
+        if (prodotto.materiale) config.push('Materiale: ' + prodotto.materiale);
+        if (prodotto.motorizzazione || prodotto.motore) config.push('Motore: ' + (prodotto.motorizzazione || prodotto.motore));
+    }
+    
+    // Zanzariera specifico
+    if (tipoProdotto === 'zanzariera') {
+        if (prodotto.tipoRete) config.push('Rete: ' + prodotto.tipoRete);
+    }
+    
+    // Persiana specifico
+    if (tipoProdotto === 'persiana') {
+        if (prodotto.tipoLamella) config.push('Lamella: ' + prodotto.tipoLamella);
+        if (prodotto.numeroPannelli) config.push('Pannelli: ' + prodotto.numeroPannelli);
+    }
+    
+    // Azienda/Fornitore
+    if (prodotto.azienda) config.push('Fornitore: ' + prodotto.azienda);
+    
+    return config.join(' | ');
+}
+
+/**
+ * Genera HTML per la lista prodotti dettagliata
+ * @param {Object} cliente - {nome, telefono, email, indirizzo}
+ * @param {Array} righe - Array di oggetti riga prodotto
+ * @param {Object} projectData - Dati progetto completi
+ * @returns {string} HTML completo
+ */
+function generaHTMLListaProdotti(cliente, righe, projectData) {
+    var nomeProgetto = projectData.nome_ricerca || projectData.name || 'Progetto';
+    var dataOggi = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    var html = '<!DOCTYPE html><html><head>';
+    html += '<meta charset="UTF-8">';
+    html += '<title>Lista Prodotti - ' + nomeProgetto + '</title>';
+    html += '<style>';
+    html += '* { box-sizing: border-box; margin: 0; padding: 0; }';
+    html += 'body { font-family: "Segoe UI", Arial, sans-serif; margin: 30px 40px; color: #1f2937; font-size: 11pt; }';
+    html += '.header-doc { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid #1e3a5f; }';
+    html += '.header-left h1 { color: #1e3a5f; font-size: 18pt; margin-bottom: 5px; }';
+    html += '.header-left p { font-size: 10pt; color: #6b7280; }';
+    html += '.header-right { text-align: right; font-size: 10pt; color: #374151; }';
+    html += '.header-right .data { font-weight: 600; }';
+    html += '.cliente-info { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }';
+    html += '.cliente-info strong { color: #1e3a5f; }';
+    html += 'table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 10pt; }';
+    html += 'thead th { background: #1e3a5f; color: white; padding: 8px 6px; text-align: left; font-weight: 600; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.3px; }';
+    html += 'tbody td { border-bottom: 1px solid #e5e7eb; padding: 7px 6px; vertical-align: top; }';
+    html += 'tbody tr:nth-child(even) { background: #f9fafb; }';
+    html += 'tbody tr:hover { background: #f0f9ff; }';
+    html += '.col-pos { width: 4%; text-align: center; font-weight: 600; color: #1e3a5f; }';
+    html += '.col-ambiente { width: 12%; }';
+    html += '.col-tipo { width: 8%; }';
+    html += '.col-tipo span { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 8pt; font-weight: 600; }';
+    html += '.tipo-infisso { background: #dbeafe; color: #1e40af; }';
+    html += '.tipo-persiana { background: #fef3c7; color: #92400e; }';
+    html += '.tipo-tapparella { background: #d1fae5; color: #065f46; }';
+    html += '.tipo-zanzariera { background: #ede9fe; color: #5b21b6; }';
+    html += '.tipo-cassonetto { background: #fee2e2; color: #991b1b; }';
+    html += '.tipo-porta { background: #fce7f3; color: #9d174d; }';
+    html += '.col-modello { width: 12%; font-weight: 500; }';
+    html += '.col-dim { width: 8%; text-align: center; white-space: nowrap; }';
+    html += '.col-qta { width: 4%; text-align: center; }';
+    html += '.col-config { width: 32%; font-size: 9pt; color: #4b5563; }';
+    html += '.col-note { width: 10%; font-size: 9pt; color: #6b7280; font-style: italic; }';
+    html += '.col-prezzo { width: 10%; text-align: right; font-weight: 600; white-space: nowrap; }';
+    html += '.riga-totale td { border-top: 2px solid #1e3a5f; font-weight: 700; font-size: 11pt; padding: 10px 6px; background: #e0f2fe !important; }';
+    html += '.footer-doc { margin-top: 30px; text-align: center; font-size: 8pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }';
+    html += '.riepilogo { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; }';
+    html += '.riepilogo-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 14px; font-size: 9pt; }';
+    html += '.riepilogo-box strong { color: #1e3a5f; }';
+    html += '@media print { body { margin: 15px 20px; } .header-doc { margin-bottom: 15px; } }';
+    html += '</style>';
+    html += '</head><body>';
+    
+    // Header
+    html += '<div class="header-doc">';
+    html += '<div class="header-left"><h1>📋 Lista Prodotti Dettagliata</h1>';
+    html += '<p>Open Porte & Finestre - Bergamo</p></div>';
+    html += '<div class="header-right"><div class="data">' + dataOggi + '</div>';
+    html += '<div>' + nomeProgetto + '</div></div></div>';
+    
+    // Dati cliente
+    html += '<div class="cliente-info">';
+    html += '<strong>Cliente:</strong> ' + (cliente.nome || 'N/D');
+    if (cliente.indirizzo) html += ' &nbsp;|&nbsp; ' + cliente.indirizzo;
+    if (cliente.telefono) html += ' &nbsp;|&nbsp; Tel. ' + cliente.telefono;
+    if (cliente.email) html += ' &nbsp;|&nbsp; ' + cliente.email;
+    html += '</div>';
+    
+    // Tabella
+    html += '<table><thead><tr>';
+    html += '<th class="col-pos">Pos</th>';
+    html += '<th class="col-ambiente">Ambiente</th>';
+    html += '<th class="col-tipo">Tipo</th>';
+    html += '<th class="col-modello">Modello</th>';
+    html += '<th class="col-dim">L×H mm</th>';
+    html += '<th class="col-qta">Qtà</th>';
+    html += '<th class="col-config">Configurazione</th>';
+    html += '<th class="col-note">Note</th>';
+    html += '<th class="col-prezzo">Prezzo €</th>';
+    html += '</tr></thead><tbody>';
+    
+    var totale = 0;
+    var contatori = {};
+    
+    righe.forEach(function(r) {
+        var tipoClass = 'tipo-' + (r.tipo || '').toLowerCase().replace(/\s+/g, '');
+        // Riepilogo contatori
+        contatori[r.tipo] = (contatori[r.tipo] || 0) + (r.quantita || 1);
+        
+        html += '<tr>';
+        html += '<td class="col-pos">' + r.posizione + '</td>';
+        html += '<td class="col-ambiente">' + r.ambiente + '</td>';
+        html += '<td class="col-tipo"><span class="' + tipoClass + '">' + r.tipo + '</span></td>';
+        html += '<td class="col-modello">' + r.modello + '</td>';
+        html += '<td class="col-dim">' + r.larghezza + '×' + r.altezza + '</td>';
+        html += '<td class="col-qta">' + r.quantita + '</td>';
+        html += '<td class="col-config">' + r.configurazione + '</td>';
+        html += '<td class="col-note">' + r.note + '</td>';
+        html += '<td class="col-prezzo">€ ' + r.prezzo.toFixed(2) + '</td>';
+        html += '</tr>';
+        totale += r.prezzo * (r.quantita || 1);
+    });
+    
+    // Riga totale
+    html += '<tr class="riga-totale">';
+    html += '<td colspan="8" style="text-align:right;padding-right:15px">TOTALE MATERIALI</td>';
+    html += '<td class="col-prezzo">€ ' + totale.toFixed(2) + '</td>';
+    html += '</tr>';
+    
+    html += '</tbody></table>';
+    
+    // Riepilogo contatori
+    html += '<div class="riepilogo">';
+    var tipiProdotto = Object.keys(contatori);
+    tipiProdotto.forEach(function(tipo) {
+        html += '<div class="riepilogo-box"><strong>' + tipo + ':</strong> ' + contatori[tipo] + ' pz</div>';
+    });
+    html += '<div class="riepilogo-box"><strong>Totale posizioni:</strong> ' + righe.length + '</div>';
+    html += '</div>';
+    
+    // Footer
+    html += '<div class="footer-doc">Open Porte & Finestre SRL - Bergamo - Documento generato il ' + dataOggi + '</div>';
+    html += '</body></html>';
+    
+    return html;
+}
+
+/**
+ * Esporta lista prodotti dettagliata come HTML (per stampa/PDF)
+ * @param {Object} projectData - Dati progetto con posizioni[]
+ * @param {Object} cliente - {nome, telefono, email, indirizzo}
+ * @returns {string} HTML completo pronto per stampa
+ */
+function esportaListaProdottiPDF(projectData, cliente) {
+    console.log('📄 Generazione PDF Lista Prodotti...');
+    
+    if (!projectData || !projectData.posizioni) {
+        console.warn('⚠️ Nessuna posizione trovata nel progetto');
+        return null;
+    }
+    
+    var righe = [];
+    var posizioni = projectData.posizioni || [];
+    
+    // Mappa sottoprodotti da estrarre
+    var sottoProdotti = [
+        { key: 'infisso', label: 'Infisso' },
+        { key: 'persiana', label: 'Persiana' },
+        { key: 'tapparella', label: 'Tapparella' },
+        { key: 'zanzariera', label: 'Zanzariera' },
+        { key: 'cassonetto', label: 'Cassonetto' },
+        { key: 'portaInterna', label: 'Porta Interna' },
+        { key: 'portaBlindato', label: 'Porta Blindata' },
+        { key: 'portoncino', label: 'Portoncino' }
+    ];
+    
+    posizioni.forEach(function(pos, idx) {
+        var numPos = idx + 1;
+        var ambiente = pos.ambiente || pos.nomeAmbiente || 'Posizione ' + numPos;
+        
+        sottoProdotti.forEach(function(sp) {
+            var prod = pos[sp.key];
+            if (!prod) return;
+            
+            // Controlla che abbia dimensioni valide o quantità
+            var larg = parseInt(prod.larghezza) || parseInt(prod.BRM_L) || parseInt(prod.luce_foro_L) || 0;
+            var alt = parseInt(prod.altezza) || parseInt(prod.BRM_H) || parseInt(prod.luce_foro_H) || 0;
+            var qta = PREVENTIVO_STAMPA.getQuantita(prod);
+            
+            if (larg <= 0 && alt <= 0 && qta <= 0) return;
+            
+            righe.push({
+                posizione: numPos,
+                ambiente: ambiente,
+                tipo: sp.label,
+                modello: prod.modello || prod.sistema || prod.nome || 'N/D',
+                larghezza: larg,
+                altezza: alt,
+                quantita: qta || 1,
+                configurazione: getConfigurazioneCompleta(prod, sp.key),
+                note: prod.note || prod.noteAggiuntive || '',
+                prezzo: parseFloat(prod._totaleCliente) || parseFloat(prod._prezzoCliente) || parseFloat(prod.prezzoCliente) || 0
+            });
+        });
+    });
+    
+    if (righe.length === 0) {
+        console.warn('⚠️ Nessun prodotto configurato nelle posizioni');
+        return null;
+    }
+    
+    console.log('📊 Prodotti trovati:', righe.length);
+    
+    // Genera HTML
+    var html = generaHTMLListaProdotti(cliente, righe, projectData);
+    return html;
+}
+
+// ============================================================================
 // EXPORT GLOBALE
 // ============================================================================
 
@@ -593,6 +876,8 @@ function generaHTMLDocumentoStampa(tipo, cliente, doc, righe, totali) {
 if (typeof window !== 'undefined') {
     window.generaDocumentoPremium = generaDocumentoPremium;
     window.generaHTMLDocumentoStampa = generaHTMLDocumentoStampa;
+    window.esportaListaProdottiPDF = esportaListaProdottiPDF;
+    window.getConfigurazioneCompleta = getConfigurazioneCompleta;
     console.log(`📄 PREVENTIVO_STAMPA v${PREVENTIVO_STAMPA.version} - Caricato`);
 }
 
@@ -601,6 +886,8 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = { 
         PREVENTIVO_STAMPA, 
         generaDocumentoPremium, 
-        generaHTMLDocumentoStampa 
+        generaHTMLDocumentoStampa,
+        esportaListaProdottiPDF,
+        getConfigurazioneCompleta
     };
 }
