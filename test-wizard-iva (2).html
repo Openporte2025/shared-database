@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Wizard IVA/Detrazioni v1.1.0</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 16px;
+            background: #f0f0f5;
+        }
+        h1 { font-size: 20px; color: #1a1a2e; }
+        h2 { font-size: 16px; color: #333; margin-top: 30px; }
+        .test-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .test-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .test-box h3 {
+            font-size: 14px;
+            color: #4361ee;
+            margin: 0 0 10px 0;
+        }
+        #log {
+            background: #1a1a2e;
+            color: #0f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #4361ee;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover { background: #3651d4; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Wizard IVA/Detrazioni v1.1.0</h1>
+    
+    <div class="test-row">
+        <div class="test-box">
+            <h3>📱 Simulazione App Rilievo (Scheda Cliente)</h3>
+            <div id="wizard-rilievo"></div>
+        </div>
+        <div class="test-box">
+            <h3>🖥️ Simulazione Dashboard Ufficio (Preventivo)</h3>
+            <div id="wizard-dashboard"></div>
+        </div>
+    </div>
+    
+    <h2>🔧 Azioni</h2>
+    <button onclick="leggiDati()">📋 Leggi dati da entrambi</button>
+    <button onclick="precompila()">⚡ Precompila caso comune</button>
+    <button onclick="precompilaNuovaCostruzione()">🏗️ Precompila: Nuova costruzione prima casa</button>
+    <button onclick="precompilaRistrutturazione()">🔨 Precompila: Ristrutturazione</button>
+    
+    <div id="log"></div>
+    
+    <script src="iva-detrazioni.js"></script>
+    <script>
+        const IVA = window.OPZIONI.IVA_DETRAZIONI;
+        
+        function log(msg) {
+            const el = document.getElementById('log');
+            el.innerHTML += msg + '<br>';
+            el.scrollTop = el.scrollHeight;
+        }
+        
+        // --- Wizard App Rilievo (normale) ---
+        const wizRilievo = IVA.renderWizardIVA('wizard-rilievo', {}, {
+            compact: false,
+            onChange: (dati, risultato) => {
+                log('📱 Rilievo → IVA: ' + (risultato.ivaMista ? 'MISTA 10/22' : risultato.aliquota + '%'));
+            }
+        });
+        
+        // --- Wizard Dashboard (compact, per preventivo) ---
+        const wizDashboard = IVA.renderWizardIVA('wizard-dashboard', {}, {
+            compact: true,
+            onChange: (dati, risultato) => {
+                log('🖥️ Dashboard → IVA: ' + (risultato.ivaMista ? 'MISTA 10/22' : risultato.aliquota + '%'));
+            }
+        });
+        
+        function leggiDati() {
+            const d1 = wizRilievo.getDati();
+            const d2 = wizDashboard.getDati();
+            log('--- DATI RILIEVO ---');
+            log(JSON.stringify(d1, null, 2));
+            
+            const r1 = wizRilievo.getResultIVA();
+            if (r1) log('IVA: ' + JSON.stringify({aliquota: r1.aliquota, mista: r1.ivaMista}));
+            
+            log('--- DATI DASHBOARD ---');
+            log(JSON.stringify(d2, null, 2));
+        }
+        
+        function precompila() {
+            // Caso più comune: Manutenzione Ordinaria + Abitativo + Fornitura+Posa + Privato + Ecobonus
+            wizRilievo.setDati({
+                intervento: 'manutenzione_ordinaria',
+                edificio: 'abitativa_privata',
+                servizio: 'fornitura_posa',
+                cliente: 'persona_fisica',
+                bonus: 'ecobonus',
+                primaCasa: 'si'
+            });
+            log('⚡ Precompilato caso comune (manutenzione ordinaria → IVA MISTA)');
+        }
+        
+        function precompilaNuovaCostruzione() {
+            wizDashboard.setDati({
+                intervento: 'nuova_costruzione',
+                edificio: 'prima_casa',
+                servizio: 'sola_fornitura',
+                cliente: 'persona_fisica',
+                bonus: 'nessuna',
+                primaCasa: 'si'
+            });
+            log('🏗️ Precompilato nuova costruzione prima casa (→ IVA 4%)');
+        }
+        
+        function precompilaRistrutturazione() {
+            wizRilievo.setDati({
+                intervento: 'ristrutturazione_edilizia',
+                edificio: 'abitativa_privata',
+                servizio: 'fornitura_posa',
+                cliente: 'persona_fisica',
+                bonus: 'bonus_casa',
+                primaCasa: 'si'
+            });
+            log('🔨 Precompilato ristrutturazione (→ IVA 10%)');
+        }
+        
+        log('✅ Wizard caricati. Usa i dropdown o i pulsanti per testare.');
+    </script>
+</body>
+</html>
