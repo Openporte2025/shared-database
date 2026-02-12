@@ -1,10 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📦 EXPORT-UTILS v1.1.0 - Utility centralizzate shared
+// 📦 EXPORT-UTILS v1.2.0 - Utility centralizzate shared
 // ═══════════════════════════════════════════════════════════════════════════════
 // Shared tra App Rilievo e Dashboard
 // Contiene:
 //   - exportPositions() / exportPosition() → export JSON automatico
 //   - calculateBRM() → calcolo BRM per TUTTI i prodotti
+//   - BRM_RULES → regole offset per prodotto (infisso, tapparella, persiana, zanzariera, grata)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 (function() {
@@ -153,6 +154,29 @@
     //   Applicati SOLO quando si usa fallback (BRM non disponibile)
     // ═══════════════════════════════════════════════════════════════
 
+    // ═══════════════════════════════════════════════════════════════
+    // 📏 REGOLE BRM PER PRODOTTO - Offset fallback specifici
+    // ═══════════════════════════════════════════════════════════════
+    // Ogni prodotto ha regole diverse per calcolare BRM da misure vano
+    //   LF/HF    = Luce Foro
+    //   LVT/HVT  = Luce Vano Totale
+    //   TMV/HMT  = Telaio Muratura Vano
+    // ═══════════════════════════════════════════════════════════════
+    const BRM_RULES = {
+        infisso:    { LF: +100, HF: +50,  LVT: +100, HVT: +50,  TMV: -40,  HMT: -20  },
+        tapparella: { LF: +30,  HF: +200, LVT: +30,  HVT: +200, TMV: -100, HMT: +100 },
+        persiana:   { LF: 0,    HF: 0,    LVT: 0,    HVT: 0,    TMV: -100, HMT: -50  },
+        zanzariera: { LF: +100, HF: +50,  LVT: +100, HVT: +50,  TMV: -40,  HMT: -20  },
+        grata:      { LF: 0,    HF: 0,    LVT: 0,    HVT: 0,    TMV: -100, HMT: -50  }
+    };
+
+    /**
+     * @param {object} product - dati prodotto (con BRM_L, BRM_H, etc.)
+     * @param {object} pos - posizione (con pos.misure)
+     * @param {object|string} offsets - DEPRECATED oggetto {L,H} OPPURE stringa tipo prodotto
+     *   Retrocompatibilità: { L: 100, H: 50 } → usa come prima
+     *   Nuovo: 'tapparella' | 'persiana' | 'zanzariera' | 'grata' | 'infisso'
+     */
     function getProductBRM(product, pos, offsets) {
         if (!product) return { L: 0, H: 0, C: 0, B: 0, stimato: false, origine: 'none' };
 
@@ -164,18 +188,28 @@
         let origine = 'BRM';
 
         const misure = pos?.misure || {};
-        const oL = (offsets && offsets.L) || 0;  // es. +100 per infissi
-        const oH = (offsets && offsets.H) || 0;  // es. +50 per infissi
 
-        // Fallback L
-        if (!L && misure.LF)  { L = parseInt(misure.LF) + oL;  stimato = true; origine = oL ? `LF+${oL}` : 'LF'; }
-        if (!L && misure.LVT) { L = parseInt(misure.LVT) + oL; stimato = true; origine = oL ? `LVT+${oL}` : 'LVT'; }
-        if (!L && misure.TMV) { L = parseInt(misure.TMV) - (oL ? 40 : 0); stimato = true; origine = oL ? 'TMV-40' : 'TMV'; }
+        // Determina regole: stringa tipo → BRM_RULES, oggetto → retrocompatibilità
+        let rules;
+        if (typeof offsets === 'string' && BRM_RULES[offsets]) {
+            rules = BRM_RULES[offsets];
+        } else if (offsets && typeof offsets === 'object' && (offsets.L || offsets.H)) {
+            // Retrocompatibilità: { L: 100, H: 50 } → regole infisso
+            rules = BRM_RULES.infisso;
+        } else {
+            // Nessun offset → default infisso (retrocompatibilità vecchie chiamate senza offset)
+            rules = null;
+        }
 
-        // Fallback H
-        if (!H && misure.HF)  { H = parseInt(misure.HF) + oH;  stimato = true; }
-        if (!H && misure.HVT) { H = parseInt(misure.HVT) + oH; stimato = true; }
-        if (!H && misure.HMT) { H = parseInt(misure.HMT) - (oH ? 20 : 0); stimato = true; }
+        // Fallback L (indipendente da H)
+        if (!L && misure.LF)  { L = parseInt(misure.LF)  + (rules ? rules.LF : 0);  stimato = true; origine = rules?.LF ? `LF${rules.LF >= 0 ? '+' : ''}${rules.LF}` : 'LF'; }
+        if (!L && misure.LVT) { L = parseInt(misure.LVT) + (rules ? rules.LVT : 0); stimato = true; origine = rules?.LVT ? `LVT${rules.LVT >= 0 ? '+' : ''}${rules.LVT}` : 'LVT'; }
+        if (!L && misure.TMV) { L = parseInt(misure.TMV) + (rules ? rules.TMV : 0); stimato = true; origine = rules?.TMV ? `TMV${rules.TMV >= 0 ? '+' : ''}${rules.TMV}` : 'TMV'; }
+
+        // Fallback H (indipendente da L)
+        if (!H && misure.HF)  { H = parseInt(misure.HF)  + (rules ? rules.HF : 0);  stimato = true; }
+        if (!H && misure.HVT) { H = parseInt(misure.HVT) + (rules ? rules.HVT : 0); stimato = true; }
+        if (!H && misure.HMT) { H = parseInt(misure.HMT) + (rules ? rules.HMT : 0); stimato = true; }
 
         return { L, H, C, B, stimato, origine };
     }
@@ -187,6 +221,7 @@
     window.exportPositions = exportPositions;
     window.calculateBRM = calculateBRM;
     window.getProductBRM = getProductBRM;
+    window.BRM_RULES = BRM_RULES;
 
-    console.log('✅ EXPORT-UTILS v1.1.0 caricato - Export posizioni + calculateBRM + getProductBRM centralizzati');
+    console.log('✅ EXPORT-UTILS v1.2.0 caricato - Export posizioni + calculateBRM + getProductBRM con BRM_RULES per prodotto');
 })();
