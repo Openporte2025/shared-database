@@ -1,7 +1,7 @@
 // ============================================================================
 // UI-FORMS v1.1.0 - Componenti UI Centralizzati
 // ============================================================================
-// 🆕 v1.1.0: Rimosso select detrazione → div placeholder per wizard IVA (iva-detrazioni.js) 
+// 🆕 v1.1.0: Campo unico "Nome e Cognome" + div placeholder wizard IVA (iva-detrazioni.js)
 // Modulo condiviso per: App Rilievo + Dashboard + App Posa
 // 
 // Genera HTML per form comuni, leggendo opzioni da JSON_MANAGER.CONFIG
@@ -13,7 +13,7 @@
 
 const UI_FORMS = {
 
-    version: '1.0.1',
+    version: '1.1.0',
 
     // =========================================================================
     // FORM DATI CLIENTE
@@ -38,26 +38,15 @@ const UI_FORMS = {
                 <span class="text-2xl">👤</span> Dati Cliente
             </h3>
             
-            <!-- ANAGRAFICA -->
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nome</label>
-                    <input type="text" 
-                           id="${prefix}-nome"
-                           value="${this._escapeHtml(cliente.nome || '')}"
-                           onchange="${cb}('nome', this.value)"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Mario">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">Cognome</label>
-                    <input type="text"
-                           id="${prefix}-cognome"
-                           value="${this._escapeHtml(cliente.cognome || '')}"
-                           onchange="${cb}('cognome', this.value)"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Rossi">
-                </div>
+            <!-- ANAGRAFICA - 🆕 v1.1.0: Campo unico Nome Completo -->
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Nome e Cognome</label>
+                <input type="text" 
+                       id="${prefix}-nomeCompleto"
+                       value="${this._escapeHtml(cliente.nomeCompleto || ((cliente.nome || '') + ' ' + (cliente.cognome || '')).trim())}"
+                       onchange="${cb}('nomeCompleto', this.value)"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Mario Rossi">
             </div>
             
             <!-- CODICE FISCALE -->
