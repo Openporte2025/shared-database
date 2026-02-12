@@ -761,7 +761,230 @@ function _options(lista, selectedId, placeholder) {
 }
 
 /**
- * Renderizza il Wizard IVA in un container HTML.
+ * Genera HTML STATICO del wizard IVA (per inclusione in template render).
+ * Non manipola il DOM — restituisce stringa HTML con onchange inline.
+ * I select chiamano OPZIONI.IVA_DETRAZIONI._onWizardChange(prefix) ad ogni cambio.
+ * 
+ * @param {string} prefix - Prefisso unico per gli ID (es. 'rilievo-2026P027')
+ * @param {object} [datiSalvati] - Dati pre-salvati
+ * @param {object} [opzioni] - { compact, soloLettura, onChangeCallback }
+ * @returns {string} HTML del wizard
+ */
+function renderWizardHTML(prefix, datiSalvati, opzioni) {
+    _injectCSS();
+    
+    const opts = Object.assign({
+        compact: false,
+        soloLettura: false,
+        onChangeCallback: null // nome funzione globale: 'onWizardIVAChange'
+    }, opzioni || {});
+    
+    const saved = datiSalvati || {};
+    const pfx = 'ivaWiz_' + prefix + '_';
+    const dis = opts.soloLettura ? 'disabled' : '';
+    const chg = `OPZIONI.IVA_DETRAZIONI._onWizardChange('${pfx}', '${opts.onChangeCallback || ''}')`;
+    
+    // Pre-genera opzioni edificio se intervento è salvato
+    let edificioOptions = '<option value="">-- Seleziona prima l\'intervento --</option>';
+    if (saved.intervento) {
+        const lista = (saved.intervento === 'nuova_costruzione') 
+            ? TIPOLOGIE_EDIFICIO_NUOVA_COSTRUZIONE 
+            : TIPOLOGIE_EDIFICIO;
+        edificioOptions = _options(lista, saved.edificio, '-- Tipo edificio --');
+    }
+    
+    // Mostra prima casa se bonus selezionato
+    const showPrimaCasa = saved.bonus && saved.bonus !== 'nessuna';
+    
+    return `
+        <div class="iva-wizard ${opts.compact ? 'iva-wizard-compact' : ''}">
+            <div class="iva-wizard-title">📋 IVA e Detrazioni Fiscali</div>
+            
+            <div class="iva-wizard-step">
+                <label>1. TIPO INTERVENTO</label>
+                <select id="${pfx}intervento" ${dis} onchange="${chg}">
+                    ${_options(TIPOLOGIE_INTERVENTO, saved.intervento, '-- Tipo intervento --')}
+                </select>
+                <div class="step-desc" id="${pfx}intervento_desc">${saved.intervento ? (TIPOLOGIE_INTERVENTO.find(t=>t.id===saved.intervento)||{}).desc||'' : ''}</div>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>2. TIPO EDIFICIO</label>
+                <select id="${pfx}edificio" ${dis} ${!saved.intervento ? 'disabled' : ''} onchange="${chg}">
+                    ${edificioOptions}
+                </select>
+                <div class="step-desc" id="${pfx}edificio_desc"></div>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>3. TIPO SERVIZIO</label>
+                <select id="${pfx}servizio" ${dis} onchange="${chg}">
+                    ${_options(TIPOLOGIE_SERVIZIO, saved.servizio, '-- Tipo servizio --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>4. TIPO CLIENTE</label>
+                <select id="${pfx}cliente" ${dis} onchange="${chg}">
+                    ${_options(TIPOLOGIE_CLIENTE, saved.cliente, '-- Tipo cliente --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step">
+                <label>5. DETRAZIONE FISCALE</label>
+                <select id="${pfx}bonus" ${dis} onchange="${chg}">
+                    ${_options(TIPOLOGIE_BONUS, saved.bonus, '-- Seleziona detrazione --')}
+                </select>
+            </div>
+            
+            <div class="iva-wizard-step" id="${pfx}primacasa_wrap" style="${showPrimaCasa ? '' : 'display:none;'}">
+                <label>ABITAZIONE PRINCIPALE?</label>
+                <select id="${pfx}primacasa" ${dis} onchange="${chg}">
+                    <option value="si" ${saved.primaCasa === 'si' ? 'selected' : ''}>Sì - Abitazione principale</option>
+                    <option value="no" ${saved.primaCasa === 'no' ? 'selected' : ''}>No - Seconda casa / altro</option>
+                </select>
+            </div>
+            
+            <div class="iva-wizard-result" id="${pfx}result"></div>
+        </div>
+    `;
+}
+
+/**
+ * Handler globale per onchange dei select del wizard HTML statico.
+ * Aggiorna cascading (edificio), prima casa, riepilogo e chiama callback.
+ */
+function _onWizardChange(pfx, callbackName) {
+    const elInt = document.getElementById(pfx + 'intervento');
+    const elEd = document.getElementById(pfx + 'edificio');
+    const elServ = document.getElementById(pfx + 'servizio');
+    const elCl = document.getElementById(pfx + 'cliente');
+    const elBon = document.getElementById(pfx + 'bonus');
+    const elPC = document.getElementById(pfx + 'primacasa');
+    const elPCWrap = document.getElementById(pfx + 'primacasa_wrap');
+    const elResult = document.getElementById(pfx + 'result');
+    const elIntDesc = document.getElementById(pfx + 'intervento_desc');
+    const elEdDesc = document.getElementById(pfx + 'edificio_desc');
+    
+    if (!elInt) return;
+    
+    const int = elInt.value;
+    const ed = elEd ? elEd.value : '';
+    const serv = elServ ? elServ.value : '';
+    const cl = elCl ? elCl.value : '';
+    const bon = elBon ? elBon.value : '';
+    const pc = elPC ? elPC.value : 'si';
+    
+    // Cascading: aggiorna edificio quando cambia intervento
+    if (elEd) {
+        const currentEdVal = elEd.value;
+        if (int) {
+            const lista = (int === 'nuova_costruzione') 
+                ? TIPOLOGIE_EDIFICIO_NUOVA_COSTRUZIONE 
+                : TIPOLOGIE_EDIFICIO;
+            elEd.innerHTML = _options(lista, currentEdVal, '-- Tipo edificio --');
+            elEd.disabled = false;
+        } else {
+            elEd.innerHTML = '<option value="">-- Seleziona prima l\'intervento --</option>';
+            elEd.disabled = true;
+        }
+    }
+    
+    // Desc intervento
+    if (elIntDesc) {
+        const found = TIPOLOGIE_INTERVENTO.find(t => t.id === int);
+        elIntDesc.textContent = found ? (found.desc + (found.titolo ? ' | Titolo: ' + found.titolo : '')) : '';
+    }
+    
+    // Desc edificio
+    if (elEdDesc && ed) {
+        const allEd = (int === 'nuova_costruzione') ? TIPOLOGIE_EDIFICIO_NUOVA_COSTRUZIONE : TIPOLOGIE_EDIFICIO;
+        const foundEd = allEd.find(t => t.id === ed);
+        elEdDesc.textContent = foundEd ? foundEd.desc : '';
+    } else if (elEdDesc) {
+        elEdDesc.textContent = '';
+    }
+    
+    // Prima casa visibilità
+    if (elPCWrap) {
+        elPCWrap.style.display = (bon && bon !== 'nessuna') ? '' : 'none';
+    }
+    
+    // Riepilogo
+    if (elResult && int && ed && serv) {
+        const risultato = determinaIVA(int, ed, serv, cl || 'persona_fisica');
+        
+        let cssClass = 'iva-22';
+        if (risultato.ivaMista) cssClass = 'iva-mista';
+        else if (risultato.aliquota === 4) cssClass = 'iva-4';
+        else if (risultato.aliquota === 10) cssClass = 'iva-10';
+        
+        let aliquotaDisplay = risultato.ivaMista 
+            ? '📊 IVA MISTA 10% / 22%' 
+            : `📊 IVA ${risultato.aliquota}%`;
+        
+        // Detrazione
+        let detrazioneHTML = '';
+        if (bon && bon !== 'nessuna') {
+            const bonusObj = TIPOLOGIE_BONUS.find(b => b.id === bon);
+            if (bonusObj) {
+                const anno = new Date().getFullYear();
+                const key = pc === 'si' ? `percentuale${anno}_primaCasa` : `percentuale${anno}_altraCasa`;
+                const perc = bonusObj[key] || bonusObj.percentuale2026_primaCasa || 0;
+                const maxLabel = bonusObj.massimoSpesa 
+                    ? `max spesa €${bonusObj.massimoSpesa.toLocaleString('it')}` 
+                    : bonusObj.massimoDetrazione 
+                        ? `max detrazione €${bonusObj.massimoDetrazione.toLocaleString('it')}` 
+                        : '';
+                detrazioneHTML = `
+                    <div class="iva-wizard-detrazione">
+                        🏷️ <strong>${bonusObj.label}: ${perc}%</strong> 
+                        ${pc === 'si' ? '(abitaz. principale)' : '(altra abitazione)'}
+                        ${maxLabel ? ' — ' + maxLabel : ''}
+                        ${bonusObj.rate ? ' — ' + bonusObj.rate + ' rate annuali' : ''}
+                        ${bonusObj.causaleBonifico ? '<br>Causale bonifico: <em>' + bonusObj.causaleBonifico + '</em>' : ''}
+                        ${bonusObj.richiedeENEA ? '<br>⚠️ Richiede pratica ENEA entro 90gg' : ''}
+                    </div>
+                `;
+            }
+        }
+        
+        // Documenti
+        let docsHTML = '';
+        if (risultato.documentazione && risultato.documentazione.length > 0) {
+            docsHTML = '<div style="margin-top:6px;font-size:11px;color:#555;">📄 Documentazione:<ul class="iva-result-docs">';
+            risultato.documentazione.forEach(d => docsHTML += `<li>${d}</li>`);
+            docsHTML += '</ul></div>';
+        }
+        
+        elResult.className = 'iva-wizard-result ' + cssClass;
+        elResult.style.display = '';
+        elResult.innerHTML = `
+            <div class="iva-result-aliquota">${aliquotaDisplay}</div>
+            <div class="iva-result-note">${risultato.note}</div>
+            ${docsHTML}
+            ${detrazioneHTML}
+        `;
+        
+        // Callback
+        if (callbackName && typeof window[callbackName] === 'function') {
+            const dati = {
+                intervento: int || null,
+                edificio: elEd ? elEd.value : null,
+                servizio: serv || null,
+                cliente: cl || null,
+                bonus: bon || null,
+                primaCasa: pc
+            };
+            window[callbackName](dati, risultato);
+        }
+    } else if (elResult) {
+        elResult.style.display = 'none';
+    }
+}
+
+/**
+ * Renderizza il Wizard IVA in un container HTML (manipolazione DOM).
  * Utilizzabile sia da App Rilievo (scheda cliente) che da Dashboard (gestione cantiere + preventivo).
  * 
  * @param {string} containerId - ID del div container
@@ -1072,16 +1295,18 @@ const IVA_DETRAZIONI = {
     
     // UI Wizard condivisa
     renderWizardIVA,
+    renderWizardHTML,
+    _onWizardChange,
     
     // Versione
-    versione: '1.1.0'
+    versione: '1.2.0'
 };
 
 // Per uso standalone (test) e browser
 if (typeof window !== 'undefined') {
     if (!window.OPZIONI) window.OPZIONI = {};
     window.OPZIONI.IVA_DETRAZIONI = IVA_DETRAZIONI;
-    console.log('✅ IVA_DETRAZIONI v1.1.0 caricato - Wizard IVA + Detrazioni + UI condivisa');
+    console.log('✅ IVA_DETRAZIONI v1.2.0 caricato - Wizard IVA + renderWizardHTML statico');
 }
 
 // Per uso Node.js (test)
