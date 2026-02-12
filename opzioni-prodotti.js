@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.1.0
+ * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.2.0
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * shared-database/opzioni-prodotti.js
@@ -9,6 +9,14 @@
  * REGOLA: Ogni dropdown statico di prodotto usa SOLO queste costanti.
  * Mai array inline nelle app.
  * 
+ * v3.2.0 (12/02/2026):
+ *   - FIX: Tapparelle cascading azienda→modello→colore→guida
+ *   - FIX: getModelliTapparella() non fa più fallback a Plasticino
+ *   - FIX: getColoriTapparella() ora accetta codice modello e mappa ai colori corretti
+ *   - FIX: getColoriGuide(azienda) filtra per azienda (solo Plasticino ha guide)
+ *   - NUOVO: modelloToColori mappa cod modello→categorie colori
+ *   - NUOVO: getGuide(azienda), hasDatabaseTapparelle(azienda)
+ *
  * v3.0.0 (05/02/2026):
  *   - UNIFICAZIONE: tutti i dati prodotto da opzioni-comuni.js migrati qui
  *   - opzioni-comuni.js ora contiene SOLO Ambienti + Piani
@@ -391,6 +399,30 @@
                 ]
             },
 
+            // Mappa codice modello → categorie colori disponibili
+            modelloToColori: {
+                // Alluminio Coibentato MD (hanno unita + legno + raffaello)
+                'TA01': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                'TA05': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                'TA42': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                'TA07': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO'],  // no raffaello
+                // Alluminio Coibentato AD
+                'TA25': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                'TA30': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                // Acciaio Coibentato
+                'TA15': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                'TA20': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO', 'ALLUMINIO_RAFFAELLO'],
+                // PVC
+                'A01': ['PVC'], 'A10': ['PVC'], 'A16': ['PVC'], 'A15': ['PVC'],
+                // Alluminio Sicurezza (solo RAL = unità)
+                'TA10': ['ALLUMINIO_UNITA'], 'TA13': ['ALLUMINIO_UNITA'],
+                // Termoisolante COMBI
+                'A18': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO'],
+                'A20': ['ALLUMINIO_UNITA', 'ALLUMINIO_LEGNO'],
+                // Orientabili / Areazione
+                'A40': ['ALLUMINIO_UNITA'], 'A50': ['ALLUMINIO_UNITA']
+            },
+
             // Guide Plasticino
             guide: [
                 'TG15 - Guide 30x25x30 Finestra',
@@ -549,29 +581,68 @@
      * Ottiene i modelli tapparella per azienda
      */
     P.getModelliTapparella = function(azienda) {
-        if (!azienda || !P.tapparelle.modelli[azienda]) {
-            return P.tapparelle.modelli['Plasticino'] || [];
+        if (!azienda) return [];
+        return P.tapparelle.modelli[azienda] || [];
+    };
+
+    /**
+     * Ottiene i colori tapparella per codice modello (cascading da modello)
+     * @param {string} modelloCompleto - es. "TA01 - Tipo ALUPROFIL MD 13x55" o "TA01" o tipo colore "ALLUMINIO_UNITA"
+     * @returns {string[]} lista colori disponibili
+     */
+    P.getColoriTapparella = function(modelloCompleto) {
+        if (!modelloCompleto) return [];
+        
+        // Estrai codice modello (es. "TA01" da "TA01 - Tipo ALUPROFIL MD 13x55")
+        const codice = modelloCompleto.split(' - ')[0].trim().toUpperCase();
+        
+        // Cerca nella mappa modello → colori
+        const categorie = P.tapparelle.modelloToColori[codice];
+        if (categorie) {
+            let colori = [];
+            for (const cat of categorie) {
+                if (P.tapparelle.colori[cat]) {
+                    colori = colori.concat(P.tapparelle.colori[cat]);
+                }
+            }
+            return colori;
         }
-        return P.tapparelle.modelli[azienda];
+        
+        // Fallback: se il parametro è direttamente un tipo colore (retrocompatibilità)
+        if (P.tapparelle.colori[modelloCompleto]) {
+            return P.tapparelle.colori[modelloCompleto];
+        }
+        
+        return [];
     };
 
     /**
-     * Ottiene i colori tapparella per tipo materiale
+     * Ottiene i colori per le guide (lista piatta) - solo Plasticino
+     * @param {string} azienda - se non Plasticino ritorna []
      */
-    P.getColoriTapparella = function(tipo) {
-        if (tipo && P.tapparelle.colori[tipo]) return P.tapparelle.colori[tipo];
-        return P.tapparelle.colori['ALLUMINIO_UNITA'];
-    };
-
-    /**
-     * Ottiene i colori per le guide (lista piatta)
-     */
-    P.getColoriGuide = function() {
+    P.getColoriGuide = function(azienda) {
+        if (azienda && azienda !== 'Plasticino') return [];
         return [
             ...P.tapparelle.coloriGuide['ANODIZZATO'],
             ...P.tapparelle.coloriGuide['VERNICIATO'],
             'RAL a richiesta'
         ];
+    };
+
+    /**
+     * Ottiene le guide disponibili per azienda
+     * @param {string} azienda - se non Plasticino ritorna []
+     */
+    P.getGuide = function(azienda) {
+        if (azienda && azienda !== 'Plasticino') return [];
+        return P.tapparelle.guide;
+    };
+
+    /**
+     * Verifica se un'azienda tapparelle ha database integrato
+     */
+    P.hasDatabaseTapparelle = function(azienda) {
+        return azienda === 'Plasticino';
     };
 
     /**
@@ -730,6 +801,6 @@
         console.log('⚠️ OPZIONI_PRODOTTI: vetri fallback (' + P.infissi.vetri.length + ')');
     }
 
-    console.log('✅ opzioni-prodotti.js v3.1.0 caricato - OPZIONI_PRODOTTI unica fonte');
+    console.log('✅ opzioni-prodotti.js v3.2.0 caricato - OPZIONI_PRODOTTI unica fonte');
 
 })();
