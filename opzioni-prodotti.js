@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.2.0
+ * OPZIONI PRODOTTI - UNICA FONTE PRODOTTO v3.3.0
  * ═══════════════════════════════════════════════════════════════════════════════
  * 
  * shared-database/opzioni-prodotti.js
@@ -9,6 +9,11 @@
  * REGOLA: Ogni dropdown statico di prodotto usa SOLO queste costanti.
  * Mai array inline nelle app.
  * 
+ * v3.3.0 (12/02/2026):
+ *   - NUOVO: P.BRM — costanti centralizzate per dropdown BRM
+ *   - misureLarghezza/Altezza, PF, Cassonetto, B, C, operazioni
+ *   - App rilievo: sostituire array hardcoded con OPZIONI_PRODOTTI.BRM.*
+ *
  * v3.2.0 (12/02/2026):
  *   - FIX: Tapparelle cascading azienda→modello→colore→guida
  *   - FIX: getModelliTapparella() non fa più fallback a Plasticino
@@ -564,6 +569,33 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 📐 MISURE BRM - Opzioni dropdown per configurazione BRM
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Usato da: App Rilievo (renderBRMConfig, brmPersonalizzato posizione)
+    // Centralizzato per evitare liste hardcoded in app.js
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    P.BRM = {
+        // Misure base per Larghezza (Finestra: F1, F2, F3, Fisso)
+        misureLarghezza: ['LF', 'LVT', 'LVAR', 'TMV', 'LS'],
+        // Misure base per Altezza
+        misureAltezza: ['HF', 'HVT', 'HVAR', 'HMT', 'HSoffitto', 'HParapettoSoffitto', 'HPavimentoParapetto'],
+        // Misure base per Larghezza Portafinestra (PF1, PF2, PF3)
+        misureLarghezzaPF: ['LPF', 'LVT', 'LVAR', 'TMV', 'LS'],
+        // Misure base per Altezza Portafinestra
+        misureAltezzaPF: ['HPF', 'HVT', 'HVAR', 'HMT', 'HSoffitto', 'HParapettoSoffitto', 'HPavimentoParapetto'],
+
+        // Cassonetti - misure specifiche
+        misureLarghezzaCassonetto: ['(LS+SRSX+SRDX)', 'LVT', 'LF', 'TMV', 'BRM_L_INFISSO'],
+        misureAltezzaCassonetto: ['HCASS', 'H Soffitto', 'H Parapetto/Soffitto', 'BRM_H_INFISSO'],
+        misureB: ['Prof. Muro Int → MI', 'B'],
+        misureC: ['Prof. Muro Int → MI', 'C'],
+
+        // Operazioni disponibili
+        operazioni: ['+', '-']
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 🔧 FUNZIONI HELPER
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -801,6 +833,6 @@
         console.log('⚠️ OPZIONI_PRODOTTI: vetri fallback (' + P.infissi.vetri.length + ')');
     }
 
-    console.log('✅ opzioni-prodotti.js v3.2.0 caricato - OPZIONI_PRODOTTI unica fonte');
+    console.log('✅ opzioni-prodotti.js v3.3.0 caricato - OPZIONI_PRODOTTI unica fonte + BRM costanti');
 
 })();
