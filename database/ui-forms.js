@@ -1,6 +1,7 @@
 // ============================================================================
-// UI-FORMS v1.1.0 - Componenti UI Centralizzati
+// UI-FORMS v1.2.0 - Componenti UI Centralizzati
 // ============================================================================
+// 🆕 v1.2.0: Indirizzo Residenza separato + checkbox "Coincide con lavori" + auto-copia
 // 🆕 v1.1.0: Campo unico "Nome e Cognome" + div placeholder wizard IVA (iva-detrazioni.js)
 // Modulo condiviso per: App Rilievo + Dashboard + App Posa
 // 
@@ -13,7 +14,7 @@
 
 const UI_FORMS = {
 
-    version: '1.1.0',
+    version: '1.2.0',
 
     // =========================================================================
     // FORM DATI CLIENTE
@@ -86,9 +87,67 @@ const UI_FORMS = {
             <!-- SEPARATORE -->
             <div class="border-t border-gray-200 my-4"></div>
             
+            <!-- 🆕 v1.2.0: INDIRIZZO RESIDENZA -->
+            <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <span>🏠</span> Indirizzo Residenza
+            </h4>
+            
+            <div class="mb-3">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Via / Indirizzo</label>
+                <input type="text"
+                       id="${prefix}-residenza-indirizzo"
+                       value="${this._escapeHtml(cliente.residenzaIndirizzo || '')}"
+                       onchange="${cb}('residenzaIndirizzo', this.value)"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Via Roma 1">
+            </div>
+            
+            <div class="grid grid-cols-6 gap-3 mb-4">
+                <div class="col-span-3">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Comune</label>
+                    <input type="text"
+                           id="${prefix}-residenza-comune"
+                           value="${this._escapeHtml(cliente.residenzaComune || '')}"
+                           onchange="${cb}('residenzaComune', this.value)"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="Bergamo">
+                </div>
+                <div class="col-span-1">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Prov</label>
+                    <input type="text"
+                           id="${prefix}-residenza-provincia"
+                           value="${this._escapeHtml(cliente.residenzaProvincia || '')}"
+                           onchange="${cb}('residenzaProvincia', this.value.toUpperCase())"
+                           maxlength="2"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase text-center"
+                           placeholder="BG">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">CAP</label>
+                    <input type="text"
+                           id="${prefix}-residenza-cap"
+                           value="${this._escapeHtml(cliente.residenzaCap || '')}"
+                           onchange="${cb}('residenzaCap', this.value)"
+                           maxlength="5"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
+                           placeholder="24100">
+                </div>
+            </div>
+            
+            <!-- SEPARATORE -->
+            <div class="border-t border-gray-200 my-4"></div>
+            
             <!-- INDIRIZZO LAVORI -->
             <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                 <span>📍</span> Indirizzo Lavori
+                <label class="ml-auto flex items-center gap-1 text-xs font-normal text-blue-600 cursor-pointer">
+                    <input type="checkbox" 
+                           id="${prefix}-stessoIndirizzo"
+                           ${(immobile.stessoIndirizzo || cliente.stessoIndirizzo) ? 'checked' : ''}
+                           onchange="(function(cb, prefix){ const ch=document.getElementById(prefix+'-stessoIndirizzo').checked; window[cb]('stessoIndirizzo', ch, 'immobile'); if(ch){ const fields=['indirizzo','comune','provincia','cap']; fields.forEach(f=>{ const src=document.getElementById(prefix+'-residenza-'+f); const dst=document.getElementById(prefix+'-'+f); if(src&&dst){dst.value=src.value; window[cb](f, src.value, 'immobile');} }); } })('${cb}','${prefix}')"
+                           class="rounded">
+                    Coincide con residenza
+                </label>
             </h4>
             
             <div class="mb-3">
