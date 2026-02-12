@@ -48,18 +48,18 @@
         // 🏭 AZIENDE
         // ═══════════════════════════════════════════════════════════════════════
         AZIENDE: {
-            infissi: ['Finstral', 'Essepi', 'Schüco', 'Oknoplast', 'Internorm'],
-            persiane: ['P. Persiane', 'Pail', 'Gibus', 'Schenker'],
+            infissi: ['Finstral', 'Essepi'],
+            persiane: ['P. Persiane', 'Erreci'],
             tapparelle: ['Plasticino', 'New Solar', 'Estella'],
-            zanzariere: ['Palagina', 'MV Line', 'Bettio'],
-            cassonetti: ['Finstral', 'Alpac', 'Elicent']
+            zanzariere: ['Palagina', 'Finstral'],
+            cassonetti: ['Finstral', 'Alpac', 'Magò']
         },
 
         // ═══════════════════════════════════════════════════════════════════════
         // 🪟 INFISSI
         // ═══════════════════════════════════════════════════════════════════════
         infissi: {
-            aziende: ['Finstral', 'Essepi', 'Schüco', 'Oknoplast', 'Internorm'],
+            aziende: ['Finstral', 'Essepi'],
 
             tipiAnta: [
                 'Classic-line', 'Slim-line', 'Slim-line Cristal',
@@ -68,7 +68,8 @@
                 'Nova-line', 'Nova-line Plus'
             ],
 
-            finiture: ['pvc', 'legno', 'alluminio', 'ceramica'],
+            finitureInt: ['pvc', 'legno'],
+            finitureEst: ['pvc', 'alluminio', 'legno'],
 
             allarme: ['si', 'no'],
 
