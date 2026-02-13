@@ -830,7 +830,8 @@ function calcolaPreventivo(data) {
             // ✅ v8.11: Determina gruppo colore dal codice colore effettivo, non da gruppoColoreCass
             const coloreCass = cass.coloreCass || '';
             const gruppoColoreCass = determinaGruppoColoreCassonetto(coloreCass);
-            const codiceIsolamento = cass.isolamentoPosaclima ? (cass.codiceIsolamento || '') : '';
+            // ✅ v8.70: Usa codiceIsolamento direttamente (il checkbox isolamentoPosaclima può non essere sincronizzato)
+            const codiceIsolamento = cass.codiceIsolamento || '';
             
             if (L_mm > 0 && A_mm > 0 && azienda.toLowerCase() === 'finstral') {
                 // 🆕 v7.996: Usa calcolaPrezzoCassonettoFinstral
