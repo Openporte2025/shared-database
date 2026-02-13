@@ -2263,11 +2263,14 @@ window.calcolaPrezzoFinstral = function(config) {
         console.log(`📐 BRM calcolato con fallback: ${larghezza}×${altezza} (${brmCalcolato.source})`);
     }
     
-    const { tipo = "101", telaio = "961", materiale = "pvc", vetro = "standard",
+    const { tipo = "101", telaio: telaioRaw = "961", materiale = "pvc", vetro = "standard",
     tipoAnta = "step-line", colorePVC = "01", coloreAlluminio = null } = config;
     
+    // ✅ v8.70: Estrai codice numerico telaio (es. "966 - PVC/PVC 62mm..." → "966")
+    const telaio = (telaioRaw || '961').toString().match(/^(\w+)/)?.[1] || '961';
+    
     // ✅ v7.73: DEBUG - Mostra parametri ricevuti
-    console.log(`🔬 calcolaPrezzoFinstral() riceve: telaio=${telaio}, materiale=${materiale}, tipoAnta=${tipoAnta}`);
+    console.log(`🔬 calcolaPrezzoFinstral() riceve: telaio=${telaio} (raw: ${telaioRaw}), materiale=${materiale}, tipoAnta=${tipoAnta}`);
     
     const risultato = { config, dettaglio: {}, totale: 0, errore: null };
     
