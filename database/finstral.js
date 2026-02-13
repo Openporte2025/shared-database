@@ -3129,14 +3129,22 @@ function calcolaSupplementoManigliaFinstral(manigliaValue, coloreValue) {
         return 0; // Campi vuoti
     }
     
-    // Usa funzione del database
-    return getSupplemento(codiceManiglia, codiceColore);
+    // Usa funzione del database maniglie (se disponibile)
+    if (typeof getSupplemento === 'function') {
+        return getSupplemento(codiceManiglia, codiceColore);
+    }
+    return 0; // Database maniglie non caricato
 }
 
-/**
- * Fallback per valori vecchi (pre-v4.31)
- * @param {string} tipoManiglia - "standard", "inox", "design", ecc.
- * @returns {number} - Supplemento in €
+function calcolaSupplementoManigliaVecchio(tipoManiglia) {
+    if (!tipoManiglia) return 0;
+    const maniglia = tipoManiglia.toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+    const SUPPLEMENTI_VECCHI = {
+        "standard": 0, "bianco": 0, "satinato": 0,
+        "inox": 20, "design": 40, "con-chiave": 50
+    };
+    return SUPPLEMENTI_VECCHI[maniglia] || 0;
+}
 
 function calcolaPerimetroBRM(larghezza_mm, altezza_mm) {
     return 2 * (larghezza_mm + altezza_mm) / 1000;
