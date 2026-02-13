@@ -3113,7 +3113,7 @@ function estraiCodiceColore(coloreValue) {
  * @param {string} manigliaValue - Valore maniglia salvato
  * @param {string} coloreValue - Valore colore salvato
  * @returns {number} - Supplemento in € (0 se non trovato o valori vecchi)
-
+ */
 function calcolaSupplementoManigliaFinstral(manigliaValue, coloreValue) {
     const codiceManiglia = estraiCodiceManiglia(manigliaValue);
     const codiceColore = estraiCodiceColore(coloreValue);
@@ -3449,6 +3449,7 @@ function getSupplementoCerniereScomparsa(tipoApertura, numAnte = 1) {
  * Calcola supplemento totale ferramenta
  * @param {object} config - { tipoApertura, cerniereScomparsa, sicurezza[], aerazione, comfort[], rc2 }
  * @returns {object} - { totale, dettaglio }
+ */
 
 function isTelaioRC2Compatibile(telaio) {
     return FINSTRAL_PREZZI.rc2.telaiCompatibili.includes(telaio);
