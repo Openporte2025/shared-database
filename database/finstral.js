@@ -2329,7 +2329,7 @@ numAnteDaTipo = 3;  // 3 ante (composito)
             const perimetroTelaio_alu = isPortaFinestra_alu ?
                 (perimetro - (larghezza / 1000)) : perimetro;
             risultato.dettaglio.supplementoTelaio = Math.round((suppPvc + suppAlu) * perimetroTelaio_alu * 100) / 100;
-            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml + ALU €${suppAlu}/ml × ${perimetroTelaio_alu.toFixed(2)}ml${isPortaFinestra_alu && hasSoglia_alu ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
+            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml + ALU €${suppAlu}/ml × ${perimetroTelaio_alu.toFixed(2)}ml${isPortaFinestra_alu ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
         } else {
             risultato.dettaglio.supplementoTelaio = 0;
         }
@@ -2345,7 +2345,7 @@ numAnteDaTipo = 3;  // 3 ante (composito)
             const perimetroTelaio = isPortaFinestra ? 
                 (perimetro - (larghezza / 1000)) : perimetro;
             risultato.dettaglio.supplementoTelaio = Math.round(suppPvc * perimetroTelaio * 100) / 100;
-            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml × ${perimetroTelaio.toFixed(2)}ml${isPortaFinestra && hasSoglia ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
+            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml × ${perimetroTelaio.toFixed(2)}ml${isPortaFinestra ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
         } else {
             risultato.dettaglio.supplementoTelaio = 0;
         }
