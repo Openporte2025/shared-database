@@ -68,8 +68,8 @@
                 'Nova-line', 'Nova-line Plus'
             ],
 
-            finitureInt: ['pvc', 'legno'],
-            finitureEst: ['pvc', 'alluminio', 'legno'],
+            finitureInt: ['pvc', 'legno', 'alluminio'],
+            finitureEst: ['pvc', 'alluminio'],
 
             allarme: ['si', 'no'],
 
