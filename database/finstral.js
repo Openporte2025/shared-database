@@ -2471,7 +2471,22 @@ risultato.dettaglio.supplementoMontante = 0;
     const superficieVetro = Math.max(0.4, ((larghezza - 100) / 1000) * ((altezza - 100) / 1000));
     risultato.dettaglio.superficieVetroM2 = Math.round(superficieVetro * 100) / 100;
     
-    const supplVetro = FINSTRAL_PREZZI.supplementiVetro[vetro] || 0;
+    // ✅ v8.70: Cerca supplemento vetro per chiave, nome o codice
+    let supplVetro = FINSTRAL_PREZZI.supplementiVetro[vetro] || 0;
+    if (!supplVetro && vetro && typeof FINSTRAL_OPZIONI !== 'undefined') {
+        const allVetri = [
+            ...(FINSTRAL_OPZIONI.infissi?.vetri || []),
+            ...(FINSTRAL_OPZIONI.vetri || [])
+        ];
+        const matchV = allVetri.find(v => 
+            v.nome === vetro || v.codice === vetro ||
+            v.nome?.toLowerCase() === (vetro || '').toLowerCase()
+        );
+        if (matchV && matchV.supplemento) {
+            supplVetro = matchV.supplemento;
+            console.log(`🪟 Vetro "${vetro}" → trovato in OPZIONI: €${matchV.supplemento}/m²`);
+        }
+    }
     risultato.dettaglio.supplementoVetro = Math.round(supplVetro * superficieVetro * 100) / 100;
     
     // 🆕 v8.44: Bancale Interno (se configurato)
