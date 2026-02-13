@@ -99,4 +99,131 @@ return Object.entries(this.teli).map(([cod, t]) => ({
     }
 };
 
-console.log('✅ PLASTICINO_AVVOLGIBILI_2025 v1.0 - Database Tapparelle (18 modelli, rinforzi PVC, sconto 45%)');
+console.log('✅ PLASTICINO_AVVOLGIBILI_2025 v1.1 - Database Tapparelle (18 modelli, rinforzi PVC, guide, sconto 45%)');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🛤️ GUIDE TAPPARELLE PLASTICINO - Prezzi a COPPIA tagliata/forata
+// Fonte: Catalogo Plasticino 07.2022
+// ═══════════════════════════════════════════════════════════════════════════
+const PLASTICINO_GUIDE = {
+    // Guide 30x25x30 - Standard (Argento/Bronzo/Elox/Bianco)
+    'TG15OX': { nome: 'Guide 30x25x30 Finestra', dim: '30x25x30', prezzo: 40.00, um: 'CP' },
+    'TG10OX': { nome: 'Guide 30x25x30 Portafinestra', dim: '30x25x30', prezzo: 57.60, um: 'CP' },
+    // Guide 30x25x30 - RAL (Avorio/Verde/Marrone)
+    'TG15VE': { nome: 'Guide 30x25x30 Finestra RAL', dim: '30x25x30', prezzo: 50.90, um: 'CP' },
+    'TG10VE': { nome: 'Guide 30x25x30 Portafinestra RAL', dim: '30x25x30', prezzo: 69.00, um: 'CP' },
+    // Guide 30x25x30 - RAL a richiesta
+    'TG15RA': { nome: 'Guide 30x25x30 Finestra RAL custom', dim: '30x25x30', prezzo: null, um: 'CP' },
+    'TG10RA': { nome: 'Guide 30x25x30 Portafinestra RAL custom', dim: '30x25x30', prezzo: null, um: 'CP' },
+    
+    // Guide 28x19x28 - Standard
+    'TG18OX': { nome: 'Guide 28x19x28 Finestra', dim: '28x19x28', prezzo: 36.00, um: 'CP' },
+    'TG17OX': { nome: 'Guide 28x19x28 Portafinestra', dim: '28x19x28', prezzo: 52.00, um: 'CP' },
+    // Guide 28x19x28 - RAL
+    'TG18VE': { nome: 'Guide 28x19x28 Finestra RAL', dim: '28x19x28', prezzo: 50.90, um: 'CP' },
+    'TG17VE': { nome: 'Guide 28x19x28 Portafinestra RAL', dim: '28x19x28', prezzo: 69.00, um: 'CP' },
+    
+    // Guide 28x17x28 - Standard (ribassate)
+    'TG25OX': { nome: 'Guide 28x17x28 Finestra', dim: '28x17x28', prezzo: 40.00, um: 'CP' },
+    'TG20OX': { nome: 'Guide 28x17x28 Portafinestra', dim: '28x17x28', prezzo: 57.60, um: 'CP' },
+    // Guide 28x17x28 - RAL
+    'TG25VE': { nome: 'Guide 28x17x28 Finestra RAL', dim: '28x17x28', prezzo: 50.90, um: 'CP' },
+    'TG20VE': { nome: 'Guide 28x17x28 Portafinestra RAL', dim: '28x17x28', prezzo: 69.00, um: 'CP' },
+    // Guide 28x17x28 Ribassato - Standard
+    'TG25RIBOX': { nome: 'Guide 28x17x28 Rib. Finestra', dim: '28x17x28', prezzo: 40.00, um: 'CP' },
+    'TG20RIBOX': { nome: 'Guide 28x17x28 Rib. Portafinestra', dim: '28x17x28', prezzo: 57.60, um: 'CP' },
+    
+    // Barre 6800mm (prezzo al ML)
+    'TG30': { nome: 'Barre 30x25x30 6800mm', dim: '30x25x30', prezzo: 11.40, um: 'ML' },
+    'TG33': { nome: 'Barre 28x19x28 6800mm', dim: '28x19x28', prezzo: 10.20, um: 'ML' },
+    'TG35': { nome: 'Barre 28x17x28 6800mm', dim: '28x17x28', prezzo: 9.70, um: 'ML' },
+    'TG35RIB': { nome: 'Barre 28x17x28 Rib. 6800mm', dim: '28x17x28', prezzo: 9.70, um: 'ML' },
+    
+    // Ferro Zincato 21x20x21
+    'PF2OX': { nome: 'Guide 21x20x21 Ferro Zn Finestra', dim: '21x20x21', prezzo: 20.00, um: 'CP' },
+    'PF4OX': { nome: 'Guide 21x20x21 Ferro Zn Portafinestra', dim: '21x20x21', prezzo: 30.00, um: 'CP' },
+    'PF1': { nome: 'Barre 21x20x21 Ferro Zn', dim: '21x20x21', prezzo: 5.50, um: 'ML' }
+};
+
+const PLASTICINO_COLORI_GUIDE = {
+    standard: ['Argento', 'Bronzo', 'Elox', 'Bianco'],
+    ral: ['Avorio RAL 1013', 'Verde RAL 6005', 'Marrone RAL 8014', 'Marrone RAL 8017', 'Marrone RAL 8019']
+};
+
+/**
+ * Calcola prezzo guida tapparella
+ * @param {string} codiceGuida - es. "TG20 - Guide 28x17x28 Portafinestra"
+ * @param {string} coloreGuida - es. "Argento"
+ * @param {number} altezzaMm - Altezza in mm (per barre ML)
+ * @returns {Object} { codice, descrizione, prezzo, um }
+ */
+function calcolaPrezzoGuida(codiceGuida, coloreGuida = 'Argento', altezzaMm = null) {
+    if (!codiceGuida) return { codice: '', prezzo: 0, note: 'Nessuna guida' };
+    
+    // Estrai codice base (es. "TG20 - Guide..." → "TG20")
+    let codice = codiceGuida;
+    if (codiceGuida.includes(' - ')) {
+        codice = codiceGuida.split(' - ')[0].trim();
+    }
+    // Rimuovi eventuale suffisso RIB per lookup
+    const codiceBase = codice.replace('RIB', '');
+    const isRibassato = codice.includes('RIB');
+    
+    // Determina variante colore
+    const isStandard = PLASTICINO_COLORI_GUIDE.standard.includes(coloreGuida);
+    const isRAL = PLASTICINO_COLORI_GUIDE.ral.includes(coloreGuida);
+    
+    // Costruisci codice effettivo
+    let codiceEffettivo = codice;
+    // Per guide con varianti colore (TG10/15/18/17/20/25)
+    if (!codice.includes('OX') && !codice.includes('VE') && !codice.includes('RA') && !codice.startsWith('PF')) {
+        if (isRibassato) {
+            codiceEffettivo = codice + (isRAL ? 'VE' : 'OX'); // TG20RIB → TG20RIBOX
+        } else {
+            const suffix = isRAL ? 'VE' : (isStandard ? 'OX' : 'RA');
+            codiceEffettivo = codice + suffix;
+        }
+    }
+    
+    // Cerca nel database
+    let guida = PLASTICINO_GUIDE[codiceEffettivo];
+    
+    // Fallback: prova con OX se non trovato
+    if (!guida) guida = PLASTICINO_GUIDE[codice + 'OX'];
+    if (!guida) guida = PLASTICINO_GUIDE[codice];
+    
+    if (!guida) {
+        console.warn(`⚠️ Guida non trovata: ${codiceEffettivo} (da ${codiceGuida})`);
+        return { codice: codiceEffettivo, prezzo: 0, note: 'Guida non trovata' };
+    }
+    
+    if (guida.prezzo === null) {
+        return { codice: codiceEffettivo, descrizione: guida.nome, prezzo: 0, um: guida.um, note: 'A PREVENTIVO' };
+    }
+    
+    let prezzoFinale = guida.prezzo;
+    
+    // Se ML, calcola in base all'altezza (2 guide)
+    if (guida.um === 'ML' && altezzaMm) {
+        const metriLineari = (altezzaMm / 1000) * 2;
+        prezzoFinale = Math.round(guida.prezzo * metriLineari * 100) / 100;
+    }
+    
+    console.log(`🛤️ Guida ${codiceEffettivo}: €${prezzoFinale} (${guida.um}) [${coloreGuida}]`);
+    
+    return {
+        codice: codiceEffettivo,
+        descrizione: guida.nome,
+        colore: coloreGuida,
+        prezzo: prezzoFinale,
+        um: guida.um
+    };
+}
+
+// Export
+if (typeof window !== 'undefined') {
+    window.PLASTICINO_AVVOLGIBILI_2025 = PLASTICINO_AVVOLGIBILI_2025;
+    window.PLASTICINO_GUIDE = PLASTICINO_GUIDE;
+    window.PLASTICINO_COLORI_GUIDE = PLASTICINO_COLORI_GUIDE;
+    window.calcolaPrezzoGuida = calcolaPrezzoGuida;
+}
