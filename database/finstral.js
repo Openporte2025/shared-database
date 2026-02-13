@@ -3470,11 +3470,20 @@ function verificaMisureMinime(tipoApertura, larghezza, altezza) {
 
 console.log('🔩 Helper ferramenta caricati: getCodiceApertura, getSupplementoCerniereScomparsa, calcolaSupplementoFerramenta');
 
+function isColoreScuro(colore) {
+    if (!colore) return false;
+    const coloreLC = colore.toLowerCase();
+    const coloriChiari = ['bianco', 'white', 'ral 9010', 'ral 9016', 'perla', 'satinato', 'goffrato'];
+    if (coloriChiari.some(c => coloreLC.includes(c))) return false;
+    return true;
+}
+
 // Export globali (merge da finstral-module.js)
 if (typeof window !== 'undefined') {
     window.estraiCodiceManiglia = estraiCodiceManiglia;
     window.estraiCodiceColore = estraiCodiceColore;
     window.calcolaSupplementoManigliaFinstral = calcolaSupplementoManigliaFinstral;
+    window.calcolaSupplementoManigliaVecchio = calcolaSupplementoManigliaVecchio;
     window.calcolaPerimetroBRM = calcolaPerimetroBRM;
     window.estraiNumeroAnte = estraiNumeroAnte;
     window.getSupplementoAntaDimensionale = getSupplementoAntaDimensionale;
@@ -3483,6 +3492,7 @@ if (typeof window !== 'undefined') {
     window.getCodiceApertura = getCodiceApertura;
     window.formatTipoApertura = formatTipoApertura;
     window.isTelaioRC2Compatibile = isTelaioRC2Compatibile;
+    window.isColoreScuro = isColoreScuro;
 }
 
 // Costanti costi extra (merge da finstral-module.js)
