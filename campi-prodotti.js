@@ -428,15 +428,23 @@
         { key: 'codiceCass', label: 'Codice Cassonetto', type: 'select-dynamic',
           dependsOn: 'materialeCass',
           optionsFn: (mat) => {
-              if (!P.cassonetti) return [];
-              if (mat === 'PVC') return (P.cassonetti.codiciPVC || []).map(c => c.desc || c.nome || c);
-              if (mat === 'Legno') return (P.cassonetti.codiciLegno || []).map(c => c.desc || c.nome || c);
-              return [];
+              if (typeof CASSONETTI_MODULE === 'undefined') return [];
+              return CASSONETTI_MODULE.getCodici(mat).map(c => c.code);
           },
           visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
-        { key: 'gruppoColoreCass', label: 'Gruppo Colore', type: 'text',
+        { key: 'gruppoColoreCass', label: 'Gruppo Colore', type: 'select-dynamic',
+          dependsOn: 'materialeCass',
+          optionsFn: (mat) => {
+              if (typeof CASSONETTI_MODULE === 'undefined') return [];
+              return CASSONETTI_MODULE.getGruppiColore(mat).map(g => g.code);
+          },
           visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
-        { key: 'coloreCass', label: 'Colore Cassonetto', type: 'text',
+        { key: 'coloreCass', label: 'Colore Cassonetto', type: 'select-dynamic',
+          dependsOn: 'gruppoColoreCass',
+          optionsFn: (gruppo) => {
+              if (typeof CASSONETTI_MODULE === 'undefined') return [];
+              return CASSONETTI_MODULE.getColori(null, gruppo).map(c => c.code + ' - ' + c.name.split(' - ').pop());
+          },
           visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
         { key: 'coloreDaInfisso', label: 'Colore = da serramento', type: 'checkbox',
           visibleIf: { field: 'azienda', equals: 'Finstral' }, group: 'finstral' },
