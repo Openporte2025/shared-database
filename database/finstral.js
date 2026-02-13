@@ -3144,11 +3144,33 @@ function calcolaSupplementoManigliaFinstral(manigliaValue, coloreValue) {
         return 0; // Campi vuoti
     }
     
-    // Usa funzione del database maniglie (se disponibile)
+    // ✅ v8.70: Database maniglie integrato (da FINSTRAL-DATABASE-2025)
+    // Maniglia standard (serie 2 a pressione) = inclusa, supplemento 0
+    // Solo maniglie premium hanno supplemento
+    const MANIGLIE_SUPPL = {
+        '7120': 0,   // A pressione alluminio S2 - INCLUSA
+        '712': 0,    // Alias codice troncato
+        '7110': 0,   // Standard - INCLUSA
+        '711': 0,    // Alias
+        '7130': 12,  // Design - supplemento €12/pz
+        '713': 12,   // Alias
+        '7121': 15,  // Con chiave
+        '7125': 18,  // Design premium
+        '7140': 0    // Maniglietta esterna (gestita come accessorio 454)
+    };
+    
+    const suppl = MANIGLIE_SUPPL[codiceManiglia];
+    if (suppl !== undefined) return suppl;
+    
+    // Fallback: cerca per prefisso (712 → 7120)
+    const match = Object.keys(MANIGLIE_SUPPL).find(k => k.startsWith(codiceManiglia) || codiceManiglia.startsWith(k));
+    if (match) return MANIGLIE_SUPPL[match];
+    
+    // Se ha database maniglie esterno
     if (typeof getSupplemento === 'function') {
         return getSupplemento(codiceManiglia, codiceColore);
     }
-    return 0; // Database maniglie non caricato
+    return 0;
 }
 
 function calcolaSupplementoManigliaVecchio(tipoManiglia) {
