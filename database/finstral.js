@@ -96,9 +96,10 @@ if (tipo === "401") {
     return 1.0;  // ✅ v8.482: Prezzi già corretti EUR 2025/10
 }
 
-// TIPO 420/421 (compositi): fattore leggermente diverso
+// TIPO 420/421 (compositi): tabelle 101+401 già EUR 2025/10 → fattore 1.0
+// ✅ v8.511: Le tabelle tipo101 e tipo401 sono già 2025/10, la somma non ha bisogno di fattore
 if (tipo === "420" || tipo === "421") {
-    return altezza > 2200 ? 1.22 : 1.21;
+    return 1.0;
 }
 
 // TIPO 101 (1 anta): prezzi EUR 2025/10 diretti
@@ -1283,6 +1284,15 @@ window.getBRMConFallback = function(config) {
             L: parseInt(BRM_L), 
             H: parseInt(BRM_H), 
             source: 'BRM diretto'
+        };
+    }
+    
+    // ✅ v8.511: Accetta anche larghezza/altezza (passati dalla dashboard)
+    if (config.larghezza && config.altezza) {
+        return {
+            L: parseInt(config.larghezza),
+            H: parseInt(config.altezza),
+            source: 'larghezza/altezza diretto'
         };
     }
     
@@ -2495,11 +2505,14 @@ console.log(`🎚️ Anta Twin ${config.antaTwinTipo}: L_anta=${largAntaOsc} H=$
     }
     
     // 🆕 v8.45: Supplemento Ferramenta (se configurato)
-    // ✅ v8.466: Supporto ferramenta scorrevole
+    // ✅ v8.511: Ferramenta × numAnte + gestione esecuzione .3/.4
     if (config.ferramenta1) {
-// Prima cerca in FINSTRAL_FERRAMENTA_PREZZI (ferramenta standard)
-const ferrData = FINSTRAL_FERRAMENTA_PREZZI?.[config.ferramenta1];
-// Poi cerca in supplementiFerramenta (scorrevoli)
+// Estrai codice base e esecuzione (es. "211" base, ".3" = config.esecuzione1 o dal codice)
+const codiceBase = config.ferramenta1.split('.')[0]; // "211.3" → "211"
+const esecuzione = config.esecuzione1 || config.ferramenta1.split('.')[1] || '0';
+
+// Cerca prezzo base ferramenta
+const ferrData = FINSTRAL_FERRAMENTA_PREZZI?.[codiceBase];
 const ferrScorrevole = FINSTRAL_PREZZI.supplementiFerramenta?.[config.ferramenta1];
 
 if (ferrScorrevole) {
@@ -2508,10 +2521,23 @@ if (ferrScorrevole) {
     risultato.dettaglio.ferramentaDescrizione = `Scorrevole ${config.ferramenta1}`;
     console.log(`🚪 Ferramenta scorrevole ${config.ferramenta1}: €${ferrScorrevole}`);
 } else if (ferrData) {
-    risultato.dettaglio.supplementoFerramenta = ferrData.prezzo || 0;
+    // ✅ v8.511: Ferramenta base × numAnte
+    let prezzoFerr = ferrData.prezzo || 0;
+    
+    // Supplemento esecuzione (.3 o .4)
+    let suppEsecuzione = 0;
+    if (esecuzione === '3') {
+        suppEsecuzione = FINSTRAL_FERRAMENTA_PREZZI['esecuzione3']?.prezzo || 27.9;
+    } else if (esecuzione === '4') {
+        suppEsecuzione = FINSTRAL_FERRAMENTA_PREZZI['esecuzione4']?.prezzo || 6.12;
+    }
+    
+    const prezzoPerCampo = prezzoFerr + suppEsecuzione;
+    risultato.dettaglio.supplementoFerramenta = Math.round(prezzoPerCampo * numAnteDaTipo * 100) / 100;
     risultato.dettaglio.ferramentaCodice = config.ferramenta1;
     risultato.dettaglio.ferramentaDescrizione = ferrData.descrizione;
-    console.log(`🔧 Ferramenta ${config.ferramenta1}: €${risultato.dettaglio.supplementoFerramenta}`);
+    risultato.dettaglio.ferramentaEsecuzione = esecuzione;
+    console.log(`🔧 Ferramenta ${codiceBase}.${esecuzione}: €${prezzoFerr} + esec.${esecuzione} €${suppEsecuzione} = €${prezzoPerCampo}/campo × ${numAnteDaTipo} = €${risultato.dettaglio.supplementoFerramenta}`);
 } else {
     risultato.dettaglio.supplementoFerramenta = 0;
 }
@@ -2554,11 +2580,48 @@ config.accessori.forEach(codAcc => {
 console.log(`🔩 Accessori totale: €${risultato.dettaglio.supplementoAccessori}`);
     }
     
-    // TOTALE (escluso costo preparazione colore che è una tantum)
-    // ✅ v7.73: Aggiunto supplementoProfiloAnta e supplementoMontante
-    // ✅ v8.44: Aggiunto bancale e anta twin
-    // ✅ v8.45: Aggiunto ferramenta e accessori
-    // ✅ v8.466: Aggiunto supplementoFerramenta430 per tipo 503
+    // ✅ v8.511: Supplemento MANIGLIA (centralizzato)
+    risultato.dettaglio.supplementoManiglia = 0;
+    if (config.maniglia && typeof calcolaSupplementoManigliaFinstral === 'function') {
+        const prezzoManiglia = calcolaSupplementoManigliaFinstral(config.maniglia, config.coloreManiglia || '');
+        risultato.dettaglio.supplementoManiglia = Math.round(prezzoManiglia * numAnteDaTipo * 100) / 100;
+        if (risultato.dettaglio.supplementoManiglia > 0) {
+            console.log(`🔧 Maniglia: €${prezzoManiglia}/pz × ${numAnteDaTipo} = €${risultato.dettaglio.supplementoManiglia}`);
+        }
+    }
+    
+    // ✅ v8.511: Supplemento SOGLIA ribassata (porta-finestra)
+    risultato.dettaglio.supplementoSoglia = 0;
+    risultato.dettaglio.supplementoManigliettaPF = 0;
+    const isPortaFinestra = config.isPortaFinestra || altezza >= 1800;
+    risultato.dettaglio.isPortaFinestra = isPortaFinestra;
+    if (isPortaFinestra) {
+        const larghezza_ml = larghezza / 1000;
+        risultato.dettaglio.supplementoSoglia = Math.round(larghezza_ml * (FINSTRAL_PREZZI.supplementiSoglia?.["codice3"] || 54.50) * 100) / 100;
+        risultato.dettaglio.supplementoManigliettaPF = 39.10;
+        console.log(`🚪 Soglia PF: ${larghezza_ml.toFixed(2)}ml × €54.50 = €${risultato.dettaglio.supplementoSoglia}`);
+        console.log(`🚪 Maniglietta PF: €${risultato.dettaglio.supplementoManigliettaPF}`);
+    }
+    
+    // ✅ v8.511: Supplemento TAGLI telaio
+    risultato.dettaglio.supplementoTagli = 0;
+    const tagliRaw = config.tagliTelaio;
+    if (tagliRaw) {
+        const perimetro_ml = ((larghezza * 2) + (altezza * 2)) / 1000;
+        const tagli = Array.isArray(tagliRaw) ? tagliRaw : [tagliRaw];
+        tagli.forEach(codice => {
+            const codiceClean = String(codice).trim().toUpperCase();
+            const prezzoTaglio = FINSTRAL_PREZZI.supplementiTagli?.[codiceClean] || 
+                                 FINSTRAL_PREZZI.supplementiTagli?.[codiceClean.toLowerCase()] || 0;
+            if (prezzoTaglio > 0) {
+                risultato.dettaglio.supplementoTagli += Math.round(prezzoTaglio * perimetro_ml * 100) / 100;
+                console.log(`✂️ Taglio ${codiceClean}: ${perimetro_ml.toFixed(2)}ml × €${prezzoTaglio}/ml = €${risultato.dettaglio.supplementoTagli}`);
+            }
+        });
+    }
+    
+    // TOTALE COMPLETO
+    // ✅ v8.511: Include TUTTI i supplementi (soglia, maniglia, manigliettaPF, tagli)
     risultato.totale = Math.round((
 risultato.dettaglio.prezzoBase +
 risultato.dettaglio.supplementoTelaio +
@@ -2570,8 +2633,12 @@ risultato.dettaglio.supplementoVetro +
 (risultato.dettaglio.bancale?.prezzo || 0) +
 (risultato.dettaglio.antaTwin?.prezzo || 0) +
 (risultato.dettaglio.supplementoFerramenta || 0) +
-(risultato.dettaglio.supplementoFerramenta430 || 0) +  // ✅ v8.466
-(risultato.dettaglio.supplementoAccessori || 0)
+(risultato.dettaglio.supplementoFerramenta430 || 0) +
+(risultato.dettaglio.supplementoAccessori || 0) +
+(risultato.dettaglio.supplementoManiglia || 0) +
+(risultato.dettaglio.supplementoSoglia || 0) +
+(risultato.dettaglio.supplementoManigliettaPF || 0) +
+(risultato.dettaglio.supplementoTagli || 0)
     ) * 100) / 100;
     
     return risultato;
@@ -2583,21 +2650,31 @@ console.log('✅ FINSTRAL_PREZZI caricato - Listino EUR 2025/3 + Colori + Ferram
 // 🆕 v8.45: DATABASE FERRAMENTA FINSTRAL (da conferme ordine reali)
 // ═══════════════════════════════════════════════════════════════════════════
 const FINSTRAL_FERRAMENTA_PREZZI = {
-    // ANTA/RIBALTA (cerniere a vista - serie 4xx)
-    '411': { descrizione: 'Anta/ribalta', prezzo: 11.90, cerniere: 'a-vista' },
-    '409': { descrizione: 'Solo anta', prezzo: 9.50, cerniere: 'a-vista' },
-    '430': { descrizione: 'Anta con uscita sicurezza', prezzo: 14.20, cerniere: 'a-vista' },
-    '453': { descrizione: 'Anta/ribalta porta', prezzo: 13.50, cerniere: 'a-vista' },
-    '425': { descrizione: 'Anta doppia', prezzo: 18.90, cerniere: 'a-vista' },
+    // ✅ v8.511: Prezzi da listino EUR 2025/10 pag.170-171
+    // STRUTTURA: base (codice .0) + esecuzione (.3/.4) sono SEPARATI
+    // Il prezzo base è il SUPPLEMENTO rispetto al prezzo base infisso
+    
+    // CERNIERE IN VISTA (serie 4xx) - pag.170
+    '411': { descrizione: 'Anta/ribalta (in vista)', prezzo: 0, cerniere: 'in-vista', note: 'compreso nel prezzo base' },
+    '409': { descrizione: 'Solo ribalta (in vista)', prezzo: 29.3, cerniere: 'in-vista' },
+    '430': { descrizione: 'Anta uscita sicurezza (in vista)', prezzo: 0, cerniere: 'in-vista' },
+    '453': { descrizione: 'Anta/ribalta porta serratura (in vista)', prezzo: 0, cerniere: 'in-vista' },
+    '425': { descrizione: 'Anta doppia montante mobile (in vista)', prezzo: 0, cerniere: 'in-vista' },
+    
+    // CERNIERE A SCOMPARSA (serie 2xx) - pag.170
+    '211': { descrizione: 'Anta/ribalta (a scomparsa)', prezzo: 47.9, cerniere: 'a-scomparsa' },
+    '209': { descrizione: 'Solo ribalta (a scomparsa)', prezzo: 77.5, cerniere: 'a-scomparsa' },
+    '230': { descrizione: 'Anta uscita sicurezza (a scomparsa)', prezzo: 47.9, cerniere: 'a-scomparsa' },
+    '225': { descrizione: 'Anta doppia montante (a scomparsa)', prezzo: 47.9, cerniere: 'a-scomparsa' },
+    
+    // SUPPLEMENTI ESECUZIONE (aggiuntivi al prezzo base ferramenta)
+    // Esecuzione .3: scontri sicurezza perimetrali + cerniera angolare
+    // Esecuzione .4: scontri sicurezza perimetrali (senza cerniera angolare)
+    'esecuzione3': { descrizione: 'Scontri sicurezza .3', prezzo: 27.9 },
+    'esecuzione4': { descrizione: 'Scontri sicurezza .4', prezzo: 6.12 },
+    
+    // SCORREVOLI
     '475': { descrizione: 'Scorrevole parallelo', prezzo: 45.00, cerniere: null },
-    
-    // ANTA/RIBALTA (cerniere a scomparsa - serie 2xx)
-    '211': { descrizione: 'Anta/ribalta (a scomparsa)', prezzo: 15.20, cerniere: 'a-scomparsa' },
-    '209': { descrizione: 'Solo anta (a scomparsa)', prezzo: 12.80, cerniere: 'a-scomparsa' },
-    '230': { descrizione: 'Anta sicurezza (a scomparsa)', prezzo: 17.50, cerniere: 'a-scomparsa' },
-    '225': { descrizione: 'Anta doppia (a scomparsa)', prezzo: 22.30, cerniere: 'a-scomparsa' },
-    
-    // FISSO
     '99': { descrizione: 'Elemento fisso', prezzo: 0, cerniere: null },
     
     // SCORREVOLI (serie 7xx)
