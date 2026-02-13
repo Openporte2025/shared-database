@@ -2322,11 +2322,14 @@ numAnteDaTipo = 3;  // 3 ante (composito)
         if (supplTelaio) {
             const keyPvc = isGruppoB_telaio ? 'pvcB' : 'pvcA';
             const keyAlu = isGruppoB_telaio ? 'aluB' : 'aluA';
-            // Retrocompatibilità: se non trova pvcA/pvcB, usa pvc/alluminio
             const suppPvc = supplTelaio[keyPvc] ?? supplTelaio.pvc ?? 0;
             const suppAlu = supplTelaio[keyAlu] ?? supplTelaio.alluminio ?? 0;
-            risultato.dettaglio.supplementoTelaio = Math.round((suppPvc + suppAlu) * perimetro * 100) / 100;
-            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml + ALU €${suppAlu}/ml × ${perimetro.toFixed(2)}ml = €${risultato.dettaglio.supplementoTelaio}`);
+            // ✅ v8.70: Per porte-finestre con soglia, escludi lato inferiore
+            const isPortaFinestra_alu = config.isPortaFinestra || altezza >= 1800;
+            const perimetroTelaio_alu = isPortaFinestra_alu ?
+                (perimetro - (larghezza / 1000)) : perimetro;
+            risultato.dettaglio.supplementoTelaio = Math.round((suppPvc + suppAlu) * perimetroTelaio_alu * 100) / 100;
+            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml + ALU €${suppAlu}/ml × ${perimetroTelaio_alu.toFixed(2)}ml${isPortaFinestra_alu && hasSoglia_alu ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
         } else {
             risultato.dettaglio.supplementoTelaio = 0;
         }
@@ -2336,8 +2339,13 @@ numAnteDaTipo = 3;  // 3 ante (composito)
         if (supplTelaio) {
             const keyPvc = isGruppoB_telaio ? 'pvcB' : 'pvcA';
             const suppPvc = supplTelaio[keyPvc] ?? supplTelaio.pvc ?? 0;
-            risultato.dettaglio.supplementoTelaio = Math.round(suppPvc * perimetro * 100) / 100;
-            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml × ${perimetro.toFixed(2)}ml = €${risultato.dettaglio.supplementoTelaio}`);
+            // ✅ v8.70: Per porte-finestre con soglia, il supplemento telaio NON si applica sul lato inferiore
+            // La soglia ha supplemento separato (codice 3: +54.5/ml)
+            const isPortaFinestra = config.isPortaFinestra || altezza >= 1800;
+            const perimetroTelaio = isPortaFinestra ? 
+                (perimetro - (larghezza / 1000)) : perimetro;
+            risultato.dettaglio.supplementoTelaio = Math.round(suppPvc * perimetroTelaio * 100) / 100;
+            console.log(`🔬 Telaio ${telaio} gruppo ${gruppoColore}: PVC €${suppPvc}/ml × ${perimetroTelaio.toFixed(2)}ml${isPortaFinestra && hasSoglia ? ' (senza soglia)' : ''} = €${risultato.dettaglio.supplementoTelaio}`);
         } else {
             risultato.dettaglio.supplementoTelaio = 0;
         }
