@@ -256,9 +256,22 @@ function calcolaPreventivo(data) {
                 const finituraEstInfisso = infisso.finituraEst || infisso.finitura_est || '';
                 const finituraEstConfig = data.configInfissi?.finituraEst || data.configInfissi?.finitura_est || '';
                 const finituraEst = (finituraEstInfisso || finituraEstConfig || '').toLowerCase();
-                const telaioCodice = (typeof telaio === 'string' ? telaio : '').toLowerCase();
-                const haRivestimentoEst = telaioCodice.includes('riv.est') || telaioCodice.includes('riv. est');
-                const materiale = finituraEst.includes('alluminio') || finituraEst.includes('alu') || haRivestimentoEst ? 'alluminio' : 'pvc';
+                // ✅ v8.70: La finitura esterna EFFETTIVA determina il materiale
+                // "(riv.est.)" nel telaio indica solo che SUPPORTA rivestimento, non che ce l'ha
+                // Se finitura esterna contiene "pvc" → PVC, anche con telaio riv.est.
+                const finituraIndicaPVC = finituraEst.includes('pvc');
+                const finituraIndicaALU = finituraEst.includes('alluminio') || finituraEst.includes('alu');
+                let materiale;
+                if (finituraIndicaALU) {
+                    materiale = 'alluminio';
+                } else if (finituraIndicaPVC) {
+                    materiale = 'pvc';
+                } else {
+                    // Fallback: se finitura è vuota, usa nome telaio
+                    const telaioCodice = (typeof telaio === 'string' ? telaio : '').toLowerCase();
+                    const haRivestimentoEst = telaioCodice.includes('riv.est') || telaioCodice.includes('riv. est');
+                    materiale = haRivestimentoEst ? 'alluminio' : 'pvc';
+                }
                 console.log(`🔧 Materiale Pos ${index+1}:`);
                 console.log(`   infisso.finituraEst = "${infisso.finituraEst || 'undefined'}"`);
                 console.log(`   infisso.finitura_est = "${infisso.finitura_est || 'undefined'}"`);
