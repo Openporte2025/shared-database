@@ -1,7 +1,12 @@
 // ============================================================================
-// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.510
+// LISTINO FINSTRAL INFISSI - EUR 2025/10 - v8.511
 // ============================================================================
 // 
+// 🆕 v8.511 (13 FEB 2026): FIX CRITICO SUPPLEMENTO ANTA TWIN
+//   - Tabella N989 aggiornata da EUR 2025/3 → EUR 2025/10 (144 celle corrette)
+//   - Supplemento profilo N989: 5.62 → 6.35 €/ml (da listino EUR 2025/10 pag.139)
+//   - FIX: Ante con tabella dimensionale (Twin, Cristal) ora SOMMANO tabella + profilo €/ml
+//   - FIX: numAnteDaTipo riconosce anche formato "tipo401"/"tipo301" oltre a "401"/"301"
 // 🆕 v8.510 (11 FEB 2026): ARCHITETTURA "CODICI DENTRO, NOMI FUORI"
 // - ♻️ **RISTRUTTURATO DATABASE TWIN**: codici Finstral come chiavi primarie
 //   - PRIMA: chiavi interne ('SLIM_TWIN', 'NOVA_TWIN') → ❌ non standard
@@ -70,7 +75,7 @@ window.FINSTRAL_PREZZI = {
     // └─────────────────────────────────────────────────────────────┘
     // Errore medio atteso: <2%
     // ═══════════════════════════════════════════════════════════════
-    versione: "EUR 2025/10 v8.505",
+    versione: "EUR 2025/10 v8.511",
     dataAggiornamento: "2026-01-27",
     note: "Supplementi telaio e anta verificati da listino PDF",
     // ✅ v8.465: Funzione fattore correzione VERIFICATA
@@ -458,7 +463,7 @@ allargamento30K: 25.90   // +30mm alluminio
 "nova-line-30": { pvcA: 5.62, pvcB: 11.9, aluA: 0, aluB: 0 },
 "nova-line-40": { pvcA: 5.62, pvcB: 11.9, aluA: 0, aluB: 0 },
 "nova-line-plus": { pvcA: 23.1, pvcB: 29.3, aluA: 0, aluB: 0 },        // codice 941 - pag.136
-"nova-line-twin": { pvcA: 5.62, pvcB: 11.9, aluA: 0, aluB: 0 }
+"nova-line-twin": { pvcA: 6.35, pvcB: 11.9, aluA: 0, aluB: 0 }         // codice N989 - pag.139 EUR 2025/10 ✅ v8.511
     },
 
     // ✅ v7.79: TABELLE DIMENSIONALI ANTE SPECIALI (€/pezzo invece di €/ml)
@@ -508,26 +513,26 @@ allargamento30K: 25.90   // +30mm alluminio
     2605: { 615: 266, 740: 281, 865: 294, 990: 311, 1115: 325, 1240: 340, 1365: 356, 1490: 374 },
     2730: { 615: 273, 740: 289, 865: 303, 990: 320, 1115: 335, 1240: 350, 1365: 368, 1490: 384 }
 },
-// Nova-line Twin (codice N989) - pag.94
+// Nova-line Twin (codice N989) - pag.140 EUR 2025/10 ✅ AGGIORNATO v8.511
 "nova-line-twin": {
-    605: { 615: 231, 740: 244, 865: 254, 990: 267, 1115: 277, 1240: 289, 1365: 302, 1490: 303 },
-    730: { 615: 241, 740: 257, 865: 268, 990: 282, 1115: 293, 1240: 306, 1365: 320, 1490: 324 },
-    855: { 615: 254, 740: 271, 865: 283, 990: 298, 1115: 311, 1240: 326, 1365: 341, 1490: 346 },
-    980: { 615: 278, 740: 295, 865: 308, 990: 325, 1115: 339, 1240: 358, 1365: 375, 1490: 381 },
-    1105: { 615: 287, 740: 306, 865: 321, 990: 339, 1115: 355, 1240: 374, 1365: 393, 1490: 401 },
-    1230: { 615: 300, 740: 320, 865: 336, 990: 358, 1115: 375, 1240: 394, 1365: 414, 1490: 423 },
-    1355: { 615: 318, 740: 340, 865: 360, 990: 381, 1115: 399, 1240: 420, 1365: 442, 1490: 452 },
-    1480: { 615: 320, 740: 343, 865: 365, 990: 387, 1115: 407, 1240: 429, 1365: 452, 1490: 466 },
-    1605: { 615: 340, 740: 366, 865: 387, 990: 404, 1115: 432, 1240: 457, 1365: 483, 1490: 496 },
-    1730: { 615: 350, 740: 378, 865: 400, 990: 419, 1115: 448, 1240: 476, 1365: 501, 1490: 517 },
-    1855: { 615: 364, 740: 391, 865: 415, 990: 435, 1115: 468, 1240: 495, 1365: 523, 1490: 539 },
-    1980: { 615: 371, 740: 399, 865: 424, 990: 445, 1115: 479, 1240: 507, 1365: 535, 1490: 552 },
-    2105: { 615: 381, 740: 411, 865: 437, 990: 468, 1115: 494, 1240: 524, 1365: 553, 1490: 574 },
-    2230: { 615: 399, 740: 430, 865: 458, 990: 490, 1115: 518, 1240: 549, 1365: 582, 1490: 602 },
-    2355: { 615: 413, 740: 446, 865: 477, 990: 509, 1115: 539, 1240: 573, 1365: 605, 1490: 627 },
-    2480: { 615: 420, 740: 455, 865: 487, 990: 520, 1115: 551, 1240: 587, 1365: 621, 1490: 644 },
-    2605: { 615: 433, 740: 470, 865: 502, 990: 537, 1115: 572, 1240: 607, 1365: 642, 1490: 669 },
-    2730: { 615: 445, 740: 484, 865: 518, 990: 554, 1115: 590, 1240: 627, 1365: 666, 1490: 692 }
+    605: { 615: 236, 740: 249, 865: 259, 990: 272, 1115: 283, 1240: 295, 1365: 308, 1490: 309 },
+    730: { 615: 246, 740: 262, 865: 273, 990: 288, 1115: 299, 1240: 312, 1365: 326, 1490: 330 },
+    855: { 615: 259, 740: 276, 865: 289, 990: 304, 1115: 317, 1240: 333, 1365: 348, 1490: 353 },
+    980: { 615: 284, 740: 301, 865: 314, 990: 332, 1115: 346, 1240: 365, 1365: 383, 1490: 389 },
+    1105: { 615: 293, 740: 312, 865: 327, 990: 346, 1115: 362, 1240: 381, 1365: 401, 1490: 409 },
+    1230: { 615: 306, 740: 326, 865: 343, 990: 365, 1115: 383, 1240: 402, 1365: 422, 1490: 431 },
+    1355: { 615: 324, 740: 347, 865: 367, 990: 389, 1115: 407, 1240: 428, 1365: 451, 1490: 461 },
+    1480: { 615: 326, 740: 350, 865: 372, 990: 395, 1115: 415, 1240: 438, 1365: 461, 1490: 475 },
+    1605: { 615: 347, 740: 373, 865: 395, 990: 412, 1115: 441, 1240: 466, 1365: 493, 1490: 506 },
+    1730: { 615: 357, 740: 386, 865: 408, 990: 427, 1115: 457, 1240: 486, 1365: 511, 1490: 527 },
+    1855: { 615: 371, 740: 399, 865: 423, 990: 444, 1115: 477, 1240: 505, 1365: 533, 1490: 550 },
+    1980: { 615: 378, 740: 407, 865: 432, 990: 454, 1115: 489, 1240: 517, 1365: 546, 1490: 563 },
+    2105: { 615: 389, 740: 419, 865: 446, 990: 477, 1115: 504, 1240: 534, 1365: 564, 1490: 585 },
+    2230: { 615: 407, 740: 439, 865: 467, 990: 500, 1115: 528, 1240: 560, 1365: 594, 1490: 614 },
+    2355: { 615: 421, 740: 455, 865: 487, 990: 519, 1115: 550, 1240: 584, 1365: 617, 1490: 640 },
+    2480: { 615: 428, 740: 464, 865: 497, 990: 530, 1115: 562, 1240: 599, 1365: 633, 1490: 657 },
+    2605: { 615: 442, 740: 479, 865: 512, 990: 548, 1115: 583, 1240: 619, 1365: 655, 1490: 682 },
+    2730: { 615: 454, 740: 494, 865: 528, 990: 565, 1115: 602, 1240: 640, 1365: 679, 1490: 706 }
 }
     },
 
@@ -1125,54 +1130,54 @@ window.FINSTRAL_ANTA_TWIN = {
 '30': { desc: 'Motore 2.5m', supplemento: 345 },
 '30-1': { desc: 'Motore 10m', supplemento: 356 }
     },
-    // Prezzi veneziana (larghezze x altezze)
+    // ✅ v8.511: Prezzi veneziana EUR 2025/10 pag.146 (L×A = larghezza/altezza ANTA, €/pezzo)
     prezziVeneziana: {
-larghezze: [400, 500, 600, 700, 800, 900, 1000, 1100],
-altezze: [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300],
+larghezze: [615, 740, 865, 990, 1115, 1240, 1365, 1490],
+altezze: [605, 730, 855, 980, 1105, 1230, 1355, 1480, 1605, 1730, 1855, 1980, 2105, 2230, 2355, 2480, 2605, 2730],
 prezzi: [
-    [141, 150, 159, 168, 177, 186, 195, 205],
-    [148, 158, 168, 178, 188, 198, 209, 219],
-    [155, 166, 177, 188, 199, 211, 222, 233],
-    [162, 174, 186, 198, 210, 223, 235, 248],
-    [169, 182, 195, 208, 221, 235, 248, 262],
-    [176, 190, 204, 218, 232, 247, 261, 276],
-    [183, 198, 213, 228, 243, 259, 274, 290],
-    [190, 206, 222, 238, 255, 271, 288, 304],
-    [197, 214, 231, 248, 266, 283, 301, 319],
-    [205, 223, 241, 259, 277, 296, 314, 333],
-    [212, 231, 250, 269, 288, 308, 327, 347],
-    [219, 239, 259, 279, 299, 320, 341, 361],
-    [226, 247, 268, 289, 310, 332, 354, 376],
-    [233, 255, 277, 299, 322, 344, 367, 390],
-    [240, 263, 286, 309, 333, 357, 380, 404],
-    [248, 272, 296, 320, 344, 369, 394, 419],
-    [255, 280, 305, 330, 355, 381, 407, 433],
-    [262, 288, 314, 340, 366, 393, 420, 447]
+    [133, 135, 137, 149, 163, 166, 170, 174],
+    [136, 139, 142, 157, 169, 172, 176, 180],
+    [139, 145, 148, 163, 175, 179, 183, 185],
+    [142, 146, 150, 166, 181, 185, 188, 191],
+    [145, 148, 152, 170, 186, 190, 193, 197],
+    [150, 155, 161, 176, 192, 198, 205, 211],
+    [158, 163, 166, 183, 198, 208, 217, 226],
+    [163, 167, 172, 192, 211, 218, 224, 232],
+    [166, 172, 180, 202, 224, 228, 232, 236],
+    [169, 175, 181, 204, 226, 233, 240, 246],
+    [170, 176, 183, 205, 228, 238, 248, 258],
+    [176, 185, 193, 215, 237, 246, 255, 265],
+    [183, 193, 204, 225, 246, 253, 264, 272],
+    [189, 202, 206, 228, 250, 261, 271, 282],
+    [196, 210, 210, 232, 255, 267, 279, 291],
+    [  0, 219, 213, 237, 261, 274, 287, 300],
+    [  0,   0, 217, 240, 265, 281, 295, 310],
+    [  0,   0, 224, 249, 274, 293, 312, 330]
 ]
     },
-    // Prezzi plissettata
+    // ✅ v8.511: Prezzi plissettata EUR 2025/10 pag.147 (L×A = larghezza/altezza ANTA, €/pezzo)
     prezziPlissettata: {
-larghezze: [400, 500, 600, 700, 800, 900, 1000, 1100],
-altezze: [600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300],
+larghezze: [615, 740, 865, 990, 1115, 1240, 1365, 1490],
+altezze: [605, 730, 855, 980, 1105, 1230, 1355, 1480, 1605, 1730, 1855, 1980, 2105, 2230, 2355, 2480, 2605, 2730],
 prezzi: [
-    [155, 165, 175, 185, 195, 205, 215, 225],
-    [163, 174, 185, 196, 207, 218, 229, 241],
-    [171, 183, 195, 207, 219, 232, 244, 257],
-    [179, 192, 205, 218, 232, 245, 259, 273],
-    [187, 201, 215, 229, 244, 259, 273, 288],
-    [195, 210, 225, 240, 256, 272, 288, 304],
-    [203, 219, 235, 251, 268, 285, 302, 320],
-    [211, 228, 245, 262, 281, 299, 317, 336],
-    [219, 237, 255, 274, 293, 312, 332, 352],
-    [227, 246, 265, 285, 305, 326, 346, 368],
-    [235, 255, 276, 296, 318, 339, 361, 383],
-    [243, 264, 286, 307, 330, 352, 375, 399],
-    [251, 274, 296, 319, 342, 366, 390, 415],
-    [259, 283, 306, 330, 355, 379, 405, 431],
-    [267, 292, 316, 341, 367, 393, 419, 446],
-    [275, 301, 326, 352, 379, 406, 434, 462],
-    [283, 310, 337, 364, 391, 420, 448, 478],
-    [291, 319, 347, 375, 404, 433, 463, 493]
+    [283, 323, 344, 358, 381, 392, 408, 423],
+    [286, 325, 345, 361, 386, 395, 411, 425],
+    [300, 345, 359, 379, 402, 411, 426, 443],
+    [330, 374, 392, 412, 434, 445, 465, 482],
+    [347, 391, 408, 427, 451, 465, 483, 503],
+    [366, 411, 428, 451, 479, 490, 509, 527],
+    [384, 427, 445, 472, 497, 509, 527, 547],
+    [412, 457, 481, 505, 530, 541, 561, 580],
+    [426, 476, 497, 520, 547, 560, 580, 602],
+    [446, 495, 514, 541, 567, 583, 602, 618],
+    [467, 510, 533, 557, 585, 604, 618, 633],
+    [494, 540, 562, 593, 621, 638, 651, 665],
+    [509, 556, 579, 611, 640, 653, 667, 682],
+    [550, 578, 604, 633, 659, 683, 697, 709],
+    [593, 595, 619, 648, 680, 708, 722, 735],
+    [  0, 625, 648, 683, 699, 732, 745, 758],
+    [  0, 640, 666, 700, 717, 757, 768, 782],
+    [  0, 656, 685, 714, 735, 779, 794, 806]
 ]
     }
 };
@@ -1411,29 +1416,40 @@ window.migrateTwinModelKey = function(oldKey) {
 };
 
 // Funzione calcolo prezzo anta twin
+// ✅ v8.511: Calcola prezzo oscurante Twin (veneziana/plissettata)
+// ATTENZIONE: larghezza e altezza devono essere dell'ANTA (non BRM finestra!)
+// Il prezzo è PER PEZZO (per anta singola), il chiamante moltiplica per numAnte
 window.calcolaPrezzoAntaTwin = function(tipoOscurante, larghezza, altezza, comando = '27') {
     const tabella = tipoOscurante === 'veneziana' ? 
 FINSTRAL_ANTA_TWIN.prezziVeneziana : 
 FINSTRAL_ANTA_TWIN.prezziPlissettata;
     
-    // Trova indice larghezza
-    let idxL = 0;
+    // Trova indice larghezza (casella più alta >= larghezza)
+    let idxL = tabella.larghezze.length - 1;
     for (let i = 0; i < tabella.larghezze.length; i++) {
 if (larghezza <= tabella.larghezze[i]) { idxL = i; break; }
-idxL = i;
     }
     
-    // Trova indice altezza
-    let idxA = 0;
+    // Trova indice altezza (casella più alta >= altezza)
+    let idxA = tabella.altezze.length - 1;
     for (let i = 0; i < tabella.altezze.length; i++) {
 if (altezza <= tabella.altezze[i]) { idxA = i; break; }
-idxA = i;
     }
     
     let prezzo = tabella.prezzi[idxA]?.[idxL] || 0;
     
-    // Aggiungi supplemento comando
+    // Se prezzo = 0, dimensione fuori range (celle vuote nella tabella)
+    if (prezzo === 0) {
+console.warn(`⚠️ Twin ${tipoOscurante}: L=${larghezza}→[${idxL}]=${tabella.larghezze[idxL]}, A=${altezza}→[${idxA}]=${tabella.altezze[idxA]} → FUORI RANGE`);
+    } else {
+console.log(`🎚️ Twin ${tipoOscurante}: L=${larghezza}→${tabella.larghezze[idxL]}, A=${altezza}→${tabella.altezze[idxA]} = €${prezzo}/pezzo`);
+    }
+    
+    // Aggiungi supplemento comando (motore)
     const supplComando = FINSTRAL_ANTA_TWIN.comandi[comando]?.supplemento || 0;
+    if (supplComando > 0) {
+console.log(`🎚️ + Comando ${comando}: +€${supplComando}`);
+    }
     
     return prezzo + supplComando;
 }
@@ -2262,11 +2278,11 @@ return risultato;
     // Il supplemento profilo anta va calcolato sul perimetro delle ANTE, non della finestra!
     // ⚠️ TIPO 102 (FISSO) NON HA ANTE! → numAnte = 0, nessun supplemento anta
     let numAnteDaTipo = 1;  // Default 1 anta
-    if (tipo === "102") {
+    if (tipo === "102" || tipo === "tipo102") {
 numAnteDaTipo = 0;  // ✅ FISSO: 0 ante
-    } else if (tipo === "401" || tipo === "301") {
+    } else if (tipo === "401" || tipo === "tipo401" || tipo === "301" || tipo === "tipo301") {
 numAnteDaTipo = 2;  // 2 ante con montante mobile
-    } else if (tipo === "420" || tipo === "421") {
+    } else if (tipo === "420" || tipo === "421" || tipo === "tipo420" || tipo === "tipo421") {
 numAnteDaTipo = 3;  // 3 ante (composito)
     }
     
@@ -2325,9 +2341,29 @@ risultato.dettaglio.tipoCalcoloAnta = "fisso";
 const suppTabellaAnta = getSupplementoAntaDimensionale(antaNorm, altezza, larghezza / numAnteDaTipo);
     if (suppTabellaAnta !== null && suppTabellaAnta > 0) {
 // Ante speciali (Cristal, Twin): prezzo €/pezzo × numAnte
-risultato.dettaglio.supplementoProfiloAnta = Math.round(suppTabellaAnta * numAnteDaTipo * 100) / 100;
-risultato.dettaglio.tipoCalcoloAnta = "tabella";
-console.log(`🔬 Profilo ${antaNorm}: TABELLA €${suppTabellaAnta}/pezzo × ${numAnteDaTipo} ante = €${risultato.dettaglio.supplementoProfiloAnta}`);
+let totaleAnta = Math.round(suppTabellaAnta * numAnteDaTipo * 100) / 100;
+console.log(`🔬 Profilo ${antaNorm}: TABELLA €${suppTabellaAnta}/pezzo × ${numAnteDaTipo} ante = €${totaleAnta}`);
+
+// ✅ v8.511 FIX: Per Twin/Cristal, SOMMA anche supplemento profilo €/ml
+// Listino Finstral pag.139: "codice N989 → +6,35/ml + secondo tabella supplementi prezzo"
+const supplProfilo = FINSTRAL_PREZZI.supplementiProfiloAnta?.[antaNorm];
+if (supplProfilo) {
+    const isNovaLine = antaNorm.includes('nova');
+    const keyPvc = isGruppoB_telaio ? 'pvcB' : 'pvcA';
+    const keyAlu = isGruppoB_telaio ? 'aluB' : 'aluA';
+    let suppPvc = supplProfilo[keyPvc] ?? supplProfilo.pvc ?? 0;
+    let suppAlu = 0;
+    if (materiale === 'alluminio' && !isNovaLine) {
+        suppAlu = supplProfilo[keyAlu] ?? supplProfilo.alluminio ?? 0;
+    }
+    const profiloMl = Math.round((suppPvc + suppAlu) * perimetroBattenti * 100) / 100;
+    totaleAnta += profiloMl;
+    console.log(`🔬 + Profilo €/ml: (${suppPvc}+${suppAlu}) × ${perimetroBattenti.toFixed(2)}ml = €${profiloMl}`);
+}
+
+risultato.dettaglio.supplementoProfiloAnta = Math.round(totaleAnta * 100) / 100;
+risultato.dettaglio.tipoCalcoloAnta = "tabella+profilo";
+console.log(`🔬 → TOTALE supplementoProfiloAnta = €${risultato.dettaglio.supplementoProfiloAnta}`);
     } else {
 // Ante normali: prezzo €/ml × perimetro battenti
 // 🆕 v8.505: Usa struttura gruppi colore A/B
@@ -2442,14 +2478,20 @@ console.log(`🪟 Bancale ${config.bancaleTipo}: P=${config.bancaleProfondita}mm
     
     // 🆕 v8.44: Anta Twin - Veneziana/Plissettata (se configurato)
     if (config.antaTwinTipo && (config.antaTwinTipo === 'veneziana' || config.antaTwinTipo === 'plissettata')) {
+// ✅ v8.511: Usa larghezza ANTA (non BRM!) e moltiplica per numAnte
+const numAnteOsc = numAnteDaTipo > 0 ? numAnteDaTipo : 1;
+const largAntaOsc = numAnteOsc > 1 ? Math.round(larghezza / numAnteOsc) : larghezza;
+const prezzoPerAnta = calcolaPrezzoAntaTwin(config.antaTwinTipo, largAntaOsc, altezza, config.antaTwinComando || '27');
 risultato.dettaglio.antaTwin = {
     tipo: config.antaTwinTipo,
-    modello: config.antaTwinModello,  // ⚠️ v8.510: CODICE Finstral (es. "C788"). Usa getTwinModelName() per visualizzare nome
+    modello: config.antaTwinModello,
     colore: config.antaTwinColore,
     comando: config.antaTwinComando || '27',
-    prezzo: calcolaPrezzoAntaTwin(config.antaTwinTipo, larghezza, altezza, config.antaTwinComando || '27')
+    prezzoPerAnta: prezzoPerAnta,
+    numAnte: numAnteOsc,
+    prezzo: Math.round(prezzoPerAnta * numAnteOsc * 100) / 100
 };
-console.log(`🎚️ Anta Twin ${config.antaTwinTipo}: L=${larghezza} H=${altezza} → €${risultato.dettaglio.antaTwin.prezzo}`);
+console.log(`🎚️ Anta Twin ${config.antaTwinTipo}: L_anta=${largAntaOsc} H=${altezza} → €${prezzoPerAnta}/pezzo × ${numAnteOsc} = €${risultato.dettaglio.antaTwin.prezzo}`);
     }
     
     // 🆕 v8.45: Supplemento Ferramenta (se configurato)
