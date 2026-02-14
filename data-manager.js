@@ -1,9 +1,10 @@
 // ============================================================================
-// DATA MANAGER - Gestione Dati Unificata v1.3.0
+// DATA MANAGER - Gestione Dati Unificata v1.4.0
 // ============================================================================
 // Modulo condiviso per gestire dati tra App Rilievo, Dashboard e Editor
 // Standardizza su formato `positions` (app rilievo), converte automaticamente
 // 
+// v1.4.0: Gestione unificata clientData/immobile/ivaDetrazioni + leggi/scrivi/esporta
 // v1.3.0: Gestione prodotti preventivo (escludi/includi, modifica qta, elimina)
 // v1.2.0: Aggiunto supporto formato ODOO (progetti da CRM senza posizioni)
 // 
@@ -18,9 +19,17 @@
 //   DATA_MANAGER.modificaQtaProdotto(project, posIdx, productType, nuovaQta)
 //   DATA_MANAGER.eliminaPosizione(project, posIdx) // rimuove posizione intera
 //   DATA_MANAGER.isProdottoEscluso(prodotto) // check se escluso
+//   🆕 v1.4.0:
+//   DATA_MANAGER.leggiCliente(project)     // dati anagrafici normalizzati
+//   DATA_MANAGER.leggiImmobile(project)    // dati immobile normalizzati
+//   DATA_MANAGER.leggiIVA(project)         // dati IVA/detrazioni normalizzati
+//   DATA_MANAGER.scriviCliente(project, campo, valore) // scrive in clientData
+//   DATA_MANAGER.scriviImmobile(project, campo, valore) // scrive in immobile
+//   DATA_MANAGER.scriviIVA(project, dati)  // scrive ivaDetrazioni
+//   DATA_MANAGER.preparaDatiExport(project) // prepara JSON per GitHub
 // ============================================================================
 
-const DATA_MANAGER_VERSION = '1.3.0';
+const DATA_MANAGER_VERSION = '1.4.0';
 
 (function() {
     'use strict';
@@ -1044,6 +1053,175 @@ const DATA_MANAGER_VERSION = '1.3.0';
     }
     
     // ========================================================================
+    // 🆕 v1.4.0: GESTIONE UNIFICATA CLIENTE / IMMOBILE / IVA
+    // ========================================================================
+    // Source of truth nel JSON progetto:
+    //   clientData: { nomeCompleto, nome, cognome, CF, telefono, email, residenza... }
+    //   immobile:   { indirizzo, comune, provincia, cap, piano, zonaClimatica }
+    //   ivaDetrazioni: { intervento, edificio, servizio, cliente, bonus, primaCasa }
+    //
+    // Queste funzioni gestiscono TUTTI i fallback per retrocompatibilità
+    // con progetti vecchi dove i dati erano in posti diversi.
+    // ========================================================================
+    
+    /**
+     * Legge dati anagrafici cliente normalizzati (con fallback progetti vecchi)
+     * @param {Object} project - Oggetto progetto
+     * @returns {Object} - Dati cliente normalizzati
+     */
+    function leggiCliente(project) {
+        if (!project) return {};
+        const cd = project.clientData || {};
+        const cl = project.cliente || {};
+        return {
+            nomeCompleto: cd.nomeCompleto || cd.nome || cl.nome || project.client || '',
+            nome: cd.nome || cl.nome || '',
+            cognome: cd.cognome || cl.cognome || '',
+            codiceFiscale: cd.codiceFiscale || cd.cf || cl.cf || '',
+            telefono: cd.telefono || cl.telefono || '',
+            email: cd.email || cl.email || '',
+            residenzaIndirizzo: cd.residenzaIndirizzo || '',
+            residenzaComune: cd.residenzaComune || '',
+            residenzaProvincia: cd.residenzaProvincia || '',
+            residenzaCap: cd.residenzaCap || ''
+        };
+    }
+    
+    /**
+     * Legge dati immobile normalizzati (con fallback da clientData per progetti vecchi)
+     * @param {Object} project - Oggetto progetto
+     * @returns {Object} - Dati immobile normalizzati
+     */
+    function leggiImmobile(project) {
+        if (!project) return {};
+        const imm = project.immobile || {};
+        const cd = project.clientData || {};
+        const cl = project.cliente || {};
+        return {
+            indirizzo: imm.indirizzo || cd.indirizzo || cl.indirizzo || '',
+            comune: imm.comune || cd.citta || cl.citta || '',
+            provincia: imm.provincia || cd.provincia || '',
+            cap: imm.cap || cd.cap || '',
+            piano: imm.piano || cd.piano || '',
+            stessoIndirizzo: imm.stessoIndirizzo || cd.stessoIndirizzo || false,
+            zonaClimatica: imm.zonaClimatica || cd.zonaClimatica || 'E'
+        };
+    }
+    
+    /**
+     * Legge dati IVA/detrazioni normalizzati
+     * @param {Object} project - Oggetto progetto
+     * @returns {Object} - Dati IVA normalizzati
+     */
+    function leggiIVA(project) {
+        if (!project) return {};
+        const iva = project.ivaDetrazioni || project.immobile?.ivaDetrazioni || {};
+        return {
+            intervento: iva.intervento || null,
+            edificio: iva.edificio || null,
+            servizio: iva.servizio || null,
+            cliente: iva.cliente || null,
+            bonus: iva.bonus || null,
+            primaCasa: iva.primaCasa || 'si'
+        };
+    }
+    
+    /**
+     * Scrive un campo in clientData (crea se non esiste)
+     * @param {Object} project - Oggetto progetto
+     * @param {string} campo - Nome campo
+     * @param {*} valore - Valore
+     */
+    function scriviCliente(project, campo, valore) {
+        if (!project) return;
+        if (!project.clientData) project.clientData = {};
+        project.clientData[campo] = valore;
+        
+        // Retrocompatibilità: aggiorna anche project.client se nomeCompleto
+        if (campo === 'nomeCompleto') {
+            project.client = (valore || '').trim();
+            // Split nome/cognome
+            const parts = (valore || '').trim().split(' ');
+            project.clientData.nome = parts[0] || '';
+            project.clientData.cognome = parts.slice(1).join(' ') || '';
+        }
+        
+        console.log(`👤 DATA_MANAGER.scriviCliente: ${campo} = ${valore}`);
+    }
+    
+    /**
+     * Scrive un campo in immobile (crea se non esiste)
+     * @param {Object} project - Oggetto progetto  
+     * @param {string} campo - Nome campo
+     * @param {*} valore - Valore
+     */
+    function scriviImmobile(project, campo, valore) {
+        if (!project) return;
+        if (!project.immobile) project.immobile = {};
+        project.immobile[campo] = valore;
+        console.log(`🏠 DATA_MANAGER.scriviImmobile: ${campo} = ${valore}`);
+    }
+    
+    /**
+     * Scrive dati IVA/detrazioni (oggetto completo)
+     * Salva in root E in immobile per retrocompatibilità
+     * @param {Object} project - Oggetto progetto
+     * @param {Object} dati - { intervento, edificio, servizio, cliente, bonus, primaCasa }
+     */
+    function scriviIVA(project, dati) {
+        if (!project) return;
+        project.ivaDetrazioni = dati;
+        if (!project.immobile) project.immobile = {};
+        project.immobile.ivaDetrazioni = dati;
+        console.log('📋 DATA_MANAGER.scriviIVA:', dati);
+    }
+    
+    /**
+     * Prepara la sezione clientData/immobile/ivaDetrazioni per export GitHub.
+     * Da usare dentro uploadSingleProjectToGitHub / salvaProgettoSuGitHub.
+     * Restituisce un oggetto parziale da spreadare nel projectData.
+     * 
+     * @param {Object} project - Oggetto progetto
+     * @returns {Object} - { clientData, immobile, ivaDetrazioni } pronti per export
+     */
+    function preparaDatiAnagraficaExport(project) {
+        if (!project) return {};
+        
+        const cliente = leggiCliente(project);
+        const immobile = leggiImmobile(project);
+        const iva = leggiIVA(project);
+        
+        // Verifica se IVA ha almeno un campo compilato
+        const ivaCompilata = iva.intervento || iva.edificio || iva.servizio || iva.bonus;
+        
+        return {
+            clientData: {
+                nomeCompleto: cliente.nomeCompleto,
+                nome: cliente.nome,
+                cognome: cliente.cognome,
+                codiceFiscale: cliente.codiceFiscale,
+                telefono: cliente.telefono,
+                email: cliente.email,
+                residenzaIndirizzo: cliente.residenzaIndirizzo,
+                residenzaComune: cliente.residenzaComune,
+                residenzaProvincia: cliente.residenzaProvincia,
+                residenzaCap: cliente.residenzaCap
+            },
+            immobile: {
+                indirizzo: immobile.indirizzo,
+                comune: immobile.comune,
+                provincia: immobile.provincia,
+                cap: immobile.cap,
+                piano: immobile.piano,
+                stessoIndirizzo: immobile.stessoIndirizzo,
+                zonaClimatica: immobile.zonaClimatica,
+                ivaDetrazioni: ivaCompilata ? iva : null
+            },
+            ivaDetrazioni: ivaCompilata ? iva : null
+        };
+    }
+    
+    // ========================================================================
     // ESPORTA MODULO
     // ========================================================================
     
@@ -1073,6 +1251,15 @@ const DATA_MANAGER_VERSION = '1.3.0';
         eliminaProdotto,
         isProdottoEscluso,
         
+        // 🆕 v1.4.0: Gestione unificata cliente/immobile/IVA
+        leggiCliente,
+        leggiImmobile,
+        leggiIVA,
+        scriviCliente,
+        scriviImmobile,
+        scriviIVA,
+        preparaDatiAnagraficaExport,
+        
         // Funzioni dirette su posizione (per Editor)
         applyPositionUpdate,
         applyProductUpdate,
@@ -1094,6 +1281,8 @@ const DATA_MANAGER_VERSION = '1.3.0';
     console.log('   📌 Funzioni progetto: updatePosition(), updateProduct(), updateMisura()');
     console.log('   📌 Funzioni editor: applyPositionUpdate(), applyProductUpdate(), applyMisuraUpdate()');
     console.log('   🆕 Funzioni preventivo: escludiProdotto(), modificaQtaProdotto(), eliminaPosizione(), eliminaProdotto()');
+    console.log('   🆕 Funzioni anagrafica: leggiCliente(), leggiImmobile(), leggiIVA(), scriviCliente(), scriviImmobile(), scriviIVA()');
+    console.log('   🆕 Export: preparaDatiAnagraficaExport()');
     console.log('   🔗 Supporto Odoo: normalizeProject() gestisce progetti da CRM');
     
 })();
